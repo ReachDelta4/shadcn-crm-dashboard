@@ -1,6 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Order, OrderFilters } from "@/features/dashboard/pages/orders/types/order";
-import { mockOrders } from "../data/mock-orders";
 import {
   SortingState,
   PaginationState,
@@ -11,7 +10,15 @@ interface UseOrdersProps {
   initialOrders?: Order[];
 }
 
-export function useOrders({ initialOrders = mockOrders }: UseOrdersProps = {}) {
+interface ApiResponse {
+  data: any[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export function useOrders({ initialOrders = [] }: UseOrdersProps = {}) {
   const [filters, setFilters] = useState<OrderFilters>({
     status: "all",
     search: "",
@@ -30,115 +37,70 @@ export function useOrders({ initialOrders = mockOrders }: UseOrdersProps = {}) {
     pageSize: 10,
   });
 
-  const filteredOrders = useMemo(() => {
-    return initialOrders.filter((order) => {
-      // Status filter
-      if (filters.status !== "all" && order.status !== filters.status) {
-        return false;
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        page: pagination.pageIndex.toString(),
+        pageSize: pagination.pageSize.toString(),
+      });
+
+      if (filters.search) params.set('search', filters.search);
+      if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+      if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
+      if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
+
+      if (sorting.length > 0) {
+        const sort = sorting[0];
+        let sortField = sort.id;
+        if (sortField === 'date') sortField = 'date';
+        if (sortField === 'customerName') sortField = 'customer_name';
+        if (sortField === 'orderNumber') sortField = 'order_number';
+        params.set('sort', sortField);
+        params.set('direction', sort.desc ? 'desc' : 'asc');
       }
 
-      // Search filter
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const searchableFields = [
-          order.orderNumber,
-          order.customerName,
-          order.email,
-        ].map((field) => field.toLowerCase());
+      const response = await fetch(`/api/orders?${params}`);
+      if (!response.ok) throw new Error(`Failed to fetch orders: ${response.statusText}`);
+      const result: ApiResponse = await response.json();
 
-        if (!searchableFields.some((field) => field.includes(searchLower))) {
-          return false;
-        }
-      }
+      const transformed: Order[] = (result.data || []).map((order: any) => ({
+        id: order.id || '',
+        orderNumber: order.order_number || order.orderNumber || '',
+        customerName: order.customer_name || order.customerName || '',
+        email: order.email || '',
+        amount: typeof order.amount === 'number' ? order.amount : 0,
+        status: (order.status || 'pending') as any,
+        date: order.date || new Date().toISOString(),
+        items: typeof order.items === 'number' ? order.items : 0,
+        paymentMethod: order.payment_method || 'card',
+      }));
 
-      // Date range filter
-      if (filters.dateRange.from || filters.dateRange.to) {
-        const orderDate = new Date(order.date);
-        if (filters.dateRange.from && orderDate < filters.dateRange.from) {
-          return false;
-        }
-        if (filters.dateRange.to && orderDate > filters.dateRange.to) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [initialOrders, filters]);
-
-  // For TanStack table, we need to handle pagination and sorting separately
-  const paginatedAndSortedOrders = useMemo(() => {
-    // Early return if no filters
-    if (filteredOrders.length === 0) return [];
-
-    // Skip sorting if no sort criteria
-    if (sorting.length === 0) {
-      // Just apply pagination
-      const startIdx = pagination.pageIndex * pagination.pageSize;
-      const endIdx = startIdx + pagination.pageSize;
-      return filteredOrders.slice(startIdx, endIdx);
+      setOrders(transformed);
+      setTotalCount(result.count || 0);
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch orders');
+      setOrders([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
     }
+  }, [filters, sorting, pagination]);
 
-    // Create a sorting function that makes comparisons based on field type
-    const compareValues = (
-      a: number | string | Date,
-      b: number | string | Date,
-      desc: boolean
-    ): number => {
-      const direction = desc ? -1 : 1;
-
-      // Handle different value types
-      if (a === b) return 0;
-
-      // Handle null/undefined values
-      if (a == null) return direction;
-      if (b == null) return -direction;
-
-      // Check if values are dates (try to detect ISO strings)
-      if (typeof a === "string" && typeof b === "string") {
-        // ISO date format detection (more reliable than checking for "T")
-        const isDateA = /^\d{4}-\d{2}-\d{2}(T|\s)/.test(a);
-        const isDateB = /^\d{4}-\d{2}-\d{2}(T|\s)/.test(b);
-
-        if (isDateA && isDateB) {
-          const dateA = new Date(a).getTime();
-          const dateB = new Date(b).getTime();
-          return (dateA - dateB) * direction;
-        }
-
-        // Regular string comparison
-        return a.localeCompare(b) * direction;
-      }
-
-      // Number comparison
-      if (typeof a === "number" && typeof b === "number") {
-        return (a - b) * direction;
-      }
-
-      // Default comparison (converts to string)
-      return String(a).localeCompare(String(b)) * direction;
-    };
-
-    // Apply sorting
-    const sortedOrders = [...filteredOrders].sort((a, b) => {
-      // Handle multi-sorting using sortingState array
-      for (const sort of sorting) {
-        const key = sort.id as keyof Order;
-        const compared = compareValues(a[key], b[key], sort.desc);
-        if (compared !== 0) return compared;
-      }
-      return 0;
-    });
-
-    // Apply pagination
-    const startIdx = pagination.pageIndex * pagination.pageSize;
-    const endIdx = startIdx + pagination.pageSize;
-    return sortedOrders.slice(startIdx, endIdx);
-  }, [filteredOrders, sorting, pagination]);
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   const updateFilters = (newFilters: Partial<OrderFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
-    // Reset to first page when filters change
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
@@ -169,21 +131,21 @@ export function useOrders({ initialOrders = mockOrders }: UseOrdersProps = {}) {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
+  const pageCount = Math.ceil(totalCount / pagination.pageSize);
+
   return {
-    // Raw filtered orders (no pagination applied)
-    allOrders: filteredOrders,
-    // Orders with pagination and sorting applied
-    orders: paginatedAndSortedOrders,
-    // Total count for pagination
-    pageCount: Math.ceil(filteredOrders.length / pagination.pageSize),
-    // States
+    allOrders: orders,
+    orders,
+    pageCount,
     filters,
     sorting,
     pagination,
-    // Update handlers
+    loading,
+    error,
     updateFilters,
     handleSortingChange,
     handlePaginationChange,
     handleClearFilters,
+    refetch: fetchOrders,
   };
 }

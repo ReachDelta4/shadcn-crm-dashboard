@@ -28,6 +28,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { createClient } from "@/utils/supabase/client";
 
 /**
  * NavUser Component
@@ -52,9 +53,16 @@ export function NavUser({
 }) {
   const router = useRouter();
   const { isMobile } = useSidebar();
+  const supabase = createClient();
 
-  const signOut = () => {
-    router.push("/");
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push("/");
+    } catch (error) {
+      console.error('Sign out error:', error);
+      router.push("/");
+    }
   };
 
   return (

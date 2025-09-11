@@ -6,6 +6,7 @@ import { useInvoices } from "./hooks/use-invoices";
 import { InvoicesTable } from "./components/invoices-table";
 import { InvoicesFilters } from "./components/invoices-filters";
 import { Button } from "@/components/ui/button";
+import { NewInvoiceDialog } from "./components/new-invoice-dialog";
 
 export function InvoicesPage() {
   const {
@@ -19,6 +20,7 @@ export function InvoicesPage() {
     handleSortingChange,
     handlePaginationChange,
     handleClearFilters,
+    refetch,
   } = useInvoices();
 
   const isEmpty = allInvoices.length === 0;
@@ -28,12 +30,7 @@ export function InvoicesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">All Invoices</h1>
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/invoices/new">
-            <Button>
-              <Plus className="size-4" />
-              New Invoice
-            </Button>
-          </Link>
+          <NewInvoiceDialog onCreated={refetch} />
         </div>
       </div>
 

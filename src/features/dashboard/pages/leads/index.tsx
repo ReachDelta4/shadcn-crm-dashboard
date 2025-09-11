@@ -6,6 +6,7 @@ import { useLeads } from "./hooks/use-leads";
 import { LeadsTable } from "./components/leads-table";
 import { LeadsFilters } from "./components/leads-filters";
 import { Button } from "@/components/ui/button";
+import { NewLeadDialog } from "./components/new-lead-dialog";
 
 export function LeadsPage() {
   const {
@@ -19,6 +20,7 @@ export function LeadsPage() {
     handleSortingChange,
     handlePaginationChange,
     handleClearFilters,
+    refetch,
   } = useLeads();
 
   const isEmpty = allLeads.length === 0;
@@ -28,12 +30,7 @@ export function LeadsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Leads</h1>
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/leads/new">
-            <Button>
-              <Plus className="size-4" />
-              New Lead
-            </Button>
-          </Link>
+          <NewLeadDialog onCreated={refetch} />
         </div>
       </div>
 

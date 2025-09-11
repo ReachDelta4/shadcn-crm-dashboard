@@ -6,6 +6,7 @@ import { useCustomers } from "./hooks/use-customers";
 import { CustomersTable } from "./components/customers-table";
 import { CustomersFilters } from "./components/customers-filters";
 import { Button } from "@/components/ui/button";
+import { NewCustomerDialog } from "./components/new-customer-dialog";
 
 export function CustomersPage() {
   const {
@@ -19,6 +20,7 @@ export function CustomersPage() {
     handleSortingChange,
     handlePaginationChange,
     handleClearFilters,
+    refetch,
   } = useCustomers();
 
   const isEmpty = allCustomers.length === 0;
@@ -28,12 +30,7 @@ export function CustomersPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/customers/new">
-            <Button>
-              <Plus className="size-4" />
-              New Customer
-            </Button>
-          </Link>
+          <NewCustomerDialog onCreated={refetch} />
         </div>
       </div>
 

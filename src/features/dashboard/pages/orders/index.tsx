@@ -6,6 +6,7 @@ import { useOrders } from "./hooks/use-orders";
 import { OrdersTable } from "./components/orders-table";
 import { OrdersFilters } from "./components/orders-filters";
 import { Button } from "@/components/ui/button";
+import { NewOrderDialog } from "./components/new-order-dialog";
 
 export function OrdersPage() {
   const {
@@ -19,6 +20,7 @@ export function OrdersPage() {
     handleSortingChange,
     handlePaginationChange,
     handleClearFilters,
+    refetch,
   } = useOrders();
 
   const isEmpty = allOrders.length === 0;
@@ -28,12 +30,7 @@ export function OrdersPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/orders/new">
-            <Button>
-              <Plus className="size-4" />
-              New Order
-            </Button>
-          </Link>
+          <NewOrderDialog onCreated={refetch} />
         </div>
       </div>
 

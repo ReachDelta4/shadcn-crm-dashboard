@@ -1,6 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Lead, LeadFilters } from "@/features/dashboard/pages/leads/types/lead";
-import { mockLeads } from "../data/mock-leads";
 import {
   SortingState,
   PaginationState,
@@ -11,7 +10,15 @@ interface UseLeadsProps {
   initialLeads?: Lead[];
 }
 
-export function useLeads({ initialLeads = mockLeads }: UseLeadsProps = {}) {
+interface ApiResponse {
+  data: any[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export function useLeads({ initialLeads = [] }: UseLeadsProps = {}) {
   const [filters, setFilters] = useState<LeadFilters>({
     status: "all",
     search: "",
@@ -30,116 +37,71 @@ export function useLeads({ initialLeads = mockLeads }: UseLeadsProps = {}) {
     pageSize: 10,
   });
 
-  const filteredLeads = useMemo(() => {
-    return initialLeads.filter((lead) => {
-      // Status filter
-      if (filters.status !== "all" && lead.status !== filters.status) {
-        return false;
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchLeads = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        page: pagination.pageIndex.toString(),
+        pageSize: pagination.pageSize.toString(),
+      });
+
+      if (filters.search) params.set('search', filters.search);
+      if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+      if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
+      if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
+
+      if (sorting.length > 0) {
+        const sort = sorting[0];
+        let sortField = sort.id;
+        if (sortField === 'date') sortField = 'date';
+        if (sortField === 'fullName') sortField = 'full_name';
+        if (sortField === 'leadNumber') sortField = 'lead_number';
+        params.set('sort', sortField);
+        params.set('direction', sort.desc ? 'desc' : 'asc');
       }
 
-      // Search filter
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const searchableFields = [
-          lead.leadNumber,
-          lead.fullName,
-          lead.email,
-          lead.company,
-        ].map((field) => field.toLowerCase());
+      const response = await fetch(`/api/leads?${params}`);
+      if (!response.ok) throw new Error(`Failed to fetch leads: ${response.statusText}`);
+      const result: ApiResponse = await response.json();
 
-        if (!searchableFields.some((field) => field.includes(searchLower))) {
-          return false;
-        }
-      }
+      const transformed: Lead[] = (result.data || []).map((lead: any) => ({
+        id: lead.id || '',
+        leadNumber: lead.lead_number || lead.leadNumber || '',
+        fullName: lead.full_name || lead.fullName || '',
+        email: lead.email || '',
+        phone: lead.phone || '',
+        company: lead.company || '',
+        value: typeof lead.value === 'number' ? lead.value : 0,
+        status: (lead.status || 'new') as any,
+        date: lead.date || new Date().toISOString(),
+        source: lead.source || 'unknown',
+      }));
 
-      // Date range filter
-      if (filters.dateRange.from || filters.dateRange.to) {
-        const leadDate = new Date(lead.date);
-        if (filters.dateRange.from && leadDate < filters.dateRange.from) {
-          return false;
-        }
-        if (filters.dateRange.to && leadDate > filters.dateRange.to) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [initialLeads, filters]);
-
-  // For TanStack table, we need to handle pagination and sorting separately
-  const paginatedAndSortedLeads = useMemo(() => {
-    // Early return if no filters
-    if (filteredLeads.length === 0) return [];
-
-    // Skip sorting if no sort criteria
-    if (sorting.length === 0) {
-      // Just apply pagination
-      const startIdx = pagination.pageIndex * pagination.pageSize;
-      const endIdx = startIdx + pagination.pageSize;
-      return filteredLeads.slice(startIdx, endIdx);
+      setLeads(transformed);
+      setTotalCount(result.count || 0);
+    } catch (err) {
+      console.error('Failed to fetch leads:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch leads');
+      setLeads([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
     }
+  }, [filters, sorting, pagination]);
 
-    // Create a sorting function that makes comparisons based on field type
-    const compareValues = (
-      a: number | string | Date,
-      b: number | string | Date,
-      desc: boolean
-    ): number => {
-      const direction = desc ? -1 : 1;
-
-      // Handle different value types
-      if (a === b) return 0;
-
-      // Handle null/undefined values
-      if (a == null) return direction;
-      if (b == null) return -direction;
-
-      // Check if values are dates (try to detect ISO strings)
-      if (typeof a === "string" && typeof b === "string") {
-        // ISO date format detection (more reliable than checking for "T")
-        const isDateA = /^\d{4}-\d{2}-\d{2}(T|\s)/.test(a);
-        const isDateB = /^\d{4}-\d{2}-\d{2}(T|\s)/.test(b);
-
-        if (isDateA && isDateB) {
-          const dateA = new Date(a).getTime();
-          const dateB = new Date(b).getTime();
-          return (dateA - dateB) * direction;
-        }
-
-        // Regular string comparison
-        return a.localeCompare(b) * direction;
-      }
-
-      // Number comparison
-      if (typeof a === "number" && typeof b === "number") {
-        return (a - b) * direction;
-      }
-
-      // Default comparison (converts to string)
-      return String(a).localeCompare(String(b)) * direction;
-    };
-
-    // Apply sorting
-    const sortedLeads = [...filteredLeads].sort((a, b) => {
-      // Handle multi-sorting using sortingState array
-      for (const sort of sorting) {
-        const key = sort.id as keyof Lead;
-        const compared = compareValues(a[key], b[key], sort.desc);
-        if (compared !== 0) return compared;
-      }
-      return 0;
-    });
-
-    // Apply pagination
-    const startIdx = pagination.pageIndex * pagination.pageSize;
-    const endIdx = startIdx + pagination.pageSize;
-    return sortedLeads.slice(startIdx, endIdx);
-  }, [filteredLeads, sorting, pagination]);
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
 
   const updateFilters = (newFilters: Partial<LeadFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
-    // Reset to first page when filters change
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
@@ -170,21 +132,21 @@ export function useLeads({ initialLeads = mockLeads }: UseLeadsProps = {}) {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
+  const pageCount = Math.ceil(totalCount / pagination.pageSize);
+
   return {
-    // Raw filtered leads (no pagination applied)
-    allLeads: filteredLeads,
-    // Leads with pagination and sorting applied
-    leads: paginatedAndSortedLeads,
-    // Total count for pagination
-    pageCount: Math.ceil(filteredLeads.length / pagination.pageSize),
-    // States
+    allLeads: leads,
+    leads,
+    pageCount,
     filters,
     sorting,
     pagination,
-    // Update handlers
+    loading,
+    error,
     updateFilters,
     handleSortingChange,
     handlePaginationChange,
     handleClearFilters,
+    refetch: fetchLeads,
   };
 } 

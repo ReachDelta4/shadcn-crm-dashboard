@@ -1,6 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Customer, CustomerFilters } from "@/features/dashboard/pages/customers/types/customer";
-import { mockCustomers } from "../data/mock-customers";
 import {
   SortingState,
   PaginationState,
@@ -11,7 +10,15 @@ interface UseCustomersProps {
   initialCustomers?: Customer[];
 }
 
-export function useCustomers({ initialCustomers = mockCustomers }: UseCustomersProps = {}) {
+interface ApiResponse {
+  data: any[];
+  count: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export function useCustomers({ initialCustomers = [] }: UseCustomersProps = {}) {
   const [filters, setFilters] = useState<CustomerFilters>({
     status: "all",
     search: "",
@@ -30,113 +37,78 @@ export function useCustomers({ initialCustomers = mockCustomers }: UseCustomersP
     pageSize: 10,
   });
 
-  const filteredCustomers = useMemo(() => {
-    return initialCustomers.filter((customer) => {
-      // Status filter
-      if (filters.status !== "all" && customer.status !== filters.status) {
-        return false;
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams({
+        page: pagination.pageIndex.toString(),
+        pageSize: pagination.pageSize.toString(),
+      });
+
+      if (filters.search) params.set('search', filters.search);
+      if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+      if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
+      if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
+
+      // Convert TanStack sorting to API format
+      if (sorting.length > 0) {
+        const sort = sorting[0];
+        let sortField = sort.id;
+        
+        // Map frontend field names to backend field names
+        if (sortField === 'dateJoined') sortField = 'date_joined';
+        if (sortField === 'fullName') sortField = 'full_name';
+        if (sortField === 'customerNumber') sortField = 'customer_number';
+        
+        params.set('sort', sortField);
+        params.set('direction', sort.desc ? 'desc' : 'asc');
       }
 
-      // Search filter
-      if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        const searchableFields = [
-          customer.customerNumber,
-          customer.fullName,
-          customer.email,
-          customer.company,
-          customer.location,
-        ].map((field) => field.toLowerCase());
-
-        if (!searchableFields.some((field) => field.includes(searchLower))) {
-          return false;
-        }
+      const response = await fetch(`/api/customers?${params}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch customers: ${response.statusText}`);
       }
 
-      // Date range filter - using dateJoined for filtering
-      if (filters.dateRange.from || filters.dateRange.to) {
-        const customerJoinDate = new Date(customer.dateJoined);
-        if (filters.dateRange.from && customerJoinDate < filters.dateRange.from) {
-          return false;
-        }
-        if (filters.dateRange.to && customerJoinDate > filters.dateRange.to) {
-          return false;
-        }
-      }
+      const result: ApiResponse = await response.json();
+      
+      // Transform API data to match frontend Customer type with safe property access
+      const transformedCustomers: Customer[] = (result.data || []).map((customer: any) => ({
+        id: customer.id || '',
+        customerNumber: customer.customer_number || customer.customerNumber || '',
+        fullName: customer.full_name || customer.fullName || '',
+        email: customer.email || '',
+        company: customer.company || '',
+        location: customer.location || '',
+        status: (customer.status || 'active') as 'active' | 'inactive' | 'pending',
+        dateJoined: customer.date_joined || customer.dateJoined || new Date().toISOString(),
+        createdAt: customer.created_at || customer.createdAt || new Date().toISOString(),
+        updatedAt: customer.updated_at || customer.updatedAt || new Date().toISOString(),
+      }));
 
-      return true;
-    });
-  }, [initialCustomers, filters]);
-
-  // For TanStack table, we need to handle pagination and sorting separately
-  const paginatedAndSortedCustomers = useMemo(() => {
-    // Early return if no filters
-    if (filteredCustomers.length === 0) return [];
-
-    // Skip sorting if no sort criteria
-    if (sorting.length === 0) {
-      // Just apply pagination
-      const startIdx = pagination.pageIndex * pagination.pageSize;
-      const endIdx = startIdx + pagination.pageSize;
-      return filteredCustomers.slice(startIdx, endIdx);
+      setCustomers(transformedCustomers);
+      setTotalCount(result.count || 0);
+    } catch (err) {
+      console.error('Failed to fetch customers:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch customers');
+      setCustomers([]);
+      setTotalCount(0);
+    } finally {
+      setLoading(false);
     }
+  }, [filters, sorting, pagination]);
 
-    // Create a sorting function that makes comparisons based on field type
-    const compareValues = (
-      a: number | string | Date,
-      b: number | string | Date,
-      desc: boolean
-    ): number => {
-      const direction = desc ? -1 : 1;
-
-      // Handle different value types
-      if (a === b) return 0;
-
-      // Handle null/undefined values
-      if (a == null) return direction;
-      if (b == null) return -direction;
-
-      // Check if values are dates (try to detect ISO strings)
-      if (typeof a === "string" && typeof b === "string") {
-        // ISO date format detection (more reliable than checking for "T")
-        const isDateA = /^\d{4}-\d{2}-\d{2}(T|\s)/.test(a);
-        const isDateB = /^\d{4}-\d{2}-\d{2}(T|\s)/.test(b);
-
-        if (isDateA && isDateB) {
-          const dateA = new Date(a).getTime();
-          const dateB = new Date(b).getTime();
-          return (dateA - dateB) * direction;
-        }
-
-        // Regular string comparison
-        return a.localeCompare(b) * direction;
-      }
-
-      // Number comparison
-      if (typeof a === "number" && typeof b === "number") {
-        return (a - b) * direction;
-      }
-
-      // Default comparison (converts to string)
-      return String(a).localeCompare(String(b)) * direction;
-    };
-
-    // Apply sorting
-    const sortedCustomers = [...filteredCustomers].sort((a, b) => {
-      // Handle multi-sorting using sortingState array
-      for (const sort of sorting) {
-        const key = sort.id as keyof Customer;
-        const compared = compareValues(a[key], b[key], sort.desc);
-        if (compared !== 0) return compared;
-      }
-      return 0;
-    });
-
-    // Apply pagination
-    const startIdx = pagination.pageIndex * pagination.pageSize;
-    const endIdx = startIdx + pagination.pageSize;
-    return sortedCustomers.slice(startIdx, endIdx);
-  }, [filteredCustomers, sorting, pagination]);
+  // Fetch data when dependencies change
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   const updateFilters = (newFilters: Partial<CustomerFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -171,21 +143,27 @@ export function useCustomers({ initialCustomers = mockCustomers }: UseCustomersP
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
+  const pageCount = Math.ceil(totalCount / pagination.pageSize);
+
   return {
-    // Raw filtered customers (no pagination applied)
-    allCustomers: filteredCustomers,
-    // Customers with pagination and sorting applied
-    customers: paginatedAndSortedCustomers,
+    // Raw filtered customers (for compatibility)
+    allCustomers: customers,
+    // Customers with pagination and sorting applied (same as above since API handles it)
+    customers: customers,
     // Total count for pagination
-    pageCount: Math.ceil(filteredCustomers.length / pagination.pageSize),
+    pageCount,
     // States
     filters,
     sorting,
     pagination,
+    loading,
+    error,
     // Update handlers
     updateFilters,
     handleSortingChange,
     handlePaginationChange,
     handleClearFilters,
+    // Refresh function
+    refetch: fetchCustomers,
   };
 } 

@@ -21,6 +21,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { sidebarMenus } from "@/data/sidebar-menus";
+import { createClient } from "@/utils/supabase/client";
 
 /**
  * AppSidebar Component
@@ -31,11 +32,48 @@ import { sidebarMenus } from "@/data/sidebar-menus";
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { open } = useSidebar();
+  const [user, setUser] = React.useState(sidebarMenus.user); // fallback to placeholder
+  const supabase = createClient();
 
   // Persist sidebar open state in localStorage
   React.useEffect(() => {
     localStorage.setItem("sidebar-open", open.toString());
   }, [open]);
+
+  // Load real user data from Supabase auth
+  React.useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser?.email) {
+          setUser({
+            name: authUser.user_metadata?.full_name || authUser.email.split('@')[0] || 'User',
+            email: authUser.email,
+            avatar: authUser.user_metadata?.avatar_url || '/avatars/avatar.png',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load user:', error);
+      }
+    };
+
+    loadUser();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser({
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+          email: session.user.email || '',
+          avatar: session.user.user_metadata?.avatar_url || '/avatars/avatar.png',
+        });
+      } else if (event === 'SIGNED_OUT') {
+        setUser(sidebarMenus.user); // fallback
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
   return (
     <Sidebar
@@ -74,7 +112,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={sidebarMenus.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={sidebarMenus.user} />
+        <NavUser user={user} />
       </SidebarFooter>
     </Sidebar>
   );

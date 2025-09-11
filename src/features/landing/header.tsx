@@ -88,9 +88,11 @@ export function Header() {
 
               {/* Desktop CTA */}
               <div className="hidden items-center gap-3 md:flex">
-                <Button variant="ghost" className="font-medium tracking-wide">
-                  Sign in
-                </Button>
+                <Link href="/login">
+                  <Button variant="ghost" className="font-medium tracking-wide">
+                    Sign in
+                  </Button>
+                </Link>
                 <Link href="/dashboard">
                   <Button className="px-4 font-medium tracking-wide">
                     Get Started
@@ -148,13 +150,15 @@ export function Header() {
                 );
               })}
               <div className="border-border/50 mt-6 grid grid-cols-2 gap-3 border-t pt-6">
-                <Button
-                  variant="outline"
-                  className="w-full font-medium tracking-wide"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Sign in
-                </Button>
+                <Link href="/login" className="w-full">
+                  <Button
+                    variant="outline"
+                    className="w-full font-medium tracking-wide"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Sign in
+                  </Button>
+                </Link>
                 <Link href="/dashboard" className="w-full">
                   <Button
                     className="w-full font-medium tracking-wide"

@@ -1,17 +1,16 @@
-export type CustomerStatus = 'active' | 'inactive' | 'pending' | 'blocked';
+export type CustomerStatus = 'active' | 'inactive' | 'pending';
 
 export interface Customer {
   id: string;
   customerNumber: string;
   fullName: string;
   email: string;
-  phone: string;
   company: string;
-  totalSpent: number;
+  location: string;
   status: CustomerStatus;
   dateJoined: string;
-  lastPurchase: string;
-  location: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CustomerFilters {

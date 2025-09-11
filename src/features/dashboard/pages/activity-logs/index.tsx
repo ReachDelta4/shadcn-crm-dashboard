@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,7 +34,7 @@ import {
   ArrowDownUp,
   Download,
 } from "lucide-react";
-import { getActivityLogs, ActivityLog } from "./data/activity-logs-data";
+import type { ActivityLog } from "./data/activity-logs-data";
 import { formatRelativeDate } from "@/utils/date-formatter";
 
 export function ActivityLogsPage() {
@@ -43,35 +43,52 @@ export function ActivityLogsPage() {
     "all",
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const activityLogs = getActivityLogs();
+  const loadLogs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (filterType) params.set("type", filterType);
+      if (searchQuery) params.set("search", searchQuery);
+      params.set("direction", sortOrder);
+      const res = await fetch(`/api/activity-logs?${params}`);
+      if (!res.ok) throw new Error("Failed to load activity logs");
+      const result = await res.json();
+      const data = (result?.data || []) as any[];
+      const mapped: ActivityLog[] = data.map((d) => ({
+        id: d.id,
+        type: d.type,
+        description: d.description,
+        user: d.user,
+        entity: d.entity || undefined,
+        timestamp: d.timestamp,
+        details: d.details || undefined,
+      }));
+      setLogs(mapped);
+    } catch (e: any) {
+      setError(typeof e?.message === "string" ? e.message : "Failed to load activity logs");
+      setLogs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterType, searchQuery, sortOrder]);
 
-  // Filter logs based on search query and type
-  const filteredLogs = activityLogs
-    .filter((log: ActivityLog) => {
-      // Filter by search query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        return (
-          log.description.toLowerCase().includes(query) ||
-          log.user.toLowerCase().includes(query) ||
-          log.entity?.toLowerCase().includes(query) ||
-          log.type.toLowerCase().includes(query)
-        );
-      }
-      return true;
-    })
-    .filter((log: ActivityLog) => {
-      // Filter by activity type
-      if (filterType === "all") return true;
-      return log.type === filterType;
-    })
-    // Sort by timestamp
-    .sort((a: ActivityLog, b: ActivityLog) => {
+  useEffect(() => {
+    loadLogs();
+  }, [loadLogs]);
+
+  const filteredLogs = useMemo(() => {
+    const sorted = [...logs].sort((a, b) => {
       const dateA = new Date(a.timestamp).getTime();
       const dateB = new Date(b.timestamp).getTime();
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
+    return sorted;
+  }, [logs, sortOrder]);
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">
@@ -147,7 +164,15 @@ export function ActivityLogsPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="space-y-px">
-            {filteredLogs.length > 0 ? (
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <span className="text-muted-foreground text-sm">Loading…</span>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <span className="text-red-600 text-sm">{error}</span>
+              </div>
+            ) : filteredLogs.length > 0 ? (
               filteredLogs.map((log: ActivityLog, index: number) => (
                 <div
                   key={log.id}
@@ -220,22 +245,12 @@ export function ActivityLogsPage() {
         </CardContent>
       </Card>
 
-      {/* Pagination */}
+      {/* Pagination (future: infinite scroll) */}
       {filteredLogs.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify_between">
           <p className="text-muted-foreground text-sm">
-            Showing <span className="font-medium">{filteredLogs.length}</span>{" "}
-            of <span className="font-medium">{activityLogs.length}</span>{" "}
-            activities
+            Showing <span className="font-medium">{filteredLogs.length}</span>
           </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              disabled={filteredLogs.length >= activityLogs.length}
-            >
-              Load More
-            </Button>
-          </div>
         </div>
       )}
     </div>

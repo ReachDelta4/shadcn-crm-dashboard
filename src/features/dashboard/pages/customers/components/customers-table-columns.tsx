@@ -11,14 +11,6 @@ export const statusColors: Record<CustomerStatus, string> = {
   active: "bg-green-100 text-green-800",
   inactive: "bg-gray-100 text-gray-800",
   pending: "bg-yellow-100 text-yellow-800",
-  blocked: "bg-red-100 text-red-800",
-};
-
-export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
 };
 
 export const useCustomerColumns = () => {
@@ -46,32 +38,17 @@ export const useCustomerColumns = () => {
       {
         accessorKey: "company",
         header: "Company",
-        cell: ({ row }) => <div>{row.getValue("company")}</div>,
+        cell: ({ row }) => <div>{row.getValue("company") || "—"}</div>,
+      },
+      {
+        accessorKey: "location",
+        header: "Location",
+        cell: ({ row }) => <div>{row.getValue("location") || "—"}</div>,
       },
       {
         accessorKey: "dateJoined",
         header: "Date Joined",
         cell: ({ row }) => format(new Date(row.getValue("dateJoined")), "PP"),
-      },
-      {
-        accessorKey: "totalSpent",
-        header: "Total Spent",
-        cell: ({ row }) => formatCurrency(row.getValue("totalSpent")),
-      },
-      {
-        accessorKey: "lastPurchase",
-        header: "Last Purchase",
-        cell: ({ row }) => {
-          const lastPurchase = row.getValue("lastPurchase") as string;
-          return lastPurchase 
-            ? format(new Date(lastPurchase), "PP") 
-            : "No purchases yet";
-        },
-      },
-      {
-        accessorKey: "location",
-        header: "Location",
-        cell: ({ row }) => <div>{row.getValue("location")}</div>,
       },
       {
         accessorKey: "status",
