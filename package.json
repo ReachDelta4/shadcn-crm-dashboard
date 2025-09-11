@@ -2,6 +2,8 @@
   "name": "shadcn-crm-dashboard",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.12.2",
+  "engines": { "node": "20.x" },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -44,7 +46,7 @@
     "@uidotdev/usehooks": "^2.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cmdk": "1.0.0",
+    "cmdk": "^1.0.4",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "embla-carousel-react": "^8.5.2",
