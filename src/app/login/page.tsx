@@ -43,12 +43,15 @@ function LoginPageContent() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
+        console.log('[DeviceLink] onAuthStateChange event:', event, 'hasSession:', !!session);
         await fetch('/auth/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ event, session }),
         })
-      } catch {}
+      } catch (e) {
+        console.warn('[DeviceLink] auth/callback POST failed:', (e as any)?.message);
+      }
 
       const isElectron = params.get('mode') === 'electron';
       if (isElectron && event === 'SIGNED_IN' && session) {
@@ -56,22 +59,33 @@ function LoginPageContent() {
           // Prefer device-code exchange (safer, avoids rotation race)
           let code: string | null = null;
           try {
+            console.log('[DeviceLink] requesting device code via /api/device-auth/create');
             const res = await fetch('/api/device-auth/create', { method: 'POST' });
+            const text = await res.text();
+            console.log('[DeviceLink] create status:', res.status, 'body:', text);
             if (res.ok) {
-              const json = await res.json().catch(() => ({}));
+              const json = JSON.parse(text || '{}');
               code = json?.code || null;
             }
-          } catch {}
+          } catch (err) {
+            console.warn('[DeviceLink] create error:', (err as any)?.message);
+          }
 
           if (code) {
             setDeviceCode(code);
-            setDeepLink(`pickleglass://supabase-auth?code=${encodeURIComponent(code)}`);
+            const dl = `pickleglass://supabase-auth?code=${encodeURIComponent(code)}`;
+            setDeepLink(dl);
+            console.log('[DeviceLink] device code ready:', code, 'deepLink:', dl);
           } else if (session.access_token && session.refresh_token) {
             // Fallback for older Electron builds
-            setDeepLink(`pickleglass://supabase-auth?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`);
+            const dl = `pickleglass://supabase-auth?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`;
+            setDeepLink(dl);
+            console.log('[DeviceLink] tokens ready (fallback); deepLink:', dl);
           }
           setLinkReady(true);
-        } catch {}
+        } catch (err) {
+          console.warn('[DeviceLink] setup error:', (err as any)?.message);
+        }
       }
     })
     return () => {
@@ -87,6 +101,8 @@ function LoginPageContent() {
       setError(parsed.error.errors[0]?.message || "Invalid input");
       return;
     }
+
+    const isElectron = params.get('mode') === 'electron';
 
     startTransition(async () => {
       try {
@@ -104,6 +120,12 @@ function LoginPageContent() {
           if (error) throw new Error(mapAuthError(error.message));
         }
 
+        if (isElectron) {
+          console.log('[DeviceLink] Electron mode: holding redirect to show device link UI');
+          // Do not redirect here; onAuthStateChange will render link UI
+          return;
+        }
+
         const requested = params.get("redirect") || "/dashboard";
         const redirect = requested.startsWith('/') ? requested : '/dashboard';
         router.replace(redirect);
@@ -111,6 +133,19 @@ function LoginPageContent() {
         setError(typeof err?.message === "string" ? err.message : "Authentication failed");
       }
     });
+  }
+
+  function handleOpenInApp() {
+    if (!deepLink) return;
+    console.log('[DeviceLink] Clicking open in app with link:', deepLink);
+    window.location.href = deepLink;
+  }
+
+  function handleContinue() {
+    const requested = params.get("redirect") || "/dashboard";
+    const redirect = requested.startsWith('/') ? requested : '/dashboard';
+    console.log('[DeviceLink] Continue to dashboard:', redirect);
+    router.replace(redirect);
   }
 
   return (
@@ -142,7 +177,7 @@ function LoginPageContent() {
             {linkReady && (
               <div className="text-center space-y-2 pt-2">
                 {deepLink && (
-                  <Button type="button" className="w-full" onClick={() => { window.location.href = deepLink! }}>
+                  <Button type="button" className="w-full" onClick={handleOpenInApp}>
                     Open in app
                   </Button>
                 )}
@@ -153,6 +188,11 @@ function LoginPageContent() {
                   </div>
                 )}
                 <div className="text-xs text-gray-500">If nothing happens, copy the code and paste it in the desktop app’s Settings → Link device.</div>
+                <div className="pt-1">
+                  <Button type="button" variant="outline" className="w-full" onClick={handleContinue}>
+                    Continue to dashboard
+                  </Button>
+                </div>
               </div>
             )}
             <div className="text-center text-sm">

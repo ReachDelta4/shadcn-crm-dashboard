@@ -153,6 +153,10 @@ export const sidebarMenus = {
           title: "API Settings",
           url: "/dashboard/settings/api",
         },
+        {
+          title: "Link Device",
+          url: "/dashboard/settings/link-device",
+        },
       ],
     },
   ],
