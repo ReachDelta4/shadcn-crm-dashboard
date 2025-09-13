@@ -62,7 +62,7 @@ export default function LinkDevicePage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-gray-600">
-            Generate a short-lived code to link your desktop app. If the app doesn't open automatically,
+            Generate a short-lived code to link your desktop app. If the app does not open automatically,
             copy the code and paste it in Settings → Link device.
           </p>
           <div className="flex gap-2">
