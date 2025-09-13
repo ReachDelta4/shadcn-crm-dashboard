@@ -39,6 +39,7 @@ export async function GET() {
     })
   } catch (e) {
     console.error('Debug route error:', e)
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 })
+    const message = e instanceof Error ? e.message : 'Internal server error'
+    return new Response(JSON.stringify({ error: message }), { status: 500, headers: { 'Content-Type': 'application/json' } })
   }
 }
