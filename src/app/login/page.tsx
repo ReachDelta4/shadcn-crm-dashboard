@@ -36,6 +36,7 @@ function LoginPageContent() {
   const [pending, startTransition] = useTransition();
   const [deepLink, setDeepLink] = useState<string | null>(null);
   const [linkReady, setLinkReady] = useState(false);
+  const [deviceCode, setDeviceCode] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -63,6 +64,7 @@ function LoginPageContent() {
           } catch {}
 
           if (code) {
+            setDeviceCode(code);
             setDeepLink(`pickleglass://supabase-auth?code=${encodeURIComponent(code)}`);
           } else if (session.access_token && session.refresh_token) {
             // Fallback for older Electron builds
@@ -137,12 +139,20 @@ function LoginPageContent() {
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? (mode === "login" ? "Signing in…" : "Signing up…") : (mode === "login" ? "Sign In" : "Create Account")}
             </Button>
-            {linkReady && deepLink && (
+            {linkReady && (
               <div className="text-center space-y-2 pt-2">
-                <Button type="button" className="w-full" onClick={() => { window.location.href = deepLink! }}>
-                  Open in app
-                </Button>
-                <div className="text-xs text-gray-500">If nothing happens, ensure the desktop app is installed, or copy the link into your browser’s address bar.</div>
+                {deepLink && (
+                  <Button type="button" className="w-full" onClick={() => { window.location.href = deepLink! }}>
+                    Open in app
+                  </Button>
+                )}
+                {deviceCode && (
+                  <div className="text-xs text-gray-700 p-2 border rounded bg-white">
+                    <div className="font-semibold">Device code</div>
+                    <div className="font-mono break-all select-all">{deviceCode}</div>
+                  </div>
+                )}
+                <div className="text-xs text-gray-500">If nothing happens, copy the code and paste it in the desktop app’s Settings → Link device.</div>
               </div>
             )}
             <div className="text-center text-sm">
