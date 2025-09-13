@@ -28,6 +28,7 @@ export async function POST(request: Request) {
 
     if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
       if (session?.access_token && session?.refresh_token) {
+        // Note: setSession may rotate refresh_token server-side. Clients should not reuse old tokens after this.
         await supabase.auth.setSession({
           access_token: session.access_token,
           refresh_token: session.refresh_token,

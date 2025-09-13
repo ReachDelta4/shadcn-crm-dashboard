@@ -48,16 +48,31 @@ function LoginPageContent() {
       } catch {}
 
       const isElectron = params.get('mode') === 'electron';
-      if (isElectron && event === 'SIGNED_IN' && session?.access_token && session?.refresh_token) {
+      if (isElectron && event === 'SIGNED_IN' && session) {
         try {
-          const deepLink = `pickleglass://supabase-auth?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`;
-          // Redirect back to the Electron app via deep link
-          window.location.href = deepLink;
+          // Prefer device-code exchange (safer, avoids rotation race)
+          let code: string | null = null;
+          try {
+            const res = await fetch('/api/device-auth/create', { method: 'POST' });
+            if (res.ok) {
+              const json = await res.json().catch(() => ({}));
+              code = json?.code || null;
+            }
+          } catch {}
+
+          if (code) {
+            const deepLink = `pickleglass://supabase-auth?code=${encodeURIComponent(code)}`;
+            window.location.href = deepLink;
+          } else if (session.access_token && session.refresh_token) {
+            // Fallback for older Electron builds
+            const deepLink = `pickleglass://supabase-auth?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`;
+            window.location.href = deepLink;
+          }
         } catch {}
       }
     })
     return () => {
-      subscription.subscription.unsubscribe()
+      subscription.unsubscribe()
     }
   }, [supabase, params])
 
@@ -86,7 +101,8 @@ function LoginPageContent() {
           if (error) throw new Error(mapAuthError(error.message));
         }
 
-        const redirect = params.get("redirect") || "/dashboard";
+        const requested = params.get("redirect") || "/dashboard";
+        const redirect = requested.startsWith('/') ? requested : '/dashboard';
         router.replace(redirect);
       } catch (err: any) {
         setError(typeof err?.message === "string" ? err.message : "Authentication failed");
