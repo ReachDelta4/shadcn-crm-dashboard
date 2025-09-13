@@ -38,7 +38,7 @@ function LoginPageContent() {
   const supabase = createClient();
 
   useEffect(() => {
-    const { data: subscription } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
         await fetch('/auth/callback', {
           method: 'POST',
