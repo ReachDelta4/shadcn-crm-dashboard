@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  output: 'standalone',
-};
+const isWindows = process.platform === 'win32';
+
+const nextConfig: NextConfig = {};
+
+if (!isWindows) {
+  (nextConfig as any).output = 'standalone';
+}
 
 export default nextConfig;

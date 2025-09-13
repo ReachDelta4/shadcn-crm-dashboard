@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/server/supabase'
 import { decrypt } from '@/server/crypto'
