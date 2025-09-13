@@ -34,6 +34,8 @@ function LoginPageContent() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [deepLink, setDeepLink] = useState<string | null>(null);
+  const [linkReady, setLinkReady] = useState(false);
 
   const supabase = createClient();
 
@@ -61,13 +63,12 @@ function LoginPageContent() {
           } catch {}
 
           if (code) {
-            const deepLink = `pickleglass://supabase-auth?code=${encodeURIComponent(code)}`;
-            window.location.href = deepLink;
+            setDeepLink(`pickleglass://supabase-auth?code=${encodeURIComponent(code)}`);
           } else if (session.access_token && session.refresh_token) {
             // Fallback for older Electron builds
-            const deepLink = `pickleglass://supabase-auth?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`;
-            window.location.href = deepLink;
+            setDeepLink(`pickleglass://supabase-auth?access_token=${encodeURIComponent(session.access_token)}&refresh_token=${encodeURIComponent(session.refresh_token)}`);
           }
+          setLinkReady(true);
         } catch {}
       }
     })
@@ -136,6 +137,14 @@ function LoginPageContent() {
             <Button type="submit" className="w-full" disabled={pending}>
               {pending ? (mode === "login" ? "Signing in…" : "Signing up…") : (mode === "login" ? "Sign In" : "Create Account")}
             </Button>
+            {linkReady && deepLink && (
+              <div className="text-center space-y-2 pt-2">
+                <Button type="button" className="w-full" onClick={() => { window.location.href = deepLink! }}>
+                  Open in app
+                </Button>
+                <div className="text-xs text-gray-500">If nothing happens, ensure the desktop app is installed, or copy the link into your browser’s address bar.</div>
+              </div>
+            )}
             <div className="text-center text-sm">
               {mode === "login" ? (
                 <button type="button" className="underline" onClick={() => setMode("signup")}>Create an account</button>
