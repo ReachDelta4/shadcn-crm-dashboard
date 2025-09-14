@@ -120,7 +120,7 @@ export function Hero() {
           <HeroTitle />
 
           <p className="text-muted-foreground mt-8 max-w-2xl text-center text-lg">
-            Transform how you connect with customers. Piper brings AI-powered
+            Transform how you connect with customers. Salesy brings AI-powered
             insights, automation, and a delightful interface to your CRM.
           </p>
 

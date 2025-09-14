@@ -121,7 +121,7 @@ export function Footer() {
                 <Zap className="text-primary h-6 w-6" />
               </div>
               <span className="ml-4 text-xl font-bold tracking-tight">
-                Piper
+                Salesy
               </span>
             </div>
             <p className="text-muted-foreground text-base">
@@ -191,7 +191,7 @@ export function Footer() {
         </div>
         <div className="border-border/50 mt-12 border-t pt-8">
           <p className="text-muted-foreground text-center text-sm">
-            &copy; {new Date().getFullYear()} Piper, Inc. All rights reserved.
+            &copy; {new Date().getFullYear()} Salesy, Inc. All rights reserved.
           </p>
         </div>
       </div>
