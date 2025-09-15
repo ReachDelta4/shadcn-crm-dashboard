@@ -84,3 +84,16 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Sessions (UI-only) — Meetings/Listen
+
+Added a complete Sessions area with:
+- Global Quick Actions Dock (macOS-style) for fast nav
+- Pages: Overview, All Sessions, Calendar, Reports, Bulk Reports, and Session Detail
+- Session Detail: Transcript, Report (10 pages, chart on page 2), Artifacts, QA; right AI chat panel
+
+Backend to add later:
+- Sessions/transcripts storage + search
+- Report generation (single/bulk) + progress tracking
+- Export (PDF) and share links
+- AI context retrieval over transcripts/reports

@@ -3,6 +3,7 @@
 // External dependencies
 import * as React from "react";
 import { type LucideIcon } from "lucide-react";
+import Link from "next/link";
 
 // Internal components
 import {
@@ -42,14 +43,14 @@ export function NavSecondary({
           {items.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild size="sm">
-                <a
+                <Link
                   href={item.url}
                   className="cursor-pointer hover:bg-transparent hover:font-bold hover:underline hover:underline-offset-2 active:bg-transparent"
                   aria-label={item.title}
                 >
                   <item.icon aria-hidden="true" />
                   <span>{item.title}</span>
-                </a>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

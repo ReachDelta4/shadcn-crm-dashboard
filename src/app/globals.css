@@ -144,3 +144,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* A4 page sizing (screen and print) */
+.a4-page {
+  width: 210mm;
+  min-height: 297mm;
+  background: oklch(1 0 0);
+  color: inherit;
+  box-shadow: 0 0 0 1px color-mix(in oklab, currentColor 10%, transparent);
+  border-radius: 8px;
+  padding: 16mm;
+  margin: 0 auto;
+}
+.a4-stack { display: grid; gap: 24px; justify-content: center; }
+
+@media print {
+  .a4-page { box-shadow: none; page-break-after: always; background: white; color: black; }
+  .a4-stack { gap: 0; }
+}

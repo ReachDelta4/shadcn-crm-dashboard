@@ -74,8 +74,6 @@ export function SidebarMenuWrapper({ item }: Props) {
                   isSubmenuActive && "font-bold",
                 )}
                 aria-label={item.title}
-                aria-expanded="false"
-                aria-haspopup="true"
               >
                 <item.icon
                   strokeWidth={isSubmenuActive ? 2.5 : 1.8}
@@ -124,7 +122,6 @@ export function SidebarMenuWrapper({ item }: Props) {
             isSubmenuActive && "font-bold",
           )}
           aria-label={item.title}
-          aria-expanded="false"
           aria-haspopup={item.items?.length ? "true" : undefined}
         >
           <item.icon

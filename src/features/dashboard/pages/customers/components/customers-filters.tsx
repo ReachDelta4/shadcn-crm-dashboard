@@ -1,13 +1,7 @@
 "use client";
 
 import { CustomerFilters } from "@/features/dashboard/pages/customers/types/customer";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
@@ -69,21 +63,13 @@ export function CustomersFilters({
           )}
         </div>
 
-        <Select
+        <Combobox
           value={filters.status}
-          onValueChange={(value) => onFiltersChange({ status: value as any })}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(value) => onFiltersChange({ status: (value as any) || "all" })}
+          options={statusOptions}
+          placeholder="Filter by status"
+          className="w-[180px]"
+        />
 
         <div className="relative">
           <DatePickerWithRange

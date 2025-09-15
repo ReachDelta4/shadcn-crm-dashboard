@@ -10,6 +10,7 @@ import { AppSidebar } from "./sidebar/app-sidebar";
 import { DashboardHeader } from "./dashboard-header";
 import { Separator } from "@/components/ui/separator";
 import { DashboardSkeleton } from "./dashboard-skeleton";
+import { QuickActionsDock } from "./quick-actions-dock/QuickActionsDock";
 
 /**
  * Props interface for DashboardLayoutWrapper component
@@ -58,6 +59,7 @@ function DashboardLayoutWrapper({ children }: Props) {
         >
           {children}
         </div>
+        <QuickActionsDock />
       </SidebarInset>
     </SidebarProvider>
   );

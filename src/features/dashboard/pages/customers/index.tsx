@@ -7,6 +7,7 @@ import { CustomersTable } from "./components/customers-table";
 import { CustomersFilters } from "./components/customers-filters";
 import { Button } from "@/components/ui/button";
 import { NewCustomerDialog } from "./components/new-customer-dialog";
+import { SavedViews } from "@/components/saved-views";
 
 export function CustomersPage() {
   const {
@@ -29,7 +30,16 @@ export function CustomersPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <SavedViews
+            entityKey="customers"
+            getParams={() => ({ filters, sorting, pagination })}
+            onApply={(params: any) => {
+              if (params.filters) updateFilters(params.filters);
+              if (params.sorting) handleSortingChange(params.sorting);
+              if (params.pagination) handlePaginationChange(params.pagination);
+            }}
+          />
           <NewCustomerDialog onCreated={refetch} />
         </div>
       </div>

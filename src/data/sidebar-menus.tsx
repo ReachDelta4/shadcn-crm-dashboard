@@ -11,6 +11,7 @@ import {
   Map,
   HandCoins,
   ShoppingCart,
+  Headphones,
 } from "lucide-react";
 
 export const sidebarMenus = {
@@ -93,7 +94,18 @@ export const sidebarMenus = {
         },
       ],
     },
-
+    {
+      title: "Sessions",
+      url: "/dashboard/sessions",
+      icon: Headphones,
+      items: [
+        { title: "Overview", url: "/dashboard/sessions" },
+        { title: "All Sessions", url: "/dashboard/sessions/all" },
+        { title: "Calendar", url: "/dashboard/sessions/calendar" },
+        { title: "Reports", url: "/dashboard/sessions/reports" },
+        { title: "Bulk Reports", url: "/dashboard/sessions/bulk-reports" },
+      ],
+    },
     {
       title: "Invoices",
       url: "/dashboard/invoices",
@@ -155,7 +167,7 @@ export const sidebarMenus = {
         },
         {
           title: "Link Device",
-          url: "/dashboard/settings/link-device",
+            url: "/dashboard/settings/link-device",
         },
       ],
     },

@@ -4,7 +4,7 @@
 import * as React from "react";
 import { CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay, subDays, startOfQuarter, startOfYear } from "date-fns";
 
 // Internal UI components
 import { cn } from "@/lib/utils";
@@ -48,6 +48,27 @@ export function DatePickerWithRange({
   onChange,
   className,
 }: DatePickerWithRangeProps) {
+  const selectPreset = (preset: "7" | "30" | "q" | "ytd") => {
+    const now = new Date();
+    if (preset === "7") {
+      const from = startOfDay(subDays(now, 6));
+      const to = endOfDay(now);
+      onChange({ from, to });
+    } else if (preset === "30") {
+      const from = startOfDay(subDays(now, 29));
+      const to = endOfDay(now);
+      onChange({ from, to });
+    } else if (preset === "q") {
+      const from = startOfDay(startOfQuarter(now));
+      const to = endOfDay(now);
+      onChange({ from, to });
+    } else if (preset === "ytd") {
+      const from = startOfDay(startOfYear(now));
+      const to = endOfDay(now);
+      onChange({ from, to });
+    }
+  };
+
   return (
     <div className={cn("grid gap-2", className)}>
       <Popover>
@@ -83,16 +104,27 @@ export function DatePickerWithRange({
           role="dialog"
           aria-label="Calendar date range picker"
         >
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={value?.from}
-            selected={value}
-            onSelect={onChange}
-            numberOfMonths={2}
-            aria-label="Select date range"
-            className="rounded-md border"
-          />
+          <div className="flex flex-col gap-2 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => selectPreset("7")}>Last 7 days</Button>
+              <Button variant="secondary" size="sm" onClick={() => selectPreset("30")}>Last 30 days</Button>
+              <Button variant="secondary" size="sm" onClick={() => selectPreset("q")}>This quarter</Button>
+              <Button variant="secondary" size="sm" onClick={() => selectPreset("ytd")}>YTD</Button>
+              {value?.from || value?.to ? (
+                <Button variant="ghost" size="sm" onClick={() => onChange({ from: undefined, to: undefined })}>Clear</Button>
+              ) : null}
+            </div>
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={value?.from}
+              selected={value}
+              onSelect={onChange}
+              numberOfMonths={2}
+              aria-label="Select date range"
+              className="rounded-md border"
+            />
+          </div>
         </PopoverContent>
       </Popover>
     </div>

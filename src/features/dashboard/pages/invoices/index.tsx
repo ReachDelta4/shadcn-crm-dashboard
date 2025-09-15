@@ -7,6 +7,10 @@ import { InvoicesTable } from "./components/invoices-table";
 import { InvoicesFilters } from "./components/invoices-filters";
 import { Button } from "@/components/ui/button";
 import { NewInvoiceDialog } from "./components/new-invoice-dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useViewParam } from "@/hooks/use-view-param";
+import { InvoicesKanban } from "./components/invoices-kanban";
+import { SavedViews } from "@/components/saved-views";
 
 export function InvoicesPage() {
   const {
@@ -24,34 +28,60 @@ export function InvoicesPage() {
   } = useInvoices();
 
   const isEmpty = allInvoices.length === 0;
+  const { view, setView } = useViewParam("table");
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">All Invoices</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <SavedViews
+            entityKey="invoices"
+            getParams={() => ({ filters, sorting, pagination, view })}
+            onApply={(params: any) => {
+              if (params.filters) updateFilters(params.filters);
+              if (params.sorting) handleSortingChange(params.sorting);
+              if (params.pagination) handlePaginationChange(params.pagination);
+              if (params.view) setView(params.view);
+            }}
+          />
           <NewInvoiceDialog onCreated={refetch} />
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card">
-        <div className="border-b p-4">
-          <InvoicesFilters filters={filters} onFiltersChange={updateFilters} />
-        </div>
-        <div className="p-3">
-          <InvoicesTable
-            invoices={invoices}
-            totalRows={allInvoices.length}
-            sorting={sorting}
-            onSort={handleSortingChange}
-            pagination={pagination}
-            onPaginationChange={handlePaginationChange}
-            pageCount={pageCount}
-          />
-        </div>
+      <div className="flex items-center justify-between">
+        <InvoicesFilters filters={filters} onFiltersChange={updateFilters} />
+        <Tabs value={view} onValueChange={(v) => setView(v as any)}>
+          <TabsList>
+            <TabsTrigger value="table">Table</TabsTrigger>
+            <TabsTrigger value="kanban">Kanban</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      {isEmpty && (
+      {view === "table" && (
+        <div className="rounded-lg border bg-card">
+          <div className="p-3">
+            <InvoicesTable
+              invoices={invoices}
+              totalRows={allInvoices.length}
+              sorting={sorting}
+              onSort={handleSortingChange}
+              pagination={pagination}
+              onPaginationChange={handlePaginationChange}
+              pageCount={pageCount}
+            />
+          </div>
+        </div>
+      )}
+
+      {view === "kanban" && (
+        <div className="rounded-lg border bg-card p-3">
+          <InvoicesKanban invoices={allInvoices} onStatusChanged={refetch} />
+        </div>
+      )}
+
+      {isEmpty && view === "table" && (
         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
           <div className="mx-auto flex max-w-[420px] flex-col items-center justify-center text-center">
             <h3 className="mt-4 text-lg font-semibold">No invoices found</h3>

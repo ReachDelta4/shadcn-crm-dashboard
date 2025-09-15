@@ -5,15 +5,9 @@ import {
   OrderStatus,
 } from "@/features/dashboard/pages/orders/types/order";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { DatePickerWithRange } from "@/components/shared/date-picker-with-range";
 import { Search } from "lucide-react";
+import { Combobox } from "@/components/ui/combobox";
 
 interface OrdersFiltersProps {
   filters: OrderFilters;
@@ -44,23 +38,13 @@ export function OrdersFilters({
         />
       </div>
       <div className="flex flex-wrap gap-4">
-        <Select
+        <Combobox
           value={filters.status}
-          onValueChange={(value) =>
-            onFiltersChange({ status: value as OrderStatus | "all" })
-          }
-        >
-          <SelectTrigger className="w-full md:w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(value) => onFiltersChange({ status: (value as any) || "all" })}
+          options={STATUS_OPTIONS}
+          placeholder="Filter by status"
+          className="w-full md:w-[180px]"
+        />
         <DatePickerWithRange
           className="w-full md:w-auto"
           value={{

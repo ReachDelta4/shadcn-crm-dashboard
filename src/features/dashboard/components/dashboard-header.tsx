@@ -15,6 +15,8 @@ import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
+import { useCommandPalette } from "@/components/command-palette";
+import { NotificationsButton } from "@/components/notifications/notifications-panel";
 
 /**
  * DashboardHeader Component
@@ -24,6 +26,7 @@ import { ModeToggle } from "@/components/mode-toggle";
  */
 export const DashboardHeader = () => {
   const { open } = useSidebar();
+  const { openPalette } = useCommandPalette();
 
   return (
     <header
@@ -58,20 +61,13 @@ export const DashboardHeader = () => {
           size="icon"
           className="h-9 w-9 rounded-full"
           aria-label="Search"
+          onClick={openPalette}
         >
           <SearchIcon className="h-4 w-4" aria-hidden="true" />
           <span className="sr-only">Search</span>
         </Button>
 
-        <Button
-          variant="outline"
-          size="icon"
-          className="relative h-9 w-9 rounded-full"
-          aria-label="Notifications"
-        >
-          <BellIcon className="h-4 w-4" aria-hidden="true" />
-          <span className="sr-only">Notifications</span>
-        </Button>
+        <NotificationsButton />
 
         <ModeToggle />
       </div>

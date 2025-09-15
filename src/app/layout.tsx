@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { CommandPaletteProvider, CommandPalette } from "@/components/command-palette";
 
 export const metadata: Metadata = {
   title: "Salesy - Customer Relationship Management",
@@ -25,7 +26,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>{children}</TooltipProvider>
+          <CommandPaletteProvider>
+            <TooltipProvider>
+              {children}
+              <CommandPalette />
+            </TooltipProvider>
+          </CommandPaletteProvider>
         </ThemeProvider>
       </body>
     </html>
