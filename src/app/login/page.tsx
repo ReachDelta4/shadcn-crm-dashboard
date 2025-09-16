@@ -37,26 +37,166 @@ function LoginPageContent() {
   const [deepLink, setDeepLink] = useState<string | null>(null);
   const [linkReady, setLinkReady] = useState(false);
   const [deviceCode, setDeviceCode] = useState<string | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [redirectInProgress, setRedirectInProgress] = useState(false);
 
   const supabase = createClient();
 
+  // Enterprise-grade redirect helper with comprehensive validation and error handling
+  const performSecureRedirect = async (redirectReason: 'initial_check' | 'post_login' | 'continue_action') => {
+    if (redirectInProgress) {
+      console.log('[Auth] Redirect already in progress, skipping duplicate');
+      return;
+    }
+
+    const isElectron = params.get('mode') === 'electron';
+    if (isElectron) {
+      console.log('[Auth] Electron mode detected, skipping web redirect');
+      return;
+    }
+
+    try {
+      setRedirectInProgress(true);
+      
+      // Get redirect target with robust validation
+      const requested = params.get("redirect") || "/dashboard";
+      let redirect = "/dashboard"; // Safe default
+      
+      // Validate redirect URL to prevent open redirect vulnerabilities
+      if (requested.startsWith('/') && !requested.startsWith('//')) {
+        // Allow relative paths only (not protocol-relative URLs)
+        redirect = requested;
+      } else if (requested === "/dashboard") {
+        redirect = requested;
+      }
+      // Invalid redirects fall back to /dashboard
+
+      console.log(`[Auth] Performing secure redirect (${redirectReason}): ${redirect}`);
+      
+      // Use replace to prevent back button issues
+      router.replace(redirect);
+    } catch (error) {
+      console.error(`[Auth] Redirect failed (${redirectReason}):`, error);
+      // Fallback to dashboard on any redirect error
+      try {
+        router.replace("/dashboard");
+      } catch (fallbackError) {
+        console.error('[Auth] Fallback redirect also failed:', fallbackError);
+        // Last resort: reload page to reset state
+        window.location.href = "/dashboard";
+      }
+    } finally {
+      // Reset redirect flag after a delay to prevent permanent blocking
+      setTimeout(() => setRedirectInProgress(false), 1000);
+    }
+  };
+
+  // Enterprise-grade session synchronization helper
+  const synchronizeSessionWithServer = async (session: any, event: string): Promise<boolean> => {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000; // 1 second
+    
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        console.log(`[Auth] Syncing session with server (attempt ${attempt}/${MAX_RETRIES})`);
+        
+        const response = await fetch('/auth/callback', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest' // CSRF protection
+          },
+          body: JSON.stringify({ event, session }),
+          credentials: 'same-origin' // Ensure cookies are included
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json().catch(() => ({}));
+        console.log(`[Auth] Session sync successful (attempt ${attempt}):`, result);
+        return true;
+
+      } catch (error) {
+        console.warn(`[Auth] Session sync attempt ${attempt} failed:`, error);
+        
+        if (attempt === MAX_RETRIES) {
+          console.error('[Auth] All session sync attempts failed. Proceeding with caution.');
+          return false;
+        }
+        
+        // Exponential backoff for retries
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * attempt));
+      }
+    }
+    
+    return false;
+  };
+
+  // Auto-redirect for already authenticated users (enterprise-grade initial check)
+  useEffect(() => {
+    let cancelled = false;
+    
+    const checkInitialAuthState = async () => {
+      try {
+        setIsCheckingAuth(true);
+        
+        // Get current user state
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (cancelled) return;
+        
+        if (error) {
+          console.log('[Auth] Initial auth check - no valid session:', error.message);
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        if (user) {
+          console.log('[Auth] Initial auth check - user already authenticated:', user.email);
+          
+          const isElectron = params.get('mode') === 'electron';
+          if (!isElectron) {
+            // User is already authenticated, redirect to dashboard
+            await performSecureRedirect('initial_check');
+            return;
+          }
+        }
+        
+        setIsCheckingAuth(false);
+      } catch (error) {
+        console.error('[Auth] Initial auth check failed:', error);
+        if (!cancelled) {
+          setIsCheckingAuth(false);
+        }
+      }
+    };
+
+    checkInitialAuthState();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, params, router]);
+
+  // Enhanced auth state change handler with better error handling
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       try {
-        console.log('[DeviceLink] onAuthStateChange event:', event, 'hasSession:', !!session);
-        await fetch('/auth/callback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ event, session }),
-        })
+        console.log('[Auth] onAuthStateChange event:', event, 'hasSession:', !!session, 'userEmail:', session?.user?.email);
+        
+        // Always sync session with server for all auth events
+        await synchronizeSessionWithServer(session, event);
+        
       } catch (e) {
-        console.warn('[DeviceLink] auth/callback POST failed:', (e as any)?.message);
+        console.warn('[Auth] Auth state change handler error:', (e as any)?.message);
       }
 
       const isElectron = params.get('mode') === 'electron';
       if (isElectron && event === 'SIGNED_IN' && session) {
         try {
-          // Prefer device-code exchange (safer, avoids rotation race)
+          // Electron device linking flow (unchanged for backward compatibility)
           let code: string | null = null;
           try {
             console.log('[DeviceLink] requesting device code via /api/device-auth/create');
@@ -96,6 +236,8 @@ function LoginPageContent() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    
+    // Input validation
     const parsed = schema.safeParse({ email, password, confirm: mode === "signup" ? confirm : undefined });
     if (!parsed.success) {
       setError(parsed.error.errors[0]?.message || "Invalid input");
@@ -106,31 +248,65 @@ function LoginPageContent() {
 
     startTransition(async () => {
       try {
+        console.log(`[Auth] Starting ${mode} for:`, email.toLowerCase().trim());
+        
+        // Perform authentication
+        let authResult;
         if (mode === "login") {
-          const { error } = await supabase.auth.signInWithPassword({
+          authResult = await supabase.auth.signInWithPassword({
             email: email.toLowerCase().trim(),
             password,
           });
-          if (error) throw new Error(mapAuthError(error.message));
         } else {
-          const { error } = await supabase.auth.signUp({
+          authResult = await supabase.auth.signUp({
             email: email.toLowerCase().trim(),
             password,
           });
-          if (error) throw new Error(mapAuthError(error.message));
+        }
+        
+        if (authResult.error) {
+          throw new Error(mapAuthError(authResult.error.message));
         }
 
+        console.log(`[Auth] ${mode} successful, session:`, !!authResult.data.session);
+
+        // For Electron mode, let onAuthStateChange handle the device linking
         if (isElectron) {
-          console.log('[DeviceLink] Electron mode: holding redirect to show device link UI');
-          // Do not redirect here; onAuthStateChange will render link UI
+          console.log('[Auth] Electron mode: deferring to onAuthStateChange for device linking');
           return;
         }
 
-        const requested = params.get("redirect") || "/dashboard";
-        const redirect = requested.startsWith('/') ? requested : '/dashboard';
-        router.replace(redirect);
+        // For web mode, ensure session is properly synchronized before redirect
+        if (authResult.data.session) {
+          console.log('[Auth] Web mode: synchronizing session before redirect');
+          
+          // Wait for session sync to complete for better reliability
+          const syncSuccess = await synchronizeSessionWithServer(authResult.data.session, 'SIGNED_IN');
+          
+          if (syncSuccess) {
+            console.log('[Auth] Session sync completed successfully, proceeding with redirect');
+          } else {
+            console.warn('[Auth] Session sync failed, proceeding with redirect anyway');
+          }
+          
+          // Small delay to ensure server-side cookie setting completes
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          await performSecureRedirect('post_login');
+        } else {
+          console.log('[Auth] No session returned, user may need to verify email');
+          if (mode === "signup") {
+            setError("Account created! Please check your email to verify your account before signing in.");
+          }
+        }
+
       } catch (err: any) {
-        setError(typeof err?.message === "string" ? err.message : "Authentication failed");
+        console.error(`[Auth] ${mode} failed:`, err);
+        const errorMessage = typeof err?.message === "string" ? err.message : "Authentication failed";
+        setError(errorMessage);
+        
+        // Clear any pending redirect state on error
+        setRedirectInProgress(false);
       }
     });
   }
@@ -141,11 +317,25 @@ function LoginPageContent() {
     window.location.href = deepLink;
   }
 
-  function handleContinue() {
-    const requested = params.get("redirect") || "/dashboard";
-    const redirect = requested.startsWith('/') ? requested : '/dashboard';
-    console.log('[DeviceLink] Continue to dashboard:', redirect);
-    router.replace(redirect);
+  async function handleContinue() {
+    console.log('[DeviceLink] Continue to dashboard requested');
+    await performSecureRedirect('continue_action');
+  }
+
+  // Show loading state during initial auth check
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600 mx-auto"></div>
+              <p className="mt-4 text-gray-600">Checking authentication...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
