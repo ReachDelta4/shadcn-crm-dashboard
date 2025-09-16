@@ -26,7 +26,7 @@ export function StageDeepDiveSection({ stages }: { stages?: StageDeepDive[] }) {
 		<div className="space-y-4" data-component="stage-deep-dive">
 			{data.map((s, i) => (
 				<div key={i} className="rounded-md border p-3 space-y-3" data-item-id={i}>
-					<div className="text-base font-semibold">{s.stageName}</div>
+					<div className="text-[18px] font-semibold">{s.stageName}</div>
 					{s.objective ? <div className="text-sm"><span className="font-medium">Objective:</span> {s.objective}</div> : null}
 					<BulletsSection title="Indicators / Data" items={s.indicators} />
 					<BulletsSection title="Observed Behavior" items={s.observed} />

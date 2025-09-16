@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { ReportPageCard } from "./ReportPageCard";
 import { CardTitle } from "@/components/ui/card";
 import { TitleCard } from "./sections/TitleCard";
@@ -32,13 +32,75 @@ export function ReportTabV3({ data }: { data?: ReportDataV3 }) {
 		}
 	}, []);
 	const pageCount = 10;
+	const [activeId, setActiveId] = useState<string | null>(null);
+	const [panelTop, setPanelTop] = useState<number>(96);
+	useEffect(() => {
+		const computeTop = () => {
+			const controls = document.getElementById('report-controls');
+			if (controls) {
+				const rect = controls.getBoundingClientRect();
+				const topPx = Math.max(56, Math.round(rect.bottom + 8));
+				setPanelTop(topPx);
+			} else {
+				setPanelTop(96);
+			}
+		};
+		computeTop();
+		const ro = new ResizeObserver(() => computeTop());
+		const controls = document.getElementById('report-controls');
+		if (controls) ro.observe(controls);
+		window.addEventListener('resize', computeTop);
+		return () => {
+			if (controls) ro.unobserve(controls);
+			ro.disconnect();
+			window.removeEventListener('resize', computeTop);
+		};
+	}, []);
+
+	useEffect(() => {
+		const sections = Array.from(document.querySelectorAll<HTMLElement>("section[data-section-id^='p']"));
+		if (sections.length === 0) return;
+
+		const lastActiveRef = { current: null as string | null };
+		let frame = 0;
+		const pickActive = () => {
+			const anchorY = window.innerHeight / 3;
+			let bestId: string | null = null;
+			let bestDist = Infinity;
+			for (const el of sections) {
+				const r = el.getBoundingClientRect();
+				const mid = r.top + r.height / 2;
+				if (r.bottom < 80 || r.top > window.innerHeight - 80) continue;
+				const d = Math.abs(mid - anchorY);
+				if (d < bestDist) { bestDist = d; bestId = el.getAttribute("data-section-id"); }
+			}
+			if (bestId && bestId !== lastActiveRef.current) {
+				lastActiveRef.current = bestId;
+				setActiveId(bestId);
+			}
+		};
+
+		const onScroll = () => {
+			if (frame) return;
+			frame = requestAnimationFrame(() => { frame = 0; pickActive(); });
+		};
+
+		const io = new IntersectionObserver(onScroll, { root: null, threshold: [0, 0.25, 0.5, 0.75, 1] });
+		sections.forEach(el => io.observe(el));
+		window.addEventListener("scroll", onScroll, { passive: true });
+
+		pickActive();
+
+		return () => {
+			io.disconnect();
+			window.removeEventListener("scroll", onScroll);
+			if (frame) cancelAnimationFrame(frame);
+		};
+	}, []);
 
 	return (
 		<div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-			<div className="lg:col-span-3">
-				<ReportOutlineV3 onSelect={onSelect} />
-			</div>
-			<div className="lg:col-span-9 space-y-4">
+			<div className="lg:col-span-9 lg:order-1 space-y-4 lg:pr-[280px]">
 				<TitleCard title={v3.tp_title} subtitle={v3.tp_subtitle} deal={v3.tp_deal} sessionId={v3.tp_sessionId} />
 
 				<ReportPageCard sectionId="p1" header={<CardTitle className="text-2xl">Page 1 — Executive Summary</CardTitle>} pageNumber={1} pageCount={pageCount} showPrintFooter>
@@ -174,13 +236,27 @@ export function ReportTabV3({ data }: { data?: ReportDataV3 }) {
 				<ReportPageCard sectionId="p10" header={<CardTitle className="text-2xl">Page 10 — Stage Analysis</CardTitle>} pageNumber={10} pageCount={pageCount} showPrintFooter>
 					<StageDeepDiveSection stages={v3.p10_stage_k} />
 					<StageDeepDiveSection stages={v3.p10_stage_l} />
+					<div id="apx_scripts_templates" data-section-id="apx_scripts_templates" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
+						<BulletsSection title="Appendix — Scripts & Templates" items={v3.apx_scripts_templates} />
+					</div>
 					<div id="apx_scoring_rubric" data-section-id="apx_scoring_rubric" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
 						<BulletsSection title="Appendix — Scoring Rubric" items={v3.apx_scoring_rubric} />
+					</div>
+					<div id="apx_glossary" data-section-id="apx_glossary" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
+						<BulletsSection title="Appendix — Glossary" items={v3.apx_glossary} />
 					</div>
 					<div id="apx_data_flags" data-section-id="apx_data_flags" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
 						<BulletsSection title="Appendix — Data Quality Flags" items={v3.apx_data_flags} />
 					</div>
+					<div id="apx_coach_plan" data-section-id="apx_coach_plan" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
+						<BulletsSection title="Appendix — Coaching Session Plan" items={v3.apx_coach_plan} />
+					</div>
 				</ReportPageCard>
+			</div>
+			<div className="lg:col-span-3 lg:order-2">
+				<div className="hidden lg:block fixed right-4 w-[260px] z-30 print:hidden" id="report-outline-panel" style={{ top: panelTop, maxHeight: `calc(100vh - ${panelTop + 16}px)` }}>
+					<ReportOutlineV3 onSelect={onSelect} activeId={activeId || undefined} />
+				</div>
 			</div>
 		</div>
 	);

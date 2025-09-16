@@ -9,7 +9,7 @@ export function GraphSection({ series, overall, dealHealth, mode }: { series?: S
 	const isLine = mode === "line";
 	return (
 		<div className="space-y-3">
-			<div className="text-[14px] font-medium">Performance by Stage</div>
+			<div className="text-[16px] font-semibold">Performance by Stage</div>
 			{data.length === 0 ? (
 				<div className="space-y-2">
 					<div className="text-sm italic text-muted-foreground">No chart data.</div>

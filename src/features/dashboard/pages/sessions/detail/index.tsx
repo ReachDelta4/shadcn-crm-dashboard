@@ -42,7 +42,7 @@ export function SessionDetailPage() {
 					</TabsContent>
 
 					<TabsContent value="report">
-						<div className="flex items-center justify-between gap-2 mb-2 print:hidden">
+						<div id="report-controls" className="flex items-center justify-between gap-2 mb-2 print:hidden">
 							<div className="text-sm text-muted-foreground">UI only · Export/Print/Deck controls</div>
 							<div className="flex items-center gap-2">
 								<Button size="sm" variant="outline" onClick={() => window.print()}>Print</Button>
