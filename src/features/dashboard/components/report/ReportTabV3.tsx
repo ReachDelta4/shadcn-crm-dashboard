@@ -236,21 +236,15 @@ export function ReportTabV3({ data }: { data?: ReportDataV3 }) {
 				<ReportPageCard sectionId="p10" header={<CardTitle className="text-2xl">Page 10 — Stage Analysis</CardTitle>} pageNumber={10} pageCount={pageCount} showPrintFooter>
 					<StageDeepDiveSection stages={v3.p10_stage_k} />
 					<StageDeepDiveSection stages={v3.p10_stage_l} />
-					<div id="apx_scripts_templates" data-section-id="apx_scripts_templates" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
-						<BulletsSection title="Appendix — Scripts & Templates" items={v3.apx_scripts_templates} />
-					</div>
+
 					<div id="apx_scoring_rubric" data-section-id="apx_scoring_rubric" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
 						<BulletsSection title="Appendix — Scoring Rubric" items={v3.apx_scoring_rubric} />
 					</div>
-					<div id="apx_glossary" data-section-id="apx_glossary" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
-						<BulletsSection title="Appendix — Glossary" items={v3.apx_glossary} />
-					</div>
+
 					<div id="apx_data_flags" data-section-id="apx_data_flags" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
 						<BulletsSection title="Appendix — Data Quality Flags" items={v3.apx_data_flags} />
 					</div>
-					<div id="apx_coach_plan" data-section-id="apx_coach_plan" className="scroll-mt-24" style={{ breakInside: "avoid" }}>
-						<BulletsSection title="Appendix — Coaching Session Plan" items={v3.apx_coach_plan} />
-					</div>
+
 				</ReportPageCard>
 			</div>
 			<div className="lg:col-span-3 lg:order-2">
