@@ -1,49 +1,45 @@
 "use client";
 
-import { ReportRenderer } from "@/features/dashboard/components/report/ReportRenderer";
-import type { ReportData } from "@/features/dashboard/components/report/types";
-
-const demo: ReportData = {
-  reportId: "rep_demo",
-  meta: {
-    title: "Sales Call Analysis — 10‑Page Sample Report",
-    subject: "Vignesh / Manoj",
-    generatedAt: "2025-09-15",
-    timezone: "Asia/Kolkata",
-  },
-  data: {
-    p1_snapshot: {
-      rep: "Manoj (Cap Center)",
-      prospect: "Vignesh",
-      primaryAsk: "Career transition bundle",
-      repPerformance: 68,
-      dealHealth: 66,
-    },
-    p1_actions: {
-      todos: [
-        { id: "t1", text: "Send follow‑up email with EMI options", owner: "Manoj", due: "24–48h", done: false },
-        { id: "t2", text: "Book follow‑up call (2–3 slots)", owner: "Manoj", due: "48h", done: false },
-        { id: "t3", text: "Competitor differentiation one‑pager", owner: "Sales Enablement", due: "3d", done: false },
-      ],
-    },
-    p2_graph: {
-      chartKind: "horizontalBars",
-      series: [
-        { label: "Greetings", value: 90 },
-        { label: "Introduction", value: 85 },
-        { label: "Customer Success Stories", value: 0 },
-      ],
-      overall: 67.8,
-      dealHealth: 66,
-    },
-  },
-  mode: "scroll",
-};
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 export function SessionsReportsPage() {
+  const reports = Array.from({ length: 6 }, (_, i) => ({ id: `R-${i+1}`, title: `Report ${i+1}`, status: i % 2 ? "Ready" : "Draft" }));
   return (
     <div className="flex flex-col gap-4">
-      <ReportRenderer report={demo} />
+      <Card>
+        <CardHeader><CardTitle>Create report</CardTitle></CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button variant="outline">Last 7 days</Button>
+          <Button variant="outline">Last 30 days</Button>
+          <Button variant="outline">Quarter</Button>
+          <div className="ml-auto flex items-center gap-2">
+            <Input placeholder="Custom range (UI only)" className="w-64" />
+            <Button>Generate</Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Saved reports</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {reports.map(r => (
+            <Card key={r.id}>
+              <CardContent className="p-4">
+                <div className="font-medium">{r.title}</div>
+                <div className="text-xs text-muted-foreground mt-1">Updated recently</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge variant="outline">{r.status}</Badge>
+                  <Button size="sm" variant="ghost">Share</Button>
+                  <Button size="sm" onClick={() => location.assign(`/dashboard/sessions/${r.id}/#report`)}>Open</Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }
