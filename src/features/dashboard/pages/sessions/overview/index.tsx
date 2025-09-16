@@ -3,9 +3,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { useSessionStats } from "./hooks/use-sessions";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function SessionsOverviewPage() {
   const [showHello, setShowHello] = useState(false);
+  const { stats, loading: statsLoading, error: statsError } = useSessionStats();
+  
   useEffect(() => {
     const k = "sessions_hello_seen";
     if (!localStorage.getItem(k)) {
@@ -25,18 +29,54 @@ export function SessionsOverviewPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader><CardTitle className="text-sm">Sessions This Week</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">12</div></CardContent>
+          <CardHeader><CardTitle className="text-sm">Total Sessions</CardTitle></CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : statsError ? (
+              <div className="text-2xl font-bold text-red-500">-</div>
+            ) : (
+              <div className="text-2xl font-bold">{stats?.total || 0}</div>
+            )}
+          </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">Hours Transcribed</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">8.4h</div></CardContent>
+          <CardHeader><CardTitle className="text-sm">Active Sessions</CardTitle></CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : statsError ? (
+              <div className="text-2xl font-bold text-red-500">-</div>
+            ) : (
+              <div className="text-2xl font-bold">{stats?.active || 0}</div>
+            )}
+          </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">Reports Ready</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">7</div></CardContent>
+          <CardHeader><CardTitle className="text-sm">Completed</CardTitle></CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : statsError ? (
+              <div className="text-2xl font-bold text-red-500">-</div>
+            ) : (
+              <div className="text-2xl font-bold">{stats?.completed || 0}</div>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Cancelled</CardTitle></CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : statsError ? (
+              <div className="text-2xl font-bold text-red-500">-</div>
+            ) : (
+              <div className="text-2xl font-bold">{stats?.cancelled || 0}</div>
+            )}
+          </CardContent>
         </Card>
       </div>
 

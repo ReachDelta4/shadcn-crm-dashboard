@@ -16,7 +16,7 @@ function Node({ node, depth, onSelect, activeId }: { node: OutlineNode; depth: n
 						{open ? "−" : "+"}
 					</button>
 				) : <span className="w-4" />}
-				<button onClick={() => onSelect(node.id)} aria-controls={node.id} aria-current={isActive ? "true" : undefined} role="treeitem" aria-level={depth + 1} data-outline-id={node.id} className={(depth === 0 ? "text-[16px] font-semibold " : "text-sm ") + "text-left hover:underline " + (isActive ? " bg-muted/50 rounded px-1" : "")}>{node.label}</button>
+				<button onClick={() => onSelect(node.id)} aria-controls={node.id} aria-current={isActive ? "true" : undefined} role="treeitem" aria-level={depth + 1} aria-selected={isActive} data-outline-id={node.id} className={(depth === 0 ? "text-[16px] font-semibold " : "text-sm ") + "text-left hover:underline " + (isActive ? " bg-muted/50 rounded px-1" : "")}>{node.label}</button>
 			</div>
 			{hasChildren && open ? (
 				<div className="space-y-1 mt-1">
