@@ -51,4 +51,66 @@ export type ReportDataV3 = {
 
 	apx_scoring_rubric?: string[];
 	apx_data_flags?: string[];
+
+	// Optional narratives (Markdown-in-JSON) - NOT REQUIRED for backward compatibility
+	narratives?: {
+		executive_summary?: NarrativeSection;
+		meeting_summary?: NarrativeSectionWithTopics;
+		technical_evaluation?: NarrativeSection;
+		competitive_landscape?: NarrativeSectionWithCompetitors;
+		stage_narratives?: {
+			discovery?: StageNarrative;
+			qualification?: QualificationNarrative;
+			proposal?: StageNarrative;
+			negotiation?: StageNarrative;
+			closing?: StageNarrative;
+		};
+		next_steps_narrative?: NarrativeSection;
+	};
+
+	// Optional layout hints for print optimization
+	layout_hints?: {
+		mode?: 'mini' | 'full';
+		density?: 'compact' | 'normal' | 'dense';
+		sections?: Record<string, {
+			allow_page_break_inside?: boolean;
+			print_columns?: number;
+			min_chars?: number;
+		}>;
+	};
 };
+
+// Narrative type definitions
+export interface NarrativeSection {
+	content: string;
+	metadata?: {
+		generated_at?: string;
+		word_count?: number;
+		key_terms?: string[];
+		sentiment?: number;
+	};
+}
+
+export interface NarrativeSectionWithTopics extends NarrativeSection {
+	metadata?: NarrativeSection['metadata'] & {
+		topics_covered?: string[];
+		participants_mentioned?: string[];
+	};
+}
+
+export interface NarrativeSectionWithCompetitors extends NarrativeSection {
+	metadata?: NarrativeSection['metadata'] & {
+		competitors_mentioned?: string[];
+	};
+}
+
+export interface StageNarrative {
+	summary: string;
+	key_findings?: string;
+	concerns?: string;
+}
+
+export interface QualificationNarrative extends StageNarrative {
+	bant_analysis?: string;
+	meddicc_analysis?: string;
+}

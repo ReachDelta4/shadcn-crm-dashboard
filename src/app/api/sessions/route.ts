@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 		const type = searchParams.get('type') || undefined
 		const dateFrom = searchParams.get('dateFrom') || undefined
 		const dateTo = searchParams.get('dateTo') || undefined
-		const sort = searchParams.get('sort') || 'created_at'
+		const sort = searchParams.get('sort') || 'started_at'
 		const direction = (searchParams.get('direction') || 'desc') as 'asc' | 'desc'
 
 		const repository = new SessionsRepository(supabase)
@@ -63,6 +63,27 @@ export async function POST(request: NextRequest) {
 		const body = await request.json()
 		const repository = new SessionsRepository(supabase)
 		const session = await repository.create(body, user.id)
+		// Log activity (best-effort)
+		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+			await logActivity(supabase as any, user.id, {
+				type: 'user',
+				description: `Session started: ${(session as any).type || 'ask'}`,
+				entity: (session as any).id,
+				details: { id: (session as any).id }
+			})
+		}).catch(() => {})
+		// Trigger V3 report generation (best-effort, fire-and-forget)
+		import('./[id]/report-v3/route').then(async (m) => {
+			try {
+				await fetch(`${new URL(request.url).origin}/api/sessions/${(session as any).id}/report-v3`, { method: 'POST' })
+			} catch {}
+		}).catch(() => {})
+		// Also trigger Tabs report generation (best-effort, fire-and-forget)
+		import('./[id]/report-v3-tabs/route').then(async () => {
+			try {
+				await fetch(`${new URL(request.url).origin}/api/sessions/${(session as any).id}/report-v3-tabs`, { method: 'POST' })
+			} catch {}
+		}).catch(() => {})
 		return NextResponse.json(session, { status: 201 })
 	} catch (error) {
 		console.error('Session creation error:', error)

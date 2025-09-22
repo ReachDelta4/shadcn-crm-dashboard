@@ -150,7 +150,7 @@ export function useSessionStats() {
 
 	useEffect(() => {
 		fetchStats()
-	}, [])
+	}, [fetchStats])
 
 	return {
 		stats,

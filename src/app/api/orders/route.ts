@@ -85,6 +85,15 @@ export async function POST(request: NextRequest) {
 		const validated = orderCreateSchema.parse(body)
 		const repo = new OrdersRepository(supabase)
 		const order = await repo.create(validated, user.id)
+		// Log activity (best-effort)
+		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+			await logActivity(supabase as any, user.id, {
+				type: 'deal',
+				description: `Order created: $${(order as any).amount}`,
+				entity: (order as any).customer_name || (order as any).email,
+				details: { id: (order as any).id }
+			})
+		}).catch(() => {})
 		return NextResponse.json(order, { status: 201 })
 	} catch (error) {
 		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })

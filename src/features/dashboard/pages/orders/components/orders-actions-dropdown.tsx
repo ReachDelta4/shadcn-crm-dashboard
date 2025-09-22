@@ -19,12 +19,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface OrderActionsProps {
   order: Order;
 }
 
 export function OrderActionsDropdown({ order }: OrderActionsProps) {
+  const router = useRouter();
   const handleViewDetails = () => {
     // Implement view details functionality
     console.log("View order details", order.orderNumber);
@@ -35,9 +38,24 @@ export function OrderActionsDropdown({ order }: OrderActionsProps) {
     console.log("Edit order", order.orderNumber);
   };
 
-  const handleGenerateInvoice = () => {
-    // Implement invoice generation
-    console.log("Generate invoice for", order.orderNumber);
+  const handleGenerateInvoice = async () => {
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: order.customerName,
+          email: order.email,
+          amount: order.amount,
+          status: 'draft'
+        })
+      })
+      if (!res.ok) throw new Error(await res.text())
+      toast.success('Invoice created')
+      router.refresh()
+    } catch (e) {
+      toast.error('Failed to create invoice')
+    }
   };
 
   const handleDownload = () => {
@@ -45,14 +63,32 @@ export function OrderActionsDropdown({ order }: OrderActionsProps) {
     console.log("Download order", order.orderNumber);
   };
 
-  const handleCancelOrder = () => {
-    // Implement cancel functionality
-    console.log("Cancel order", order.orderNumber);
+  const handleCancelOrder = async () => {
+    if (!confirm(`Cancel order ${order.orderNumber}?`)) return;
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' })
+      })
+      if (!res.ok) throw new Error(await res.text())
+      toast.success('Order cancelled')
+      router.refresh()
+    } catch (e) {
+      toast.error('Failed to cancel order')
+    }
   };
 
-  const handleDeleteOrder = () => {
-    // Implement delete functionality
-    console.log("Delete order", order.orderNumber);
+  const handleDeleteOrder = async () => {
+    if (!confirm(`Delete order ${order.orderNumber}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(await res.text())
+      toast.success('Order deleted')
+      router.refresh()
+    } catch (e) {
+      toast.error('Failed to delete order')
+    }
   };
 
   return (

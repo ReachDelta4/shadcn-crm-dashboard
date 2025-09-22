@@ -29,6 +29,24 @@ export interface SessionListOptions {
 	userId: string
 }
 
+function mapDbSession(row: any): any {
+	const startedAt = row.started_at ? new Date(row.started_at) : null
+	const fallbackTitle = startedAt ? `Session @ ${startedAt.toLocaleTimeString('en-GB', { hour12: false })}` : 'Session'
+	// Heuristic: if title_enc looks like base64/opaque, use fallback for display
+	const looksEncoded = typeof row.title_enc === 'string' && /^[A-Za-z0-9+/=]{20,}$/.test(row.title_enc)
+	return {
+		id: row.id,
+		owner_id: row.user_id,
+		title: (row.title_enc && !looksEncoded) ? row.title_enc : fallbackTitle,
+		type: row.session_type,
+		status: row.ended_at ? 'completed' : 'active',
+		started_at: row.started_at,
+		ended_at: row.ended_at,
+		created_at: row.started_at,
+		updated_at: row.updated_at,
+	}
+}
+
 export class SessionsRepository {
 	constructor(private supabase: SupabaseClientAny = defaultClient) {}
 
@@ -41,117 +59,131 @@ export class SessionsRepository {
 	}> {
 		const {
 			filters = {},
-			sort = 'created_at',
+			sort = 'started_at',
 			direction = 'desc',
 			page = 1,
 			pageSize = 10,
 			userId
 		} = options
 
+		const sortColumn = ['started_at','updated_at','ended_at'].includes(sort) ? sort : 'started_at'
+
 		let query = this.supabase
 			.from('sessions')
-			.select('*', { count: 'exact' })
-			.eq('owner_id', userId)
+			.select('id,user_id,title_enc,session_type,started_at,ended_at,updated_at', { count: 'exact' })
+			.eq('user_id', userId)
 
 		// Apply filters
 		if (filters.search) {
-			query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+			query = query.ilike('title_enc', `%${filters.search}%`)
 		}
 
 		if (filters.status && filters.status !== 'all') {
-			query = query.eq('status', filters.status)
+			if (filters.status === 'active') {
+				query = query.is('ended_at', null)
+			} else if (filters.status === 'completed' || filters.status === 'cancelled') {
+				query = query.not('ended_at', 'is', null)
+			}
 		}
 
 		if (filters.type) {
-			query = query.eq('type', filters.type)
+			query = query.eq('session_type', filters.type)
 		}
 
 		if (filters.dateFrom) {
-			query = query.gte('created_at', filters.dateFrom)
+			query = query.gte('started_at', filters.dateFrom)
 		}
 
 		if (filters.dateTo) {
-			query = query.lte('created_at', filters.dateTo)
+			query = query.lte('started_at', filters.dateTo)
 		}
 
 		// Apply sorting
-		query = query.order(sort, { ascending: direction === 'asc' })
+		query = query.order(sortColumn, { ascending: direction === 'asc' })
 
-		// Apply pagination
+		// Apply pagination (1-based to 0-based conversion)
 		const from = (page - 1) * pageSize
 		const to = from + pageSize - 1
 		query = query.range(from, to)
 
-		const { data: sessions, error, count } = await query
+		const { data: rows, error, count } = await query
 
 		if (error) {
 			throw new Error(`Failed to fetch sessions: ${error.message}`)
 		}
 
+		const sessions = (rows || []).map(mapDbSession)
 		const total = count || 0
 		const totalPages = Math.ceil(total / pageSize)
 
-		return {
-			sessions: sessions || [],
-			total,
-			page,
-			pageSize,
-			totalPages
-		}
+		return { sessions, total, page, pageSize, totalPages }
 	}
 
 	async findById(id: string, userId: string): Promise<Session | null> {
-		const { data: session, error } = await this.supabase
+		const { data: row, error } = await this.supabase
 			.from('sessions')
-			.select('*')
+			.select('id,user_id,title_enc,session_type,started_at,ended_at,updated_at')
 			.eq('id', id)
-			.eq('owner_id', userId)
+			.eq('user_id', userId)
 			.single()
 
 		if (error) {
-			if (error.code === 'PGRST116') {
+			if ((error as any).code === 'PGRST116') {
 				return null // Not found
 			}
 			throw new Error(`Failed to fetch session: ${error.message}`)
 		}
 
-		return session
+		return mapDbSession(row)
 	}
 
 	async create(sessionData: SessionInsert, userId: string): Promise<Session> {
-		const { data: session, error } = await this.supabase
+		const requestedType = (sessionData as any)?.type || 'ask'
+		const { data: newSessionId, error: rpcError } = await (this.supabase as any)
+			.rpc('get_or_create_active_session', { requested_type: requestedType })
+
+		if (rpcError) {
+			throw new Error(`Failed to create session: ${rpcError.message}`)
+		}
+
+		const { data: row, error } = await this.supabase
 			.from('sessions')
-			.insert({
-				...sessionData,
-				owner_id: userId
-			})
-			.select()
+			.select('id,user_id,title_enc,session_type,started_at,ended_at,updated_at')
+			.eq('id', newSessionId)
+			.eq('user_id', userId)
 			.single()
 
 		if (error) {
-			throw new Error(`Failed to create session: ${error.message}`)
+			throw new Error(`Failed to fetch created session: ${error.message}`)
 		}
 
-		return session
+		return mapDbSession(row)
 	}
 
 	async update(id: string, sessionData: SessionUpdate, userId: string): Promise<Session> {
-		const { data: session, error } = await this.supabase
-			.from('sessions')
-			.update({
-				...sessionData,
-				updated_at: new Date().toISOString()
-			})
-			.eq('id', id)
-			.eq('owner_id', userId)
-			.select()
-			.single()
-
-		if (error) {
-			throw new Error(`Failed to update session: ${error.message}`)
+		// Support title update and ending a session
+		if ((sessionData as any)?.status === 'completed' || (sessionData as any)?.status === 'cancelled') {
+			const { error: endErr } = await (this.supabase as any).rpc('end_session', { session_id: id })
+			if (endErr) throw new Error(`Failed to end session: ${endErr.message}`)
 		}
 
-		return session
+		if ((sessionData as any)?.title) {
+			const { error: updErr } = await this.supabase
+				.from('sessions')
+				.update({ title_enc: (sessionData as any).title })
+				.eq('id', id)
+				.eq('user_id', userId)
+			if (updErr) throw new Error(`Failed to update session: ${updErr.message}`)
+		}
+
+		const { data: row, error } = await this.supabase
+			.from('sessions')
+			.select('id,user_id,title_enc,session_type,started_at,ended_at,updated_at')
+			.eq('id', id)
+			.eq('user_id', userId)
+			.single()
+		if (error) throw new Error(`Failed to fetch session: ${error.message}`)
+		return mapDbSession(row)
 	}
 
 	async delete(id: string, userId: string): Promise<void> {
@@ -159,11 +191,8 @@ export class SessionsRepository {
 			.from('sessions')
 			.delete()
 			.eq('id', id)
-			.eq('owner_id', userId)
-
-		if (error) {
-			throw new Error(`Failed to delete session: ${error.message}`)
-		}
+			.eq('user_id', userId)
+		if (error) throw new Error(`Failed to delete session: ${error.message}`)
 	}
 
 	async getStats(userId: string): Promise<{
@@ -172,33 +201,17 @@ export class SessionsRepository {
 		completed: number
 		cancelled: number
 	}> {
-		const [total, active, completed, cancelled] = await Promise.all([
-			this.supabase
-				.from('sessions')
-				.select('*', { count: 'exact', head: true })
-				.eq('owner_id', userId),
-			this.supabase
-				.from('sessions')
-				.select('*', { count: 'exact', head: true })
-				.eq('owner_id', userId)
-				.eq('status', 'active'),
-			this.supabase
-				.from('sessions')
-				.select('*', { count: 'exact', head: true })
-				.eq('owner_id', userId)
-				.eq('status', 'completed'),
-			this.supabase
-				.from('sessions')
-				.select('*', { count: 'exact', head: true })
-				.eq('owner_id', userId)
-				.eq('status', 'cancelled')
+		const [total, active, completed] = await Promise.all([
+			this.supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+			this.supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('user_id', userId).is('ended_at', null),
+			this.supabase.from('sessions').select('*', { count: 'exact', head: true }).eq('user_id', userId).not('ended_at', 'is', null),
 		])
 
 		return {
-			total: total.count || 0,
-			active: active.count || 0,
-			completed: completed.count || 0,
-			cancelled: cancelled.count || 0
+			total: (total.count as number) || 0,
+			active: (active.count as number) || 0,
+			completed: (completed.count as number) || 0,
+			cancelled: 0,
 		}
 	}
 }

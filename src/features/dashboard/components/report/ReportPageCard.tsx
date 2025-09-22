@@ -13,11 +13,13 @@ type Props = {
 	pageCount?: number;
 	showPrintFooter?: boolean;
 	className?: string;
+	breakAfter?: boolean;
+	snapStart?: boolean;
 };
 
-export function ReportPageCard({ sectionId, header, children, textSizeClass, pageNumber, pageCount, showPrintFooter, className }: Props) {
+export function ReportPageCard({ sectionId, header, children, textSizeClass, pageNumber, pageCount, showPrintFooter, className, breakAfter = true, snapStart = false }: Props) {
 	return (
-		<section data-section-id={sectionId} id={sectionId} className={`scroll-mt-24 ${className || ""}`}>
+		<section data-section-id={sectionId} id={sectionId} className={`scroll-mt-24 ${snapStart ? "snap-start" : ""} ${breakAfter ? "print:break-after-page" : ""} ${className || ""}`}>
 			<Card className={`mx-auto w-full max-w-[794px] print:w-[794px] print:shadow-none print:border-0 ${reportSans.className}`}>
 				{header ? (
 					<CardHeader className="p-6 pb-2 sticky top-0 z-10 bg-background/80 backdrop-blur print:static print:bg-transparent">

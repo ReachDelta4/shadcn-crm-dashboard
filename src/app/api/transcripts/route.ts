@@ -77,6 +77,15 @@ export async function POST(request: NextRequest) {
 		const body = await request.json()
 		const repository = new TranscriptsRepository(supabase)
 		const transcript = await repository.create(body, user.id)
+		// Log activity (best-effort)
+		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+			await logActivity(supabase as any, user.id, {
+				type: 'user',
+				description: `Transcript segment added` ,
+				entity: (transcript as any).session_id,
+				details: { id: (transcript as any).id }
+			})
+		}).catch(() => {})
 		return NextResponse.json(transcript, { status: 201 })
 	} catch (error) {
 		console.error('Transcript creation error:', error)

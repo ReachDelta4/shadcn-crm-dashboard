@@ -56,6 +56,18 @@ export async function PUT(
 		const body = await request.json()
 		const repository = new SessionsRepository(supabase)
 		const session = await repository.update(id, body, user.id)
+		// Log activity on end (best-effort)
+		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+			const ending = (body as any)?.status === 'completed' || (body as any)?.status === 'cancelled'
+			if (ending) {
+				await logActivity(supabase as any, user.id, {
+					type: 'user',
+					description: `Session ended`,
+					entity: id,
+					details: { id }
+				})
+			}
+		}).catch(() => {})
 		return NextResponse.json(session)
 	} catch (error) {
 		console.error('Session update error:', error)

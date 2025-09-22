@@ -9,7 +9,8 @@ import {
   PhoneCall, 
   Mail, 
   UserCheck,
-  UserX
+  UserX,
+  UserPlus
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -20,12 +21,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface LeadActionsProps {
   lead: Lead;
 }
 
 export function LeadActionsDropdown({ lead }: LeadActionsProps) {
+  const router = useRouter();
+
   const handleViewDetails = () => {
     // Implement view details functionality
     console.log("View lead details", lead.leadNumber);
@@ -46,19 +51,46 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
     console.log("Email lead", lead.email);
   };
 
-  const handleMarkAsQualified = () => {
-    // Implement qualification functionality
-    console.log("Mark lead as qualified", lead.leadNumber);
+  const handleMarkAsQualified = async () => {
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "qualified" })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Lead marked as qualified");
+      router.refresh();
+    } catch (e) {
+      toast.error("Failed to mark as qualified");
+    }
   };
 
-  const handleMarkAsUnqualified = () => {
-    // Implement disqualification functionality
-    console.log("Mark lead as unqualified", lead.leadNumber);
+  const handleMarkAsUnqualified = async () => {
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "unqualified" })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Lead marked as unqualified");
+      router.refresh();
+    } catch (e) {
+      toast.error("Failed to mark as unqualified");
+    }
   };
 
-  const handleDeleteLead = () => {
-    // Implement delete functionality
-    console.log("Delete lead", lead.leadNumber);
+  const handleDeleteLead = async () => {
+    if (!confirm(`Delete lead ${lead.fullName}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Lead deleted");
+      router.refresh();
+    } catch (e) {
+      toast.error("Failed to delete lead");
+    }
   };
 
   return (
@@ -100,6 +132,21 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
             <DropdownMenuItem onClick={handleMarkAsUnqualified}>
               <UserX className="mr-2 h-4 w-4" />
               <span>Mark as Unqualified</span>
+            </DropdownMenuItem>
+          )}
+          {lead.status !== "converted" && (
+            <DropdownMenuItem onClick={async () => {
+              try {
+                const res = await fetch(`/api/leads/${lead.id}/convert`, { method: "POST" });
+                if (!res.ok) throw new Error(await res.text());
+                toast.success("Lead converted to customer");
+                router.refresh();
+              } catch (e) {
+                toast.error("Failed to convert lead");
+              }
+            }}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              <span>Convert to Customer</span>
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />

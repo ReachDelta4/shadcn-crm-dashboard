@@ -8,6 +8,13 @@ function Node({ node, depth, onSelect, activeId }: { node: OutlineNode; depth: n
 	const [open, setOpen] = React.useState(true);
 	const hasChildren = !!node.children && node.children.length > 0;
 	const isActive = activeId === node.id;
+	const onLabelClick = () => {
+		if (hasChildren) {
+			setOpen(o => !o);
+		} else {
+			onSelect(node.id);
+		}
+	};
 	return (
 		<div>
 			<div className="flex items-center" style={{ paddingLeft: depth * 12 }}>
@@ -16,7 +23,7 @@ function Node({ node, depth, onSelect, activeId }: { node: OutlineNode; depth: n
 						{open ? "−" : "+"}
 					</button>
 				) : <span className="w-4" />}
-				<button onClick={() => onSelect(node.id)} aria-controls={node.id} aria-current={isActive ? "true" : undefined} role="treeitem" aria-level={depth + 1} aria-selected={isActive} data-outline-id={node.id} className={(depth === 0 ? "text-[16px] font-semibold " : "text-sm ") + "text-left hover:underline " + (isActive ? " bg-muted/50 rounded px-1" : "")}>{node.label}</button>
+				<button onClick={onLabelClick} aria-controls={node.id} aria-current={isActive ? "true" : undefined} role="treeitem" aria-level={depth + 1} aria-selected={isActive} data-outline-id={node.id} className={(depth === 0 ? "text-[16px] font-semibold " : "text-sm ") + "text-left hover:underline " + (isActive ? " bg-muted/50 rounded px-1" : "")}>{node.label}</button>
 			</div>
 			{hasChildren && open ? (
 				<div className="space-y-1 mt-1">
@@ -50,11 +57,11 @@ export function ReportOutlineV3({ onSelect, activeId }: { onSelect: (id: string)
 		}
 	}, [activeId]);
 	return (
-		<Card className="h-full">
+		<Card className="h-full flex flex-col">
 			<CardHeader>
 				<CardTitle className="text-sm">Report Outline</CardTitle>
 			</CardHeader>
-			<CardContent ref={contentRef} className="space-y-1 max-h-[calc(100vh-16px)] overflow-auto">
+			<CardContent ref={contentRef} role="tree" aria-label="Report Outline" className="space-y-1 overflow-auto flex-1">
 				{REPORT_STRUCTURE_V3.map(n => (
 					<Node key={n.id} node={n} depth={0} onSelect={onSelect} activeId={activeId} />
 				))}

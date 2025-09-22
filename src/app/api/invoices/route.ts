@@ -86,6 +86,15 @@ export async function POST(request: NextRequest) {
 		const validated = invoiceCreateSchema.parse(body)
 		const repo = new InvoicesRepository(supabase)
 		const invoice = await repo.create(validated, user.id)
+		// Log activity (best-effort)
+		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+			await logActivity(supabase as any, user.id, {
+				type: 'deal',
+				description: `Invoice created: $${(invoice as any).amount}`,
+				entity: (invoice as any).customer_name || (invoice as any).email,
+				details: { id: (invoice as any).id }
+			})
+		}).catch(() => {})
 		return NextResponse.json(invoice, { status: 201 })
 	} catch (error) {
 		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })

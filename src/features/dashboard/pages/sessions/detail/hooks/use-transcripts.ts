@@ -40,7 +40,7 @@ export function useTranscripts(
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
-	const fetchTranscripts = async () => {
+	const fetchTranscripts = useCallback(async () => {
 		try {
 			setLoading(true)
 			setError(null)
@@ -71,11 +71,11 @@ export function useTranscripts(
 		} finally {
 			setLoading(false)
 		}
-	}
+	}, [filters, page, pageSize, sort, direction])
 
 	useEffect(() => {
 		fetchTranscripts()
-	}, [filters, page, pageSize, sort, direction])
+	}, [fetchTranscripts])
 
 	const createTranscript = async (transcriptData: Partial<Transcript>) => {
 		try {
@@ -150,31 +150,42 @@ export function useSessionTranscripts(sessionId: string, enableRealtime: boolean
 			subscriptionRef.current.unsubscribe()
 		}
 
-		subscriptionRef.current = supabase
-			.channel(`transcripts:${sessionId}`)
-			.on(
-				'postgres_changes',
-				{
-					event: '*',
-					schema: 'public',
-					table: 'transcripts',
-					filter: `session_id=eq.${sessionId}`
-				},
-				(payload) => {
-					if (payload.eventType === 'INSERT') {
-						setTranscripts(prev => [...prev, payload.new as Transcript].sort(
-							(a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-						))
-					} else if (payload.eventType === 'UPDATE') {
-						setTranscripts(prev => prev.map(t => 
-							t.id === (payload.new as any).id ? (payload.new as Transcript) : t
-						))
-					} else if (payload.eventType === 'DELETE') {
-						setTranscripts(prev => prev.filter(t => t.id !== (payload.old as any).id))
+					subscriptionRef.current = supabase
+				.channel(`transcripts:${sessionId}`)
+				.on(
+					'postgres_changes',
+					{
+						event: '*',
+						schema: 'public',
+						table: 'transcripts',
+						filter: `session_id=eq.${sessionId}`
+					},
+					(payload) => {
+						const mapRow = (row: any): Transcript => ({
+							id: row.id,
+							session_id: row.session_id,
+							owner_id: (row as any).user_id || '',
+							content_enc: row.text_enc,
+							speaker: row.speaker,
+							timestamp: row.created_at,
+							created_at: row.created_at,
+							confidence: (row as any).confidence,
+							metadata: (row as any).metadata,
+						})
+						if (payload.eventType === 'INSERT') {
+							const next = mapRow(payload.new)
+							setTranscripts(prev => [...prev, next].sort(
+								(a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+							))
+						} else if (payload.eventType === 'UPDATE') {
+							const next = mapRow(payload.new)
+							setTranscripts(prev => prev.map(t => t.id === next.id ? next : t))
+						} else if (payload.eventType === 'DELETE') {
+							setTranscripts(prev => prev.filter(t => t.id !== (payload.old as any).id))
+						}
 					}
-				}
-			)
-			.subscribe()
+				)
+				.subscribe()
 	}, [enableRealtime, sessionId, supabase])
 
 	useEffect(() => {

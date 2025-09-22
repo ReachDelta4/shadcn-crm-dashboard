@@ -115,7 +115,15 @@ export async function POST(request: NextRequest) {
 		
 		const repo = new CustomersRepository(supabase)
 		const customer = await repo.create(validatedData, user.id)
-		
+		// Log activity (best-effort)
+		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+			await logActivity(supabase as any, user.id, {
+				type: 'deal',
+				description: `Customer created: ${(customer as any).full_name}`,
+				entity: (customer as any).email,
+				details: { id: (customer as any).id }
+			})
+		}).catch(() => {})
 		return NextResponse.json(customer, { status: 201 })
 	} catch (error) {
 		console.error('POST /api/customers error:', error)

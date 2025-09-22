@@ -86,6 +86,15 @@ export async function POST(request: NextRequest) {
 		const validated = leadCreateSchema.parse(body)
 		const repo = new LeadsRepository(supabase)
 		const lead = await repo.create(validated, user.id)
+		// Log activity (best-effort)
+		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+			await logActivity(supabase as any, user.id, {
+				type: 'lead',
+				description: `Lead created: ${(lead as any).full_name}`,
+				entity: (lead as any).email,
+				details: { id: (lead as any).id }
+			})
+		}).catch(() => {})
 		return NextResponse.json(lead, { status: 201 })
 	} catch (error) {
 		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })

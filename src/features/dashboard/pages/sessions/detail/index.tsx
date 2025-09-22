@@ -10,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ReportTabV3 } from "@/features/dashboard/components/report/ReportTabV3";
 import { useSession } from "../overview/hooks/use-sessions";
 import { useSessionTranscripts } from "./hooks/use-transcripts";
+import { useReportV3 } from "@/features/dashboard/components/report/hooks/use-report-v3";
+import { useReportV3Tabs } from "@/features/dashboard/components/report/hooks/use-report-v3-tabs";
 
 interface SessionDetailPageProps {
 	sessionId: string;
@@ -22,6 +24,8 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 	
 	const { session, loading: sessionLoading, error: sessionError } = useSession(sessionId);
 	const { transcripts, loading: transcriptsLoading, addTranscriptSegment } = useSessionTranscripts(sessionId, true);
+	const { data: reportV3, loading: reportLoading, error: reportError, status: reportStatus, retry: retryReport } = useReportV3(sessionId)
+	const { data: tabsData, loading: tabsLoading, error: tabsError, status: tabsStatus, retry: retryTabs } = useReportV3Tabs(sessionId)
 
 	return (
 		<div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -66,11 +70,147 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 
 				<Tabs value={active} onValueChange={setActive}>
 					<TabsList>
+						<TabsTrigger value="executive">Executive Summary</TabsTrigger>
+						<TabsTrigger value="chance">Chance of Sale</TabsTrigger>
+						<TabsTrigger value="rep-performance">Sales Rep Performance</TabsTrigger>
+						<TabsTrigger value="detailed">Detailed Report</TabsTrigger>
 						<TabsTrigger value="transcript">Transcript</TabsTrigger>
-						<TabsTrigger value="report">Report</TabsTrigger>
-						<TabsTrigger value="artifacts">Artifacts</TabsTrigger>
-						<TabsTrigger value="qa">QA</TabsTrigger>
 					</TabsList>
+
+					<TabsContent value="executive">
+						{tabsError && (
+							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
+								<CardContent className="pt-4 flex items-start justify-between gap-2">
+									<div>
+										<div className="text-sm font-medium">Executive Summary generation failed</div>
+										<div className="text-xs">{tabsError}</div>
+									</div>
+									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
+								</CardContent>
+							</Card>
+						)}
+						{tabsLoading || !tabsData ? (
+							<Card>
+								<CardContent className="pt-6">
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Generating Executive Summary…' : 'Loading report…'}</span>
+									</div>
+								</CardContent>
+							</Card>
+						) : (
+							<Card>
+								<CardContent className="pt-6 text-sm text-muted-foreground">
+									Executive Summary report ready (placeholder).
+									<div className="mt-2 text-xs">
+										Schema: {tabsData?.schema_version || 'Unknown'} | 
+										Status: Ready | 
+										Executive Score: {tabsData?.executive_summary?.deal_snapshot?.priority || 'N/A'}
+									</div>
+								</CardContent>
+							</Card>
+						)}
+					</TabsContent>
+
+					<TabsContent value="chance">
+						{tabsError && (
+							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
+								<CardContent className="pt-4 flex items-start justify-between gap-2">
+									<div>
+										<div className="text-sm font-medium">Chance of Sale generation failed</div>
+										<div className="text-xs">{tabsError}</div>
+									</div>
+									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
+								</CardContent>
+							</Card>
+						)}
+						{tabsLoading || !tabsData ? (
+							<Card>
+								<CardContent className="pt-6">
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Deal Probability…' : 'Loading report…'}</span>
+									</div>
+								</CardContent>
+							</Card>
+						) : (
+							<Card>
+								<CardContent className="pt-6 text-sm text-muted-foreground">
+									Chance of Sale report ready (placeholder).
+									<div className="mt-2 text-xs">
+										Probability: {tabsData?.chance_of_sale?.overall_score || 'N/A'}% | 
+										Confidence: {tabsData?.chance_of_sale?.confidence_level || 'N/A'} | 
+										Boosters: {tabsData?.chance_of_sale?.factors?.boosters?.length || 0}
+									</div>
+								</CardContent>
+							</Card>
+						)}
+					</TabsContent>
+
+					<TabsContent value="rep-performance">
+						{tabsError && (
+							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
+								<CardContent className="pt-4 flex items-start justify-between gap-2">
+									<div>
+										<div className="text-sm font-medium">Sales Rep Performance generation failed</div>
+										<div className="text-xs">{tabsError}</div>
+									</div>
+									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
+								</CardContent>
+							</Card>
+						)}
+						{tabsLoading || !tabsData ? (
+							<Card>
+								<CardContent className="pt-6">
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Rep Performance…' : 'Loading report…'}</span>
+									</div>
+								</CardContent>
+							</Card>
+						) : (
+							<Card>
+								<CardContent className="pt-6 text-sm text-muted-foreground">
+									Sales Rep Performance report ready (placeholder).
+									<div className="mt-2 text-xs">
+										Overall Score: {tabsData?.sales_rep_performance?.overall_score || 'N/A'}/100 | 
+										Stages Analyzed: {tabsData?.sales_rep_performance?.stage_performance?.length || 0} | 
+										Coaching Areas: {tabsData?.sales_rep_performance?.coaching_areas?.priorities?.length || 0}
+									</div>
+								</CardContent>
+							</Card>
+						)}
+					</TabsContent>
+
+					<TabsContent value="detailed">
+						<div id="report-controls" className="flex items-center justify-between gap-2 mb-2 print:hidden">
+							<div className="text-sm text-muted-foreground">Automatically generated report</div>
+							<div className="flex items-center gap-2">
+								<Button size="sm" variant="outline" onClick={() => window.print()}>Print</Button>
+								<Button size="sm" variant="outline" onClick={() => alert("Export stub — wire backend later")}>Export</Button>
+								<Button size="sm" variant={deckMode ? "default" : "outline"} onClick={() => setDeckMode(v => !v)}>{deckMode ? "Deck" : "Scroll"}</Button>
+							</div>
+						</div>
+						{reportError && (
+							<Card className="border-red-300 bg-red-50 text-red-700">
+								<CardContent className="pt-4 flex items-start justify-between gap-2">
+									<div>
+										<div className="text-sm font-medium">Report generation failed</div>
+										<div className="text-xs">{reportError}</div>
+									</div>
+									<Button size="sm" variant="outline" onClick={() => retryReport()}>Retry</Button>
+								</CardContent>
+							</Card>
+						)}
+						{reportLoading || !reportV3 ? (
+							<div className="flex items-center gap-2 text-sm text-muted-foreground">
+								<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+								<span>{reportStatus === 'running' || reportStatus === 'queued' ? 'Analysing your Call…' : 'Loading report…'}</span>
+							</div>
+						) : (
+							<ReportTabV3 data={reportV3 as any} deckMode={deckMode} />
+						)}
+					</TabsContent>
 
 					<TabsContent value="transcript">
 						<TranscriptViewer 
@@ -79,26 +219,6 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 							onAddSegment={addTranscriptSegment}
 							sessionStatus={session?.status}
 						/>
-					</TabsContent>
-
-					<TabsContent value="report">
-						<div id="report-controls" className="flex items-center justify-between gap-2 mb-2 print:hidden">
-							<div className="text-sm text-muted-foreground">UI only · Export/Print/Deck controls</div>
-							<div className="flex items-center gap-2">
-								<Button size="sm" variant="outline" onClick={() => window.print()}>Print</Button>
-								<Button size="sm" variant="outline" onClick={() => alert("Export stub — wire backend later")}>Export</Button>
-								<Button size="sm" variant={deckMode ? "default" : "outline"} onClick={() => setDeckMode(v => !v)}>{deckMode ? "Deck" : "Scroll"}</Button>
-							</div>
-						</div>
-						<ReportTabV3 />
-					</TabsContent>
-
-					<TabsContent value="artifacts">
-						<Card><CardContent className="pt-6">Files / Attachments (UI only)</CardContent></Card>
-					</TabsContent>
-
-					<TabsContent value="qa">
-						<Card><CardContent className="pt-6">Ask anything about this session (UI only)</CardContent></Card>
 					</TabsContent>
 				</Tabs>
 			</div>

@@ -1,0 +1,182 @@
+{
+  "analysis_type": "content_density_optimization",
+  "timestamp": "2025-09-19T13:49:44.349Z",
+  "current_state": {
+    "section_density": {
+      "p1_key_points": {
+        "total_chars": 1270,
+        "total_words": 165,
+        "avg_chars_per_item": 51,
+        "items_count": 25,
+        "density_score": 70,
+        "avg_words_per_item": 7
+      },
+      "p1_pains": {
+        "total_chars": 945,
+        "total_words": 125,
+        "avg_chars_per_item": 63,
+        "items_count": 15,
+        "density_score": 80,
+        "avg_words_per_item": 8
+      },
+      "p1_buying_signals": {
+        "total_chars": 715,
+        "total_words": 90,
+        "avg_chars_per_item": 48,
+        "items_count": 15,
+        "density_score": 70,
+        "avg_words_per_item": 6
+      },
+      "p2_high_priority": {
+        "total_chars": 620,
+        "total_words": 85,
+        "avg_chars_per_item": 41,
+        "items_count": 15,
+        "density_score": 70,
+        "avg_words_per_item": 6
+      },
+      "p2_medium_priority": {
+        "total_chars": 465,
+        "total_words": 60,
+        "avg_chars_per_item": 47,
+        "items_count": 10,
+        "density_score": 70,
+        "avg_words_per_item": 6
+      },
+      "p2_info_items": {
+        "total_chars": 905,
+        "total_words": 115,
+        "avg_chars_per_item": 45,
+        "items_count": 20,
+        "density_score": 70,
+        "avg_words_per_item": 6
+      },
+      "p3_missed_opportunities": {
+        "total_chars": 325,
+        "total_words": 45,
+        "avg_chars_per_item": 33,
+        "items_count": 10,
+        "density_score": 70,
+        "avg_words_per_item": 5
+      },
+      "p3_improvements": {
+        "total_chars": 420,
+        "total_words": 60,
+        "avg_chars_per_item": 42,
+        "items_count": 10,
+        "density_score": 70,
+        "avg_words_per_item": 6
+      },
+      "p1_exec_headline": {
+        "total_chars": 485,
+        "total_words": 75,
+        "avg_chars_per_item": 97,
+        "items_count": 5,
+        "density_score": 80,
+        "avg_words_per_item": 15
+      },
+      "p1_exec_synopsis": {
+        "total_chars": 915,
+        "total_words": 120,
+        "avg_chars_per_item": 183,
+        "items_count": 5,
+        "density_score": 90,
+        "avg_words_per_item": 24
+      },
+      "p2_context_snapshot": {
+        "total_chars": 445,
+        "total_words": 65,
+        "avg_chars_per_item": 89,
+        "items_count": 5,
+        "density_score": 80,
+        "avg_words_per_item": 13
+      },
+      "p2_short_summary": {
+        "total_chars": 410,
+        "total_words": 50,
+        "avg_chars_per_item": 82,
+        "items_count": 5,
+        "density_score": 80,
+        "avg_words_per_item": 10
+      },
+      "p3_short_reco": {
+        "total_chars": 365,
+        "total_words": 55,
+        "avg_chars_per_item": 73,
+        "items_count": 5,
+        "density_score": 80,
+        "avg_words_per_item": 11
+      },
+      "p4_takeaway": {
+        "total_chars": 555,
+        "total_words": 80,
+        "avg_chars_per_item": 111,
+        "items_count": 5,
+        "density_score": 90,
+        "avg_words_per_item": 16
+      }
+    },
+    "whitespace_issues": [],
+    "print_layout_issues": [
+      "Title Page: 100% page usage with low content",
+      "Context & Priorities: 60% page usage with low content",
+      "Stage Evaluation: 40% page usage with low content",
+      "Stage Deep Dives (6 pages): 50% page usage with very_low content",
+      "Appendix: 30% page usage with low content"
+    ]
+  },
+  "optimization_targets": {
+    "executive_sections": {
+      "p1_exec_headline": {
+        "current_avg": 97,
+        "target_range": "80-120 chars"
+      },
+      "p1_exec_synopsis": {
+        "current_avg": 183,
+        "target_range": "150-250 chars"
+      }
+    },
+    "list_sections": {
+      "p1_key_points": {
+        "current_avg": 51,
+        "target_range": "40-60 chars per item, 4-6 items"
+      },
+      "p1_pains": {
+        "current_avg": 63,
+        "target_range": "35-55 chars per item, 3-4 items"
+      },
+      "p1_buying_signals": {
+        "current_avg": 48,
+        "target_range": "30-50 chars per item, 3-4 items"
+      }
+    },
+    "narrative_sections": {
+      "p2_context_snapshot": {
+        "target_range": "200-300 chars"
+      },
+      "p2_short_summary": {
+        "target_range": "150-250 chars"
+      },
+      "p4_takeaway": {
+        "target_range": "180-280 chars"
+      }
+    }
+  },
+  "prompt_optimization_strategy": [
+    "Add specific character count targets for each section",
+    "Include minimum content density requirements",
+    "Add \"fill available space\" instructions for print optimization",
+    "Specify narrative richness levels by section importance",
+    "Add validation prompts for content length compliance"
+  ],
+  "recommendations": [
+    "Expand p2_context_snapshot from 89 to 150-250 characters",
+    "Expand p2_short_summary from 82 to 150-250 characters",
+    "Expand p4_takeaway from 111 to 150-250 characters",
+    "Expand Title Page content to fill available space",
+    "Expand Context & Priorities content to fill available space",
+    "Expand Stage Evaluation content to fill available space",
+    "Consolidate stage deep dives with richer content and tighter spacing",
+    "Expand Appendix content to fill available space"
+  ]
+}

@@ -1,0 +1,1174 @@
+{
+  "original_ai_response": "I'll analyze this sales call and provide a comprehensive report:\n\n{\n  \"tp_title\": \"Sales Discovery Call - Cloud Platform Migration\",\n  \"tp_subtitle\": \"Enterprise Infrastructure Assessment\",\n  \"tp_deal\": \"CloudTech Enterprise License - $120K ARR\",\n  \"tp_sessionId\": \"CT-2024-01-15-002\",\n  \"p1_exec_headline\": \"Highly qualified enterprise prospect with urgent migration needs and established budget.\",\n  \"p1_exec_synopsis\": \"CTO of 500-person company needs cloud migration within 6 months due to datacenter lease expiry. Strong technical alignment and budget authority confirmed.\",\n  \"p1_meta_full\": {\n    \"date\": \"2024-01-15\",\n    \"time\": \"2:00 PM EST\",\n    \"duration\": \"45 minutes\",\n    \"rep\": {\n      \"name\": \"Michael Chen\",\n      \"role\": \"Enterprise Account Executive\",\n      \"team\": \"Cloud Solutions\"\n    },\n    \"prospect\": {\n      \"name\": \"Jennifer Williams\",\n      \"role\": \"Chief Technology Officer\",\n      \"company\": \"DataFlow Industries\"\n    },\n    \"channel\": \"Video call\",\n    \"transcriptQuality\": \"Excellent - clear audio, technical discussion\"\n  },\n  \"p1_key_points\": [\n    \"Datacenter lease expires Q3 2024 - hard deadline\",\n    \"500 employees, 50TB data, complex compliance requirements\",\n    \"Budget approved $100-150K for cloud migration\",\n    \"Previous cloud vendor (AWS) had performance issues\",\n    \"Need hybrid cloud solution with on-premise backup\"\n  ],\n  \"p1_pains\": [\n    \"Urgent timeline pressure due to datacenter lease expiry\",\n    \"Complex compliance requirements (SOC2, HIPAA)\",\n    \"Previous bad experience with cloud performance\"\n  ],\n  \"p1_buying_signals\": [\n    \"Budget already approved and allocated\",\n    \"Asked for detailed technical architecture proposal\",\n    \"Wants to schedule follow-up with engineering team\"\n  ],\n  \"p1_objections_handled\": [\n    { \"label\": \"Performance concerns from previous vendor\", \"handled\": \"yes\" },\n    { \"label\": \"Compliance complexity\", \"handled\": \"partial\" }\n  ],\n  \"p1_action_items\": [\n    { \"id\": \"a1\", \"title\": \"Prepare technical architecture proposal\", \"owner\": \"Michael\", \"due\": \"48h\", \"priority\": \"High\" },\n    { \"id\": \"a2\", \"title\": \"Schedule engineering team technical deep-dive\", \"owner\": \"Michael\", \"due\": \"72h\", \"priority\": \"High\" },\n    { \"id\": \"a3\", \"title\": \"Provide compliance documentation (SOC2, HIPAA)\", \"owner\": \"Michael\", \"due\": \"24h\", \"priority\": \"High\" }\n  ],\n  \"p1_deal_health\": {\n    \"score\": 92,\n    \"rationale\": \"Urgent timeline, approved budget, technical authority, clear pain points\"\n  },\n  \"p2_context_snapshot\": \"Exceptional discovery call with technical decision maker facing urgent deadline\",\n  \"p2_high_priority\": [\n    \"Technical architecture proposal with hybrid cloud design\",\n    \"Compliance documentation and certification proof\",\n    \"Performance benchmarks vs previous AWS experience\"\n  ],\n  \"p2_medium_priority\": [\n    \"Migration timeline and project plan\",\n    \"Training and support packages\"\n  ],\n  \"p2_info_items\": [\n    \"Company size: 500 employees\",\n    \"Data volume: 50TB current, growing 20% annually\",\n    \"Compliance: SOC2 Type II, HIPAA required\",\n    \"Timeline: Must complete Q3 2024\"\n  ],\n  \"p2_risks_concerns\": [\n    { \"area\": \"Timeline pressure\", \"impact\": \"High\", \"likelihood\": \"Medium\", \"rationale\": \"Hard deadline but realistic with proper planning\" },\n    { \"area\": \"Technical complexity\", \"impact\": \"Medium\", \"likelihood\": \"Low\", \"rationale\": \"Strong technical team, good requirements clarity\" },\n    { \"area\": \"Compliance approval\", \"impact\": \"High\", \"likelihood\": \"Low\", \"rationale\": \"Well-defined requirements, established process\" }\n  ],\n  \"p2_short_summary\": \"Proceed immediately with technical proposal and compliance documentation; high-probability close\",\n  \"p3_deal_health_summary\": {\n    \"score\": 92,\n    \"status\": \"Highly Qualified - Fast Track\"\n  },\n  \"p3_meddicc\": {\n    \"metrics\": { \"value\": [\"$2M annual savings vs current datacenter\", \"50% faster deployment\", \"99.9% uptime SLA\"] },\n    \"economicBuyer\": { \"value\": \"CTO Jennifer Williams - confirmed budget authority\" },\n    \"decisionCriteria\": { \"value\": [\"Performance vs AWS\", \"Compliance certifications\", \"Migration timeline\", \"Total cost of ownership\"] },\n    \"decisionProcess\": { \"value\": \"CTO decision with engineering team technical approval\" },\n    \"identifyPain\": { \"value\": \"Urgent datacenter lease expiry with complex compliance requirements\" },\n    \"competition\": { \"value\": [\"AWS (previous negative experience)\", \"Azure\", \"Status quo (datacenter renewal)\"] },\n    \"champion\": { \"value\": \"CTO Jennifer Williams - highly engaged and supportive\" }\n  },\n  \"p3_bant\": {\n    \"rows\": [\n      { \"key\": \"Budget\", \"status\": \"Confirmed\", \"notes\": \"$100-150K approved and allocated\" },\n      { \"key\": \"Authority\", \"status\": \"Confirmed\", \"notes\": \"CTO with budget authority\" },\n      { \"key\": \"Need\", \"status\": \"Urgent\", \"notes\": \"Datacenter lease expires Q3 2024\" },\n      { \"key\": \"Timeline\", \"status\": \"Defined\", \"notes\": \"Must complete by Q3 2024\" }\n    ]\n  },\n  \"p3_missed_opportunities\": [\n    \"Could have explored additional services (monitoring, security)\",\n    \"Didn't discuss multi-year contract incentives\"\n  ],\n  \"p3_improvements\": [\n    \"Probe deeper on additional use cases beyond migration\",\n    \"Explore enterprise support and professional services needs\"\n  ],\n  \"p3_short_reco\": \"Fast-track with technical proposal and immediate follow-up meeting\",\n  \"p4_stage_eval\": [\n    { \"stage\": \"Greetings\", \"handled\": \"yes\", \"note\": \"Professional video call setup\", \"score\": 9 },\n    { \"stage\": \"Introduction\", \"handled\": \"yes\", \"note\": \"Clear agenda and time confirmation\", \"score\": 9 },\n    { \"stage\": \"Customer Success Stories\", \"handled\": \"yes\", \"note\": \"Referenced similar enterprise migrations\", \"score\": 8 },\n    { \"stage\": \"Discovery\", \"handled\": \"yes\", \"note\": \"Excellent technical discovery\", \"score\": 10 },\n    { \"stage\": \"Product Details\", \"handled\": \"yes\", \"note\": \"Technical architecture discussion\", \"score\": 9 },\n    { \"stage\": \"Trust Building\", \"handled\": \"yes\", \"note\": \"Compliance certifications and case studies\", \"score\": 9 },\n    { \"stage\": \"Objection Handling\", \"handled\": \"yes\", \"note\": \"Addressed AWS performance concerns\", \"score\": 8 },\n    { \"stage\": \"Buying‑Signal Capitalization\", \"handled\": \"yes\", \"note\": \"Confirmed budget and timeline urgency\", \"score\": 9 },\n    { \"stage\": \"Negotiation\", \"handled\": \"no\", \"note\": \"Focused on technical fit first\", \"score\": 0 },\n    { \"stage\": \"Timeline\", \"handled\": \"yes\", \"note\": \"Clear next steps and urgency\", \"score\": 8 },\n    { \"stage\": \"Closing / Registration\", \"handled\": \"partial\", \"note\": \"Technical follow-up scheduled\", \"score\": 6 }\n  ],\n  \"p4_pivotal_points\": [\n    { \"ts\": \"15:30\", \"reason\": \"Budget confirmation\", \"quote\": \"We have $100-150K approved specifically for this migration project\" },\n    { \"ts\": \"32:45\", \"reason\": \"Timeline urgency revealed\", \"quote\": \"Our datacenter lease expires end of Q3, so we absolutely must have this completed by then\" }\n  ],\n  \"p4_takeaway\": \"Exceptional prospect with all BANT criteria met; focus on technical excellence and fast execution\",\n  \"p5_stage_a\": [{ \"stageName\": \"Greetings\", \"objective\": \"Professional opening\", \"indicators\": [\"Video setup\", \"Agenda setting\"], \"observed\": [\"Professional setup\", \"Clear agenda\"], \"score\": 90, \"weight\": 10, \"mistakes\": [], \"whatToSay\": [\"Perfect execution\"], \"positives\": [\"Professional approach\"], \"coaching\": [\"Continue this standard\"], \"quickFix\": \"Already excellent\" }],\n  \"p5_stage_b\": [{ \"stageName\": \"Introduction\", \"objective\": \"Set context\", \"indicators\": [\"Time confirmation\", \"Role clarity\"], \"observed\": [\"Time confirmed\", \"Roles clear\"], \"score\": 90, \"weight\": 10, \"mistakes\": [], \"whatToSay\": [\"Well executed\"], \"positives\": [\"Clear communication\"], \"coaching\": [\"Maintain this approach\"], \"quickFix\": \"Already strong\" }],\n  \"p6_stage_c\": [{ \"stageName\": \"Customer Success\", \"objective\": \"Build credibility\", \"indicators\": [\"Relevant examples\"], \"observed\": [\"Similar migration stories\"], \"score\": 80, \"weight\": 15, \"mistakes\": [], \"whatToSay\": [\"Good relevance\"], \"positives\": [\"Industry-specific examples\"], \"coaching\": [\"Continue with proof\"], \"quickFix\": \"Well done\" }],\n  \"p6_stage_d\": [{ \"stageName\": \"Discovery\", \"objective\": \"Technical requirements\", \"indicators\": [\"Technical depth\"], \"observed\": [\"Excellent technical discovery\"], \"score\": 100, \"weight\": 25, \"mistakes\": [], \"whatToSay\": [\"Outstanding discovery\"], \"positives\": [\"Technical depth\"], \"coaching\": [\"Model for others\"], \"quickFix\": \"Perfect execution\" }],\n  \"p7_stage_e\": [{ \"stageName\": \"Product Details\", \"objective\": \"Technical alignment\", \"indicators\": [\"Architecture discussion\"], \"observed\": [\"Detailed technical discussion\"], \"score\": 90, \"weight\": 15, \"mistakes\": [], \"whatToSay\": [\"Strong technical alignment\"], \"positives\": [\"Architecture clarity\"], \"coaching\": [\"Continue technical focus\"], \"quickFix\": \"Excellent\" }],\n  \"p7_stage_f\": [{ \"stageName\": \"Trust Building\", \"objective\": \"Credibility establishment\", \"indicators\": [\"Compliance proof\"], \"observed\": [\"Certifications discussed\"], \"score\": 90, \"weight\": 15, \"mistakes\": [], \"whatToSay\": [\"Strong credibility\"], \"positives\": [\"Compliance expertise\"], \"coaching\": [\"Continue with proof\"], \"quickFix\": \"Well executed\" }],\n  \"p8_stage_g\": [{ \"stageName\": \"Objection Handling\", \"objective\": \"Address concerns\", \"indicators\": [\"Previous vendor issues\"], \"observed\": [\"AWS concerns addressed\"], \"score\": 80, \"weight\": 10, \"mistakes\": [], \"whatToSay\": [\"Good resolution\"], \"positives\": [\"Specific examples\"], \"coaching\": [\"Differentiation clear\"], \"quickFix\": \"Well handled\" }],\n  \"p8_stage_h\": [{ \"stageName\": \"Buying Signals\", \"objective\": \"Recognize interest\", \"indicators\": [\"Budget confirmation\"], \"observed\": [\"Strong buying signals\"], \"score\": 90, \"weight\": 10, \"mistakes\": [], \"whatToSay\": [\"Excellent recognition\"], \"positives\": [\"Signal capture\"], \"coaching\": [\"Continue recognition\"], \"quickFix\": \"Outstanding\" }],\n  \"p9_stage_i\": [{ \"stageName\": \"Negotiation\", \"objective\": \"Value discussion\", \"indicators\": [\"Price discussion\"], \"observed\": [\"No pricing yet\"], \"score\": 0, \"weight\": 5, \"mistakes\": [\"Technical first approach\"], \"whatToSay\": [\"Appropriate for technical call\"], \"positives\": [], \"coaching\": [\"Good sequencing\"], \"quickFix\": \"Correct approach\" }],\n  \"p9_stage_j\": [{ \"stageName\": \"Timeline\", \"objective\": \"Next steps\", \"indicators\": [\"Follow-up clarity\"], \"observed\": [\"Clear next steps\"], \"score\": 80, \"weight\": 5, \"mistakes\": [], \"whatToSay\": [\"Good follow-up\"], \"positives\": [\"Clear timeline\"], \"coaching\": [\"Continue structure\"], \"quickFix\": \"Well planned\" }],\n  \"p10_stage_k\": [{ \"stageName\": \"Closing\", \"objective\": \"Technical commitment\", \"indicators\": [\"Follow-up meetings\"], \"observed\": [\"Technical meeting scheduled\"], \"score\": 60, \"weight\": 5, \"mistakes\": [], \"whatToSay\": [\"Appropriate for discovery\"], \"positives\": [\"Meeting scheduled\"], \"coaching\": [\"Good progression\"], \"quickFix\": \"Good approach\" }],\n  \"p10_stage_l\": [{ \"stageName\": \"Handoff\", \"objective\": \"Next steps clarity\", \"indicators\": [\"Clear actions\"], \"observed\": [\"Action items defined\"], \"score\": 80, \"weight\": 5, \"mistakes\": [], \"whatToSay\": [\"Clear handoff\"], \"positives\": [\"Defined actions\"], \"coaching\": [\"Continue clarity\"], \"quickFix\": \"Well executed\" }],\n  \"apx_scoring_rubric\": [\n    \"90-100%: Exceptional execution - model for other reps\",\n    \"80-89%: Strong execution with minor optimization opportunities\",\n    \"70-79%: Good execution meeting core requirements\",\n    \"60-69%: Adequate execution with improvement areas\"\n  ],\n  \"apx_data_flags\": [\n    \"High-quality technical discussion\",\n    \"Clear business requirements captured\",\n    \"Strong buying signals throughout call\"\n  ]\n}\n\nThis analysis shows an exceptionally well-qualified prospect with urgent needs and confirmed budget.",
+  "parsed_json": {
+    "tp_title": "Sales Discovery Call - Cloud Platform Migration",
+    "tp_subtitle": "Enterprise Infrastructure Assessment",
+    "tp_deal": "CloudTech Enterprise License - $120K ARR",
+    "tp_sessionId": "CT-2024-01-15-002",
+    "p1_exec_headline": "Highly qualified enterprise prospect with urgent migration needs and established budget.",
+    "p1_exec_synopsis": "CTO of 500-person company needs cloud migration within 6 months due to datacenter lease expiry. Strong technical alignment and budget authority confirmed.",
+    "p1_meta_full": {
+      "date": "2024-01-15",
+      "time": "2:00 PM EST",
+      "duration": "45 minutes",
+      "rep": {
+        "name": "Michael Chen",
+        "role": "Enterprise Account Executive",
+        "team": "Cloud Solutions"
+      },
+      "prospect": {
+        "name": "Jennifer Williams",
+        "role": "Chief Technology Officer",
+        "company": "DataFlow Industries"
+      },
+      "channel": "Video call",
+      "transcriptQuality": "Excellent - clear audio, technical discussion"
+    },
+    "p1_key_points": [
+      "Datacenter lease expires Q3 2024 - hard deadline",
+      "500 employees, 50TB data, complex compliance requirements",
+      "Budget approved $100-150K for cloud migration",
+      "Previous cloud vendor (AWS) had performance issues",
+      "Need hybrid cloud solution with on-premise backup"
+    ],
+    "p1_pains": [
+      "Urgent timeline pressure due to datacenter lease expiry",
+      "Complex compliance requirements (SOC2, HIPAA)",
+      "Previous bad experience with cloud performance"
+    ],
+    "p1_buying_signals": [
+      "Budget already approved and allocated",
+      "Asked for detailed technical architecture proposal",
+      "Wants to schedule follow-up with engineering team"
+    ],
+    "p1_objections_handled": [
+      {
+        "label": "Performance concerns from previous vendor",
+        "handled": "yes"
+      },
+      {
+        "label": "Compliance complexity",
+        "handled": "partial"
+      }
+    ],
+    "p1_action_items": [
+      {
+        "id": "a1",
+        "title": "Prepare technical architecture proposal",
+        "owner": "Michael",
+        "due": "48h",
+        "priority": "High"
+      },
+      {
+        "id": "a2",
+        "title": "Schedule engineering team technical deep-dive",
+        "owner": "Michael",
+        "due": "72h",
+        "priority": "High"
+      },
+      {
+        "id": "a3",
+        "title": "Provide compliance documentation (SOC2, HIPAA)",
+        "owner": "Michael",
+        "due": "24h",
+        "priority": "High"
+      }
+    ],
+    "p1_deal_health": {
+      "score": 92,
+      "rationale": "Urgent timeline, approved budget, technical authority, clear pain points"
+    },
+    "p2_context_snapshot": "Exceptional discovery call with technical decision maker facing urgent deadline",
+    "p2_high_priority": [
+      "Technical architecture proposal with hybrid cloud design",
+      "Compliance documentation and certification proof",
+      "Performance benchmarks vs previous AWS experience"
+    ],
+    "p2_medium_priority": [
+      "Migration timeline and project plan",
+      "Training and support packages"
+    ],
+    "p2_info_items": [
+      "Company size: 500 employees",
+      "Data volume: 50TB current, growing 20% annually",
+      "Compliance: SOC2 Type II, HIPAA required",
+      "Timeline: Must complete Q3 2024"
+    ],
+    "p2_risks_concerns": [
+      {
+        "area": "Timeline pressure",
+        "impact": "High",
+        "likelihood": "Medium",
+        "rationale": "Hard deadline but realistic with proper planning"
+      },
+      {
+        "area": "Technical complexity",
+        "impact": "Medium",
+        "likelihood": "Low",
+        "rationale": "Strong technical team, good requirements clarity"
+      },
+      {
+        "area": "Compliance approval",
+        "impact": "High",
+        "likelihood": "Low",
+        "rationale": "Well-defined requirements, established process"
+      }
+    ],
+    "p2_short_summary": "Proceed immediately with technical proposal and compliance documentation; high-probability close",
+    "p3_deal_health_summary": {
+      "score": 92,
+      "status": "Highly Qualified - Fast Track"
+    },
+    "p3_meddicc": {
+      "metrics": {
+        "value": [
+          "$2M annual savings vs current datacenter",
+          "50% faster deployment",
+          "99.9% uptime SLA"
+        ]
+      },
+      "economicBuyer": {
+        "value": "CTO Jennifer Williams - confirmed budget authority"
+      },
+      "decisionCriteria": {
+        "value": [
+          "Performance vs AWS",
+          "Compliance certifications",
+          "Migration timeline",
+          "Total cost of ownership"
+        ]
+      },
+      "decisionProcess": {
+        "value": "CTO decision with engineering team technical approval"
+      },
+      "identifyPain": {
+        "value": "Urgent datacenter lease expiry with complex compliance requirements"
+      },
+      "competition": {
+        "value": [
+          "AWS (previous negative experience)",
+          "Azure",
+          "Status quo (datacenter renewal)"
+        ]
+      },
+      "champion": {
+        "value": "CTO Jennifer Williams - highly engaged and supportive"
+      }
+    },
+    "p3_bant": {
+      "rows": [
+        {
+          "key": "Budget",
+          "status": "Confirmed",
+          "notes": "$100-150K approved and allocated"
+        },
+        {
+          "key": "Authority",
+          "status": "Confirmed",
+          "notes": "CTO with budget authority"
+        },
+        {
+          "key": "Need",
+          "status": "Urgent",
+          "notes": "Datacenter lease expires Q3 2024"
+        },
+        {
+          "key": "Timeline",
+          "status": "Defined",
+          "notes": "Must complete by Q3 2024"
+        }
+      ]
+    },
+    "p3_missed_opportunities": [
+      "Could have explored additional services (monitoring, security)",
+      "Didn't discuss multi-year contract incentives"
+    ],
+    "p3_improvements": [
+      "Probe deeper on additional use cases beyond migration",
+      "Explore enterprise support and professional services needs"
+    ],
+    "p3_short_reco": "Fast-track with technical proposal and immediate follow-up meeting",
+    "p4_stage_eval": [
+      {
+        "stage": "Greetings",
+        "handled": "yes",
+        "note": "Professional video call setup",
+        "score": 9
+      },
+      {
+        "stage": "Introduction",
+        "handled": "yes",
+        "note": "Clear agenda and time confirmation",
+        "score": 9
+      },
+      {
+        "stage": "Customer Success Stories",
+        "handled": "yes",
+        "note": "Referenced similar enterprise migrations",
+        "score": 8
+      },
+      {
+        "stage": "Discovery",
+        "handled": "yes",
+        "note": "Excellent technical discovery",
+        "score": 10
+      },
+      {
+        "stage": "Product Details",
+        "handled": "yes",
+        "note": "Technical architecture discussion",
+        "score": 9
+      },
+      {
+        "stage": "Trust Building",
+        "handled": "yes",
+        "note": "Compliance certifications and case studies",
+        "score": 9
+      },
+      {
+        "stage": "Objection Handling",
+        "handled": "yes",
+        "note": "Addressed AWS performance concerns",
+        "score": 8
+      },
+      {
+        "stage": "Buying‑Signal Capitalization",
+        "handled": "yes",
+        "note": "Confirmed budget and timeline urgency",
+        "score": 9
+      },
+      {
+        "stage": "Negotiation",
+        "handled": "no",
+        "note": "Focused on technical fit first",
+        "score": 0
+      },
+      {
+        "stage": "Timeline",
+        "handled": "yes",
+        "note": "Clear next steps and urgency",
+        "score": 8
+      },
+      {
+        "stage": "Closing / Registration",
+        "handled": "partial",
+        "note": "Technical follow-up scheduled",
+        "score": 6
+      }
+    ],
+    "p4_pivotal_points": [
+      {
+        "ts": "15:30",
+        "reason": "Budget confirmation",
+        "quote": "We have $100-150K approved specifically for this migration project"
+      },
+      {
+        "ts": "32:45",
+        "reason": "Timeline urgency revealed",
+        "quote": "Our datacenter lease expires end of Q3, so we absolutely must have this completed by then"
+      }
+    ],
+    "p4_takeaway": "Exceptional prospect with all BANT criteria met; focus on technical excellence and fast execution",
+    "p5_stage_a": [
+      {
+        "stageName": "Greetings",
+        "objective": "Professional opening",
+        "indicators": [
+          "Video setup",
+          "Agenda setting"
+        ],
+        "observed": [
+          "Professional setup",
+          "Clear agenda"
+        ],
+        "score": 90,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Perfect execution"
+        ],
+        "positives": [
+          "Professional approach"
+        ],
+        "coaching": [
+          "Continue this standard"
+        ],
+        "quickFix": "Already excellent"
+      }
+    ],
+    "p5_stage_b": [
+      {
+        "stageName": "Introduction",
+        "objective": "Set context",
+        "indicators": [
+          "Time confirmation",
+          "Role clarity"
+        ],
+        "observed": [
+          "Time confirmed",
+          "Roles clear"
+        ],
+        "score": 90,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Well executed"
+        ],
+        "positives": [
+          "Clear communication"
+        ],
+        "coaching": [
+          "Maintain this approach"
+        ],
+        "quickFix": "Already strong"
+      }
+    ],
+    "p6_stage_c": [
+      {
+        "stageName": "Customer Success",
+        "objective": "Build credibility",
+        "indicators": [
+          "Relevant examples"
+        ],
+        "observed": [
+          "Similar migration stories"
+        ],
+        "score": 80,
+        "weight": 15,
+        "mistakes": [],
+        "whatToSay": [
+          "Good relevance"
+        ],
+        "positives": [
+          "Industry-specific examples"
+        ],
+        "coaching": [
+          "Continue with proof"
+        ],
+        "quickFix": "Well done"
+      }
+    ],
+    "p6_stage_d": [
+      {
+        "stageName": "Discovery",
+        "objective": "Technical requirements",
+        "indicators": [
+          "Technical depth"
+        ],
+        "observed": [
+          "Excellent technical discovery"
+        ],
+        "score": 100,
+        "weight": 25,
+        "mistakes": [],
+        "whatToSay": [
+          "Outstanding discovery"
+        ],
+        "positives": [
+          "Technical depth"
+        ],
+        "coaching": [
+          "Model for others"
+        ],
+        "quickFix": "Perfect execution"
+      }
+    ],
+    "p7_stage_e": [
+      {
+        "stageName": "Product Details",
+        "objective": "Technical alignment",
+        "indicators": [
+          "Architecture discussion"
+        ],
+        "observed": [
+          "Detailed technical discussion"
+        ],
+        "score": 90,
+        "weight": 15,
+        "mistakes": [],
+        "whatToSay": [
+          "Strong technical alignment"
+        ],
+        "positives": [
+          "Architecture clarity"
+        ],
+        "coaching": [
+          "Continue technical focus"
+        ],
+        "quickFix": "Excellent"
+      }
+    ],
+    "p7_stage_f": [
+      {
+        "stageName": "Trust Building",
+        "objective": "Credibility establishment",
+        "indicators": [
+          "Compliance proof"
+        ],
+        "observed": [
+          "Certifications discussed"
+        ],
+        "score": 90,
+        "weight": 15,
+        "mistakes": [],
+        "whatToSay": [
+          "Strong credibility"
+        ],
+        "positives": [
+          "Compliance expertise"
+        ],
+        "coaching": [
+          "Continue with proof"
+        ],
+        "quickFix": "Well executed"
+      }
+    ],
+    "p8_stage_g": [
+      {
+        "stageName": "Objection Handling",
+        "objective": "Address concerns",
+        "indicators": [
+          "Previous vendor issues"
+        ],
+        "observed": [
+          "AWS concerns addressed"
+        ],
+        "score": 80,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Good resolution"
+        ],
+        "positives": [
+          "Specific examples"
+        ],
+        "coaching": [
+          "Differentiation clear"
+        ],
+        "quickFix": "Well handled"
+      }
+    ],
+    "p8_stage_h": [
+      {
+        "stageName": "Buying Signals",
+        "objective": "Recognize interest",
+        "indicators": [
+          "Budget confirmation"
+        ],
+        "observed": [
+          "Strong buying signals"
+        ],
+        "score": 90,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Excellent recognition"
+        ],
+        "positives": [
+          "Signal capture"
+        ],
+        "coaching": [
+          "Continue recognition"
+        ],
+        "quickFix": "Outstanding"
+      }
+    ],
+    "p9_stage_i": [
+      {
+        "stageName": "Negotiation",
+        "objective": "Value discussion",
+        "indicators": [
+          "Price discussion"
+        ],
+        "observed": [
+          "No pricing yet"
+        ],
+        "score": 0,
+        "weight": 5,
+        "mistakes": [
+          "Technical first approach"
+        ],
+        "whatToSay": [
+          "Appropriate for technical call"
+        ],
+        "positives": [],
+        "coaching": [
+          "Good sequencing"
+        ],
+        "quickFix": "Correct approach"
+      }
+    ],
+    "p9_stage_j": [
+      {
+        "stageName": "Timeline",
+        "objective": "Next steps",
+        "indicators": [
+          "Follow-up clarity"
+        ],
+        "observed": [
+          "Clear next steps"
+        ],
+        "score": 80,
+        "weight": 5,
+        "mistakes": [],
+        "whatToSay": [
+          "Good follow-up"
+        ],
+        "positives": [
+          "Clear timeline"
+        ],
+        "coaching": [
+          "Continue structure"
+        ],
+        "quickFix": "Well planned"
+      }
+    ],
+    "p10_stage_k": [
+      {
+        "stageName": "Closing",
+        "objective": "Technical commitment",
+        "indicators": [
+          "Follow-up meetings"
+        ],
+        "observed": [
+          "Technical meeting scheduled"
+        ],
+        "score": 60,
+        "weight": 5,
+        "mistakes": [],
+        "whatToSay": [
+          "Appropriate for discovery"
+        ],
+        "positives": [
+          "Meeting scheduled"
+        ],
+        "coaching": [
+          "Good progression"
+        ],
+        "quickFix": "Good approach"
+      }
+    ],
+    "p10_stage_l": [
+      {
+        "stageName": "Handoff",
+        "objective": "Next steps clarity",
+        "indicators": [
+          "Clear actions"
+        ],
+        "observed": [
+          "Action items defined"
+        ],
+        "score": 80,
+        "weight": 5,
+        "mistakes": [],
+        "whatToSay": [
+          "Clear handoff"
+        ],
+        "positives": [
+          "Defined actions"
+        ],
+        "coaching": [
+          "Continue clarity"
+        ],
+        "quickFix": "Well executed"
+      }
+    ],
+    "apx_scoring_rubric": [
+      "90-100%: Exceptional execution - model for other reps",
+      "80-89%: Strong execution with minor optimization opportunities",
+      "70-79%: Good execution meeting core requirements",
+      "60-69%: Adequate execution with improvement areas"
+    ],
+    "apx_data_flags": [
+      "High-quality technical discussion",
+      "Clear business requirements captured",
+      "Strong buying signals throughout call"
+    ]
+  },
+  "normalized_report": {
+    "tp_title": "Sales Discovery Call - Cloud Platform Migration",
+    "tp_subtitle": "Enterprise Infrastructure Assessment",
+    "tp_deal": "CloudTech Enterprise License - $120K ARR",
+    "tp_sessionId": "CT-2024-01-15-002",
+    "p1_exec_headline": "Highly qualified enterprise prospect with urgent migration needs and established budget.",
+    "p1_exec_synopsis": "CTO of 500-person company needs cloud migration within 6 months due to datacenter lease expiry. Strong technical alignment and budget authority confirmed.",
+    "p1_meta_full": {
+      "date": "2024-01-15",
+      "time": "2:00 PM EST",
+      "duration": "45 minutes",
+      "rep": {
+        "name": "Michael Chen",
+        "role": "Enterprise Account Executive",
+        "team": "Cloud Solutions"
+      },
+      "prospect": {
+        "name": "Jennifer Williams",
+        "role": "Chief Technology Officer",
+        "company": "DataFlow Industries"
+      },
+      "channel": "Video call",
+      "transcriptQuality": "Excellent - clear audio, technical discussion"
+    },
+    "p1_key_points": [
+      "Datacenter lease expires Q3 2024 - hard deadline",
+      "500 employees, 50TB data, complex compliance requirements",
+      "Budget approved $100-150K for cloud migration",
+      "Previous cloud vendor (AWS) had performance issues",
+      "Need hybrid cloud solution with on-premise backup"
+    ],
+    "p1_pains": [
+      "Urgent timeline pressure due to datacenter lease expiry",
+      "Complex compliance requirements (SOC2, HIPAA)",
+      "Previous bad experience with cloud performance"
+    ],
+    "p1_buying_signals": [
+      "Budget already approved and allocated",
+      "Asked for detailed technical architecture proposal",
+      "Wants to schedule follow-up with engineering team"
+    ],
+    "p1_objections_handled": [
+      {
+        "label": "Performance concerns from previous vendor",
+        "handled": "yes"
+      },
+      {
+        "label": "Compliance complexity",
+        "handled": "partial"
+      }
+    ],
+    "p1_action_items": [
+      {
+        "id": "a1",
+        "title": "Prepare technical architecture proposal",
+        "owner": "Michael",
+        "due": "48h",
+        "priority": "High"
+      },
+      {
+        "id": "a2",
+        "title": "Schedule engineering team technical deep-dive",
+        "owner": "Michael",
+        "due": "72h",
+        "priority": "High"
+      },
+      {
+        "id": "a3",
+        "title": "Provide compliance documentation (SOC2, HIPAA)",
+        "owner": "Michael",
+        "due": "24h",
+        "priority": "High"
+      }
+    ],
+    "p1_deal_health": {
+      "score": 92,
+      "rationale": "Urgent timeline, approved budget, technical authority, clear pain points"
+    },
+    "p2_context_snapshot": "Exceptional discovery call with technical decision maker facing urgent deadline",
+    "p2_high_priority": [
+      "Technical architecture proposal with hybrid cloud design",
+      "Compliance documentation and certification proof",
+      "Performance benchmarks vs previous AWS experience"
+    ],
+    "p2_medium_priority": [
+      "Migration timeline and project plan",
+      "Training and support packages"
+    ],
+    "p2_info_items": [
+      "Company size: 500 employees",
+      "Data volume: 50TB current, growing 20% annually",
+      "Compliance: SOC2 Type II, HIPAA required",
+      "Timeline: Must complete Q3 2024"
+    ],
+    "p2_risks_concerns": [
+      {
+        "area": "Timeline pressure",
+        "impact": "High",
+        "likelihood": "Medium",
+        "rationale": "Hard deadline but realistic with proper planning"
+      },
+      {
+        "area": "Technical complexity",
+        "impact": "Medium",
+        "likelihood": "Low",
+        "rationale": "Strong technical team, good requirements clarity"
+      },
+      {
+        "area": "Compliance approval",
+        "impact": "High",
+        "likelihood": "Low",
+        "rationale": "Well-defined requirements, established process"
+      }
+    ],
+    "p2_short_summary": "Proceed immediately with technical proposal and compliance documentation; high-probability close",
+    "p3_deal_health_summary": {
+      "score": 92,
+      "status": "Highly Qualified - Fast Track"
+    },
+    "p3_meddicc": {
+      "metrics": {
+        "value": [
+          "$2M annual savings vs current datacenter",
+          "50% faster deployment",
+          "99.9% uptime SLA"
+        ]
+      },
+      "economicBuyer": {
+        "value": "CTO Jennifer Williams - confirmed budget authority"
+      },
+      "decisionCriteria": {
+        "value": [
+          "Performance vs AWS",
+          "Compliance certifications",
+          "Migration timeline",
+          "Total cost of ownership"
+        ]
+      },
+      "decisionProcess": {
+        "value": "CTO decision with engineering team technical approval"
+      },
+      "identifyPain": {
+        "value": "Urgent datacenter lease expiry with complex compliance requirements"
+      },
+      "competition": {
+        "value": [
+          "AWS (previous negative experience)",
+          "Azure",
+          "Status quo (datacenter renewal)"
+        ]
+      },
+      "champion": {
+        "value": "CTO Jennifer Williams - highly engaged and supportive"
+      }
+    },
+    "p3_bant": {
+      "rows": [
+        {
+          "key": "Budget",
+          "status": "Confirmed",
+          "notes": "$100-150K approved and allocated"
+        },
+        {
+          "key": "Authority",
+          "status": "Confirmed",
+          "notes": "CTO with budget authority"
+        },
+        {
+          "key": "Need",
+          "status": "Urgent",
+          "notes": "Datacenter lease expires Q3 2024"
+        },
+        {
+          "key": "Timeline",
+          "status": "Defined",
+          "notes": "Must complete by Q3 2024"
+        }
+      ]
+    },
+    "p3_missed_opportunities": [
+      "Could have explored additional services (monitoring, security)",
+      "Didn't discuss multi-year contract incentives"
+    ],
+    "p3_improvements": [
+      "Probe deeper on additional use cases beyond migration",
+      "Explore enterprise support and professional services needs"
+    ],
+    "p3_short_reco": "Fast-track with technical proposal and immediate follow-up meeting",
+    "p4_stage_eval": [
+      {
+        "stage": "Greetings",
+        "handled": "yes",
+        "note": "Professional video call setup",
+        "score": 9
+      },
+      {
+        "stage": "Introduction",
+        "handled": "yes",
+        "note": "Clear agenda and time confirmation",
+        "score": 9
+      },
+      {
+        "stage": "Customer Success Stories",
+        "handled": "yes",
+        "note": "Referenced similar enterprise migrations",
+        "score": 8
+      },
+      {
+        "stage": "Discovery",
+        "handled": "yes",
+        "note": "Excellent technical discovery",
+        "score": 10
+      },
+      {
+        "stage": "Product Details",
+        "handled": "yes",
+        "note": "Technical architecture discussion",
+        "score": 9
+      },
+      {
+        "stage": "Trust Building",
+        "handled": "yes",
+        "note": "Compliance certifications and case studies",
+        "score": 9
+      },
+      {
+        "stage": "Objection Handling",
+        "handled": "yes",
+        "note": "Addressed AWS performance concerns",
+        "score": 8
+      },
+      {
+        "stage": "Buying‑Signal Capitalization",
+        "handled": "yes",
+        "note": "Confirmed budget and timeline urgency",
+        "score": 9
+      },
+      {
+        "stage": "Negotiation",
+        "handled": "no",
+        "note": "Focused on technical fit first",
+        "score": 0
+      },
+      {
+        "stage": "Timeline",
+        "handled": "yes",
+        "note": "Clear next steps and urgency",
+        "score": 8
+      },
+      {
+        "stage": "Closing / Registration",
+        "handled": "partial",
+        "note": "Technical follow-up scheduled",
+        "score": 6
+      }
+    ],
+    "p4_pivotal_points": [
+      {
+        "ts": "15:30",
+        "reason": "Budget confirmation",
+        "quote": "We have $100-150K approved specifically for this migration project"
+      },
+      {
+        "ts": "32:45",
+        "reason": "Timeline urgency revealed",
+        "quote": "Our datacenter lease expires end of Q3, so we absolutely must have this completed by then"
+      }
+    ],
+    "p4_takeaway": "Exceptional prospect with all BANT criteria met; focus on technical excellence and fast execution",
+    "p5_stage_a": [
+      {
+        "stageName": "Greetings",
+        "objective": "Professional opening",
+        "indicators": [
+          "Video setup",
+          "Agenda setting"
+        ],
+        "observed": [
+          "Professional setup",
+          "Clear agenda"
+        ],
+        "score": 90,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Perfect execution"
+        ],
+        "positives": [
+          "Professional approach"
+        ],
+        "coaching": [
+          "Continue this standard"
+        ],
+        "quickFix": "Already excellent"
+      }
+    ],
+    "p5_stage_b": [
+      {
+        "stageName": "Introduction",
+        "objective": "Set context",
+        "indicators": [
+          "Time confirmation",
+          "Role clarity"
+        ],
+        "observed": [
+          "Time confirmed",
+          "Roles clear"
+        ],
+        "score": 90,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Well executed"
+        ],
+        "positives": [
+          "Clear communication"
+        ],
+        "coaching": [
+          "Maintain this approach"
+        ],
+        "quickFix": "Already strong"
+      }
+    ],
+    "p6_stage_c": [
+      {
+        "stageName": "Customer Success",
+        "objective": "Build credibility",
+        "indicators": [
+          "Relevant examples"
+        ],
+        "observed": [
+          "Similar migration stories"
+        ],
+        "score": 80,
+        "weight": 15,
+        "mistakes": [],
+        "whatToSay": [
+          "Good relevance"
+        ],
+        "positives": [
+          "Industry-specific examples"
+        ],
+        "coaching": [
+          "Continue with proof"
+        ],
+        "quickFix": "Well done"
+      }
+    ],
+    "p6_stage_d": [
+      {
+        "stageName": "Discovery",
+        "objective": "Technical requirements",
+        "indicators": [
+          "Technical depth"
+        ],
+        "observed": [
+          "Excellent technical discovery"
+        ],
+        "score": 100,
+        "weight": 25,
+        "mistakes": [],
+        "whatToSay": [
+          "Outstanding discovery"
+        ],
+        "positives": [
+          "Technical depth"
+        ],
+        "coaching": [
+          "Model for others"
+        ],
+        "quickFix": "Perfect execution"
+      }
+    ],
+    "p7_stage_e": [
+      {
+        "stageName": "Product Details",
+        "objective": "Technical alignment",
+        "indicators": [
+          "Architecture discussion"
+        ],
+        "observed": [
+          "Detailed technical discussion"
+        ],
+        "score": 90,
+        "weight": 15,
+        "mistakes": [],
+        "whatToSay": [
+          "Strong technical alignment"
+        ],
+        "positives": [
+          "Architecture clarity"
+        ],
+        "coaching": [
+          "Continue technical focus"
+        ],
+        "quickFix": "Excellent"
+      }
+    ],
+    "p7_stage_f": [
+      {
+        "stageName": "Trust Building",
+        "objective": "Credibility establishment",
+        "indicators": [
+          "Compliance proof"
+        ],
+        "observed": [
+          "Certifications discussed"
+        ],
+        "score": 90,
+        "weight": 15,
+        "mistakes": [],
+        "whatToSay": [
+          "Strong credibility"
+        ],
+        "positives": [
+          "Compliance expertise"
+        ],
+        "coaching": [
+          "Continue with proof"
+        ],
+        "quickFix": "Well executed"
+      }
+    ],
+    "p8_stage_g": [
+      {
+        "stageName": "Objection Handling",
+        "objective": "Address concerns",
+        "indicators": [
+          "Previous vendor issues"
+        ],
+        "observed": [
+          "AWS concerns addressed"
+        ],
+        "score": 80,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Good resolution"
+        ],
+        "positives": [
+          "Specific examples"
+        ],
+        "coaching": [
+          "Differentiation clear"
+        ],
+        "quickFix": "Well handled"
+      }
+    ],
+    "p8_stage_h": [
+      {
+        "stageName": "Buying Signals",
+        "objective": "Recognize interest",
+        "indicators": [
+          "Budget confirmation"
+        ],
+        "observed": [
+          "Strong buying signals"
+        ],
+        "score": 90,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Excellent recognition"
+        ],
+        "positives": [
+          "Signal capture"
+        ],
+        "coaching": [
+          "Continue recognition"
+        ],
+        "quickFix": "Outstanding"
+      }
+    ],
+    "p9_stage_i": [
+      {
+        "stageName": "Negotiation",
+        "objective": "Value discussion",
+        "indicators": [
+          "Price discussion"
+        ],
+        "observed": [
+          "No pricing yet"
+        ],
+        "score": 0,
+        "weight": 5,
+        "mistakes": [
+          "Technical first approach"
+        ],
+        "whatToSay": [
+          "Appropriate for technical call"
+        ],
+        "positives": [],
+        "coaching": [
+          "Good sequencing"
+        ],
+        "quickFix": "Correct approach"
+      }
+    ],
+    "p9_stage_j": [
+      {
+        "stageName": "Timeline",
+        "objective": "Next steps",
+        "indicators": [
+          "Follow-up clarity"
+        ],
+        "observed": [
+          "Clear next steps"
+        ],
+        "score": 80,
+        "weight": 5,
+        "mistakes": [],
+        "whatToSay": [
+          "Good follow-up"
+        ],
+        "positives": [
+          "Clear timeline"
+        ],
+        "coaching": [
+          "Continue structure"
+        ],
+        "quickFix": "Well planned"
+      }
+    ],
+    "p10_stage_k": [
+      {
+        "stageName": "Closing",
+        "objective": "Technical commitment",
+        "indicators": [
+          "Follow-up meetings"
+        ],
+        "observed": [
+          "Technical meeting scheduled"
+        ],
+        "score": 60,
+        "weight": 5,
+        "mistakes": [],
+        "whatToSay": [
+          "Appropriate for discovery"
+        ],
+        "positives": [
+          "Meeting scheduled"
+        ],
+        "coaching": [
+          "Good progression"
+        ],
+        "quickFix": "Good approach"
+      }
+    ],
+    "p10_stage_l": [
+      {
+        "stageName": "Handoff",
+        "objective": "Next steps clarity",
+        "indicators": [
+          "Clear actions"
+        ],
+        "observed": [
+          "Action items defined"
+        ],
+        "score": 80,
+        "weight": 5,
+        "mistakes": [],
+        "whatToSay": [
+          "Clear handoff"
+        ],
+        "positives": [
+          "Defined actions"
+        ],
+        "coaching": [
+          "Continue clarity"
+        ],
+        "quickFix": "Well executed"
+      }
+    ],
+    "apx_scoring_rubric": [
+      "90-100%: Exceptional execution - model for other reps",
+      "80-89%: Strong execution with minor optimization opportunities",
+      "70-79%: Good execution meeting core requirements",
+      "60-69%: Adequate execution with improvement areas"
+    ],
+    "apx_data_flags": [
+      "High-quality technical discussion",
+      "Clear business requirements captured",
+      "Strong buying signals throughout call"
+    ]
+  },
+  "test_timestamp": "2025-09-19T12:41:00.324Z"
+}

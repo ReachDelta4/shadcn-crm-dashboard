@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { LeadsRepository } from '@/server/repositories/leads'
+import { convertLeadToCustomerService } from '@/server/services/lead-conversion'
 
 const leadUpdateSchema = z.object({
 	full_name: z.string().min(1).optional(),
@@ -53,7 +54,30 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		const body = await request.json()
 		const validated = leadUpdateSchema.parse(body)
 		const repo = new LeadsRepository(supabase)
+		if ((validated as any).status === 'converted') {
+			const { customerId, lead } = await convertLeadToCustomerService(supabase as any, id, user.id)
+			import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+				await logActivity(supabase as any, user.id, {
+					type: 'lead',
+					description: `Lead converted to customer`,
+					entity: (lead as any)?.email,
+					details: { id, customer_id: customerId }
+				})
+			}).catch(() => {})
+			return NextResponse.json(lead)
+		}
 		const lead = await repo.update(id, validated, user.id)
+		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+			const status = (validated as any).status
+			if (status) {
+				await logActivity(supabase as any, user.id, {
+					type: 'lead',
+					description: `Lead status changed to ${status}`,
+					entity: (lead as any).email,
+					details: { id }
+				})
+			}
+		}).catch(() => {})
 		return NextResponse.json(lead)
 	} catch (error) {
 		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
@@ -68,5 +92,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 	const { id } = await params
 	const repo = new LeadsRepository(supabase)
 	await repo.delete(id, user.id)
+	// Log activity (best-effort)
+	import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+		await logActivity(supabase as any, user.id, {
+			type: 'lead',
+			description: `Lead deleted`,
+			entity: id,
+			details: { id }
+		})
+	}).catch(() => {})
 	return NextResponse.json({ success: true })
 }

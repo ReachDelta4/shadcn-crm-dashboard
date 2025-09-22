@@ -1,0 +1,601 @@
+{
+  "session_id": "test-session-123",
+  "report_json": {
+    "tp_title": "Enterprise Automation Discovery Call - Acme Corp",
+    "tp_subtitle": "Manufacturing Process Automation Assessment",
+    "tp_deal": "TechSolutions Enterprise Package - $50K ARR",
+    "tp_sessionId": "TECH-2024-01-15-001",
+    "p1_exec_headline": "Strong qualified lead with clear pain points and budget authority; high engagement and ROI focus.",
+    "p1_exec_synopsis": "Prospect has significant manual process pain (4-5 hours daily waste), shows strong interest in ROI metrics, and has decision-making authority. Well-positioned for enterprise solution.",
+    "p1_meta_full": {
+      "date": "2024-01-15",
+      "time": "10:00 AM PST",
+      "duration": "25 minutes",
+      "rep": {
+        "name": "Sarah Johnson",
+        "role": "Senior Sales Executive",
+        "team": "Enterprise Sales"
+      },
+      "prospect": {
+        "name": "John Smith",
+        "role": "Operations Manager",
+        "company": "Acme Corp"
+      },
+      "channel": "Phone",
+      "transcriptQuality": "High confidence - clear audio, engaged conversation"
+    },
+    "p1_key_points": [
+      "Manual data entry consuming 4-5 hours daily across team",
+      "Production reports compilation is major inefficiency",
+      "ROI-focused decision maker with clear authority",
+      "Manufacturing company with established processes",
+      "Open to automation solutions with proven results"
+    ],
+    "p1_pains": [
+      "Time waste: 4-5 hours daily on manual data compilation",
+      "Efficiency impact: Manual processes slowing production workflows",
+      "Resource allocation: Team time not optimized for value-add activities"
+    ],
+    "p1_buying_signals": [
+      "Asked specific ROI questions unprompted",
+      "Engaged with solution demo request positively",
+      "Expressed clear frustration with current manual processes"
+    ],
+    "p1_objections_handled": [
+      {
+        "label": "ROI concerns",
+        "handled": "yes"
+      },
+      {
+        "label": "Implementation complexity",
+        "handled": "partial"
+      }
+    ],
+    "p1_action_items": [
+      {
+        "id": "a1",
+        "title": "Send ROI calculator and case studies",
+        "owner": "Sarah",
+        "due": "24h",
+        "priority": "High"
+      },
+      {
+        "id": "a2",
+        "title": "Schedule technical demo with engineering team",
+        "owner": "Sarah",
+        "due": "48h",
+        "priority": "High"
+      },
+      {
+        "id": "a3",
+        "title": "Prepare implementation timeline proposal",
+        "owner": "Sarah",
+        "due": "72h",
+        "priority": "Medium"
+      }
+    ],
+    "p1_deal_health": {
+      "score": 85,
+      "rationale": "Strong qualified lead with clear pain, budget signals, and high engagement level"
+    },
+    "p2_context_snapshot": "High-quality discovery call with engaged prospect showing clear pain points and ROI focus",
+    "p2_high_priority": [
+      "Quantify exact cost of current manual processes",
+      "Present detailed ROI model with timeline",
+      "Schedule technical stakeholder demo"
+    ],
+    "p2_medium_priority": [
+      "Understand current tech stack integration needs",
+      "Map out implementation timeline and resources"
+    ],
+    "p2_info_items": [
+      "Company size: Mid-market manufacturing",
+      "Current process: Manual data entry and reporting",
+      "Team impact: Multiple people affected daily",
+      "Decision maker: Operations Manager with authority"
+    ],
+    "p2_risks_concerns": [
+      {
+        "area": "Budget approval process",
+        "impact": "Medium",
+        "likelihood": "Low",
+        "rationale": "Manager seems to have authority but may need stakeholder buy-in"
+      },
+      {
+        "area": "Technical integration complexity",
+        "impact": "Medium",
+        "likelihood": "Medium",
+        "rationale": "Legacy manufacturing systems may have integration challenges"
+      },
+      {
+        "area": "Change management resistance",
+        "impact": "Low",
+        "likelihood": "Low",
+        "rationale": "Clear pain point should drive adoption"
+      }
+    ],
+    "p2_short_summary": "Proceed with ROI-focused proposal and technical demo; strong qualified opportunity",
+    "p3_deal_health_summary": {
+      "score": 85,
+      "status": "Qualified - High Potential"
+    },
+    "p3_meddicc": {
+      "metrics": {
+        "value": [
+          "4-5 hours daily savings",
+          "300-400% ROI within 12 months",
+          "80% efficiency improvement"
+        ]
+      },
+      "economicBuyer": {
+        "value": "Operations Manager (John Smith) - appears to have budget authority"
+      },
+      "decisionCriteria": {
+        "value": [
+          "ROI timeline",
+          "Integration complexity",
+          "Team adoption ease"
+        ]
+      },
+      "decisionProcess": {
+        "value": "Manager-led with likely stakeholder consultation"
+      },
+      "identifyPain": {
+        "value": "Manual data entry waste (4-5 hours daily) impacting efficiency"
+      },
+      "competition": {
+        "value": [
+          "Status quo (manual processes)",
+          "Other automation platforms (unspecified)"
+        ]
+      },
+      "champion": {
+        "value": "John Smith showing strong interest and engagement"
+      }
+    },
+    "p3_bant": {
+      "rows": [
+        {
+          "key": "Budget",
+          "status": "Qualified",
+          "notes": "ROI-focused questions suggest budget availability"
+        },
+        {
+          "key": "Authority",
+          "status": "Confirmed",
+          "notes": "Operations Manager with clear decision-making signals"
+        },
+        {
+          "key": "Need",
+          "status": "Verified",
+          "notes": "Clear pain point: 4-5 hours daily manual work waste"
+        },
+        {
+          "key": "Timeline",
+          "status": "TBD",
+          "notes": "Implementation urgency not yet established"
+        }
+      ]
+    },
+    "p3_missed_opportunities": [
+      "Timeline urgency not explored",
+      "Specific budget range not discussed"
+    ],
+    "p3_improvements": [
+      "Probe deeper on decision timeline and urgency",
+      "Qualify budget range more specifically"
+    ],
+    "p3_short_reco": "Schedule technical demo within 48 hours and present detailed ROI proposal",
+    "p4_stage_eval": [
+      {
+        "stage": "Greetings",
+        "handled": "yes",
+        "note": "Professional opening with permission",
+        "score": 8
+      },
+      {
+        "stage": "Introduction",
+        "handled": "yes",
+        "note": "Clear context and purpose",
+        "score": 9
+      },
+      {
+        "stage": "Customer Success Stories",
+        "handled": "yes",
+        "note": "Referenced similar company results",
+        "score": 7
+      },
+      {
+        "stage": "Discovery",
+        "handled": "yes",
+        "note": "Strong pain point discovery",
+        "score": 9
+      },
+      {
+        "stage": "Product Details",
+        "handled": "partial",
+        "note": "High-level solution mentioned",
+        "score": 6
+      },
+      {
+        "stage": "Trust Building",
+        "handled": "yes",
+        "note": "ROI metrics and credibility",
+        "score": 8
+      },
+      {
+        "stage": "Objection Handling",
+        "handled": "partial",
+        "note": "ROI addressed, implementation not fully",
+        "score": 6
+      },
+      {
+        "stage": "Buying‑Signal Capitalization",
+        "handled": "yes",
+        "note": "Recognized and responded to ROI interest",
+        "score": 8
+      },
+      {
+        "stage": "Negotiation",
+        "handled": "no",
+        "note": "No pricing discussion yet",
+        "score": 0
+      },
+      {
+        "stage": "Timeline",
+        "handled": "no",
+        "note": "Next steps mentioned but not timeline",
+        "score": 3
+      },
+      {
+        "stage": "Closing / Registration",
+        "handled": "partial",
+        "note": "Demo scheduled but no commitment",
+        "score": 4
+      }
+    ],
+    "p4_pivotal_points": [
+      {
+        "ts": "10:01:30",
+        "reason": "Prospect quantified pain point (4-5 hours daily)",
+        "quote": "About 4-5 hours across our team. It's really impacting our efficiency."
+      },
+      {
+        "ts": "10:03:00",
+        "reason": "Strong buying signal - ROI question",
+        "quote": "Yes, that would be very helpful. What kind of ROI are we talking about?"
+      }
+    ],
+    "p4_takeaway": "Excellent discovery with quantified pain and strong ROI interest; focus on technical demo and detailed proposal",
+    "p5_stage_a": [
+      {
+        "stageName": "Greetings",
+        "objective": "Professional opening",
+        "indicators": [
+          "Tone",
+          "Permission"
+        ],
+        "observed": [
+          "Good morning greeting",
+          "Professional introduction"
+        ],
+        "score": 80,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Permission granted"
+        ],
+        "positives": [
+          "Clear identification"
+        ],
+        "coaching": [
+          "Maintain professional tone"
+        ],
+        "quickFix": "Already well executed"
+      }
+    ],
+    "p5_stage_b": [
+      {
+        "stageName": "Introduction",
+        "objective": "Set context",
+        "indicators": [
+          "Purpose clarity"
+        ],
+        "observed": [
+          "Clear reason for call"
+        ],
+        "score": 90,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Context provided"
+        ],
+        "positives": [
+          "Purpose stated"
+        ],
+        "coaching": [
+          "Continue clear communication"
+        ],
+        "quickFix": "Well executed"
+      }
+    ],
+    "p6_stage_c": [
+      {
+        "stageName": "Customer Success",
+        "objective": "Build credibility",
+        "indicators": [
+          "Relevant examples"
+        ],
+        "observed": [
+          "Similar company results mentioned"
+        ],
+        "score": 70,
+        "weight": 15,
+        "mistakes": [
+          "Could be more specific"
+        ],
+        "whatToSay": [
+          "Specific case studies"
+        ],
+        "positives": [
+          "Credibility established"
+        ],
+        "coaching": [
+          "Use specific numbers"
+        ],
+        "quickFix": "Add specific metrics"
+      }
+    ],
+    "p6_stage_d": [
+      {
+        "stageName": "Discovery",
+        "objective": "Uncover pain",
+        "indicators": [
+          "Question quality"
+        ],
+        "observed": [
+          "Excellent pain discovery"
+        ],
+        "score": 90,
+        "weight": 25,
+        "mistakes": [],
+        "whatToSay": [
+          "Great questioning"
+        ],
+        "positives": [
+          "Quantified pain"
+        ],
+        "coaching": [
+          "Continue this approach"
+        ],
+        "quickFix": "Already excellent"
+      }
+    ],
+    "p7_stage_e": [
+      {
+        "stageName": "Product Details",
+        "objective": "Match solution to pain",
+        "indicators": [
+          "Solution fit"
+        ],
+        "observed": [
+          "High-level solution"
+        ],
+        "score": 60,
+        "weight": 15,
+        "mistakes": [
+          "Too high-level"
+        ],
+        "whatToSay": [
+          "Specific features"
+        ],
+        "positives": [
+          "Connected to pain"
+        ],
+        "coaching": [
+          "More specific details"
+        ],
+        "quickFix": "Detail specific features"
+      }
+    ],
+    "p7_stage_f": [
+      {
+        "stageName": "Trust Building",
+        "objective": "Establish credibility",
+        "indicators": [
+          "Proof points"
+        ],
+        "observed": [
+          "ROI metrics shared"
+        ],
+        "score": 80,
+        "weight": 15,
+        "mistakes": [],
+        "whatToSay": [
+          "Strong metrics"
+        ],
+        "positives": [
+          "Credible ROI data"
+        ],
+        "coaching": [
+          "Continue with proof"
+        ],
+        "quickFix": "Well done"
+      }
+    ],
+    "p8_stage_g": [
+      {
+        "stageName": "Objection Handling",
+        "objective": "Address concerns",
+        "indicators": [
+          "Resolution"
+        ],
+        "observed": [
+          "ROI addressed"
+        ],
+        "score": 60,
+        "weight": 10,
+        "mistakes": [
+          "Implementation not addressed"
+        ],
+        "whatToSay": [
+          "Address implementation"
+        ],
+        "positives": [
+          "ROI handled well"
+        ],
+        "coaching": [
+          "Anticipate objections"
+        ],
+        "quickFix": "Address implementation concerns"
+      }
+    ],
+    "p8_stage_h": [
+      {
+        "stageName": "Buying Signals",
+        "objective": "Recognize interest",
+        "indicators": [
+          "Signal capture"
+        ],
+        "observed": [
+          "ROI question recognized"
+        ],
+        "score": 80,
+        "weight": 10,
+        "mistakes": [],
+        "whatToSay": [
+          "Great recognition"
+        ],
+        "positives": [
+          "Signal captured"
+        ],
+        "coaching": [
+          "Continue recognition"
+        ],
+        "quickFix": "Well executed"
+      }
+    ],
+    "p9_stage_i": [
+      {
+        "stageName": "Negotiation",
+        "objective": "Value discussion",
+        "indicators": [
+          "Value established"
+        ],
+        "observed": [
+          "No pricing yet"
+        ],
+        "score": 0,
+        "weight": 5,
+        "mistakes": [
+          "No value anchoring"
+        ],
+        "whatToSay": [
+          "Establish value first"
+        ],
+        "positives": [],
+        "coaching": [
+          "Value before price"
+        ],
+        "quickFix": "Discuss value proposition"
+      }
+    ],
+    "p9_stage_j": [
+      {
+        "stageName": "Timeline",
+        "objective": "Urgency and next steps",
+        "indicators": [
+          "Next steps clarity"
+        ],
+        "observed": [
+          "Demo mentioned"
+        ],
+        "score": 30,
+        "weight": 5,
+        "mistakes": [
+          "No urgency explored"
+        ],
+        "whatToSay": [
+          "When do you need this solved?"
+        ],
+        "positives": [
+          "Demo scheduled"
+        ],
+        "coaching": [
+          "Explore urgency"
+        ],
+        "quickFix": "Ask about timeline needs"
+      }
+    ],
+    "p10_stage_k": [
+      {
+        "stageName": "Closing",
+        "objective": "Gain commitment",
+        "indicators": [
+          "Commitment level"
+        ],
+        "observed": [
+          "Demo agreement"
+        ],
+        "score": 40,
+        "weight": 5,
+        "mistakes": [
+          "No specific commitment"
+        ],
+        "whatToSay": [
+          "Specific next steps"
+        ],
+        "positives": [
+          "Demo agreed"
+        ],
+        "coaching": [
+          "Gain specific commitments"
+        ],
+        "quickFix": "Get specific demo commitment"
+      }
+    ],
+    "p10_stage_l": [
+      {
+        "stageName": "Handoff",
+        "objective": "Smooth transition",
+        "indicators": [
+          "Handoff clarity"
+        ],
+        "observed": [
+          "Basic next steps"
+        ],
+        "score": 50,
+        "weight": 5,
+        "mistakes": [
+          "Could be clearer"
+        ],
+        "whatToSay": [
+          "Specific handoff details"
+        ],
+        "positives": [
+          "Next steps mentioned"
+        ],
+        "coaching": [
+          "Clear handoff process"
+        ],
+        "quickFix": "Clarify next steps details"
+      }
+    ],
+    "apx_scoring_rubric": [
+      "0-30%: Poor execution with major gaps",
+      "31-60%: Partial execution with room for improvement",
+      "61-80%: Good execution with minor gaps",
+      "81-100%: Excellent execution meeting all criteria"
+    ],
+    "apx_data_flags": [
+      "High-quality transcript with clear audio",
+      "Engaged conversation with good back-and-forth",
+      "All critical elements captured accurately"
+    ]
+  },
+  "status": "ready",
+  "attempts": 1,
+  "last_error": null,
+  "created_at": "2025-09-19T12:38:54.475Z",
+  "updated_at": "2025-09-19T12:38:54.499Z"
+}
