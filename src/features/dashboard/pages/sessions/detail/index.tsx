@@ -38,7 +38,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 		if (typeof rawMd === 'string' && rawMd.trim().length > 0) {
 			const normalizedMd = normalizeMarkdownForRender(rawMd)
 			if (tab) {
-				const sections = extractTabMarkdown(normalizedMd)
+				const sections = extractTabMarkdown(rawMd)
 				const chosen = sections[tab]
 				if (!chosen) {
 					return <div className="text-muted-foreground">No Contents</div>
@@ -64,7 +64,8 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 			let section = part
 			section = section.replace(/([^\n])\s*(#{1,6}\s+)/g, '$1\n\n$2')
 			section = section.replace(/([^\n])\s*((?:[\*\-\+]\s+|\d+\.\s+))/g, '$1\n\n$2')
-			section = section.replace(/([^\n])\s*(>\s+)/g, '$1\n\n$2')
+			// Only insert spacing before true blockquote lines; never touch HTML comments
+			section = section.replace(/(^|\n)(>\s+)/g, '\n$2')
 			section = section.replace(/([^\n])\s*(\|.*?\|)/g, '$1\n\n$2')
 			section = section.replace(/\n{3,}/g, '\n\n')
 			normalized.push(section)
