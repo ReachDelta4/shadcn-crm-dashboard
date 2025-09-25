@@ -1,0 +1,15 @@
+.reportFont {
+	font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Inter var", "Segoe UI Variable Text", Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+	line-height: 1.65;
+	letter-spacing: 0.01em;
+}
+
+.reportFont h1,
+.reportFont h2,
+.reportFont h3,
+.reportFont h4,
+.reportFont h5,
+.reportFont h6 {
+	font-family: Inter, "Inter var", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+	font-feature-settings: "liga" 1, "calt" 1;
+}
