@@ -27,7 +27,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 	const { data: reportV3, loading: reportLoading, error: reportError, status: reportStatus, retry: retryReport } = useReportV3(sessionId)
 	const { data: tabsData, loading: tabsLoading, error: tabsError, status: tabsStatus, retry: retryTabs } = useReportV3Tabs(sessionId)
 
-	const renderMarkdownIfAny = (payload: any, tab?: 'executive'|'conversation'|'buyer'|'competitive'|'rep') => {
+	const renderMarkdownIfAny = (payload: any, tab?: 'executive'|'chance'|'rep') => {
 		if (!payload) return null
 		const rawMd =
 			(payload as any)?.raw_markdown ||
@@ -72,43 +72,33 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 		return normalized.join('')
 	}
 
-	function extractTabMarkdown(raw: string): { executive?: string; conversation?: string; buyer?: string; competitive?: string; rep?: string } {
+	function extractTabMarkdown(raw: string): { executive?: string; chance?: string; rep?: string } {
 		if (!raw || typeof raw !== 'string') return {}
 		const text = raw.replace(/\r\n?/g, '\n')
 		// Split out fenced code blocks to avoid matching markers inside code
 		const parts = text.split(/(```[\s\S]*?```)/g)
 		let exec = ''
-		let conversation = ''
-		let buyer = ''
-		let competitive = ''
+		let chance = ''
 		let rep = ''
-		let cur: 'none' | 'exec' | 'conversation' | 'buyer' | 'competitive' | 'rep' = 'none'
+		let cur: 'none' | 'exec' | 'chance' | 'rep' = 'none'
 
 		const mkStart = (name: string) => new RegExp(`<!--\\s*TAB:\\s*${name}\\s*-->`, 'i')
 		const mkEnd = (name: string) => new RegExp(`<!--\\s*\\/\\s*TAB:\\s*${name}\\s*-->`, 'i')
 
 		const startExec = mkStart('EXECUTIVE\\s+SUMMARY')
 		const endExec = mkEnd('EXECUTIVE\\s+SUMMARY')
-		const startConversation = mkStart('CONVERSATION\\s+DYNAMICS')
-		const endConversation = mkEnd('CONVERSATION\\s+DYNAMICS')
-		const startBuyer = mkStart('BUYER\\s+INTELLIGENCE')
-		const endBuyer = mkEnd('BUYER\\s+INTELLIGENCE')
-		const startCompetitive = mkStart('COMPETITIVE\\s+INTELLIGENCE')
-		const endCompetitive = mkEnd('COMPETITIVE\\s+INTELLIGENCE')
+		const startChance = mkStart('CHANCE\\s+OF\\s+SALE')
+		const endChance = mkEnd('CHANCE\\s+OF\\s+SALE')
 		const startRep = mkStart('SALES\\s+REP\\s+PERFORMANCE')
 		const endRep = mkEnd('SALES\\s+REP\\s+PERFORMANCE')
 
-		type Marker = { type: 'start' | 'end'; tab: 'exec' | 'conversation' | 'buyer' | 'competitive' | 'rep'; regex: RegExp }
+		type Marker = { type: 'start' | 'end'; tab: 'exec' | 'chance' | 'rep'; regex: RegExp }
 
 		const markers: Marker[] = [
 			{ type: 'start', tab: 'exec', regex: startExec },
 			{ type: 'end', tab: 'exec', regex: endExec },
-			{ type: 'start', tab: 'conversation', regex: startConversation },
-			{ type: 'end', tab: 'conversation', regex: endConversation },
-			{ type: 'start', tab: 'buyer', regex: startBuyer },
-			{ type: 'end', tab: 'buyer', regex: endBuyer },
-			{ type: 'start', tab: 'competitive', regex: startCompetitive },
-			{ type: 'end', tab: 'competitive', regex: endCompetitive },
+			{ type: 'start', tab: 'chance', regex: startChance },
+			{ type: 'end', tab: 'chance', regex: endChance },
 			{ type: 'start', tab: 'rep', regex: startRep },
 			{ type: 'end', tab: 'rep', regex: endRep },
 		]
@@ -116,9 +106,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 		for (const part of parts) {
 			if (part.startsWith('```')) {
 				if (cur === 'exec') exec += part
-				else if (cur === 'conversation') conversation += part
-				else if (cur === 'buyer') buyer += part
-				else if (cur === 'competitive') competitive += part
+				else if (cur === 'chance') chance += part
 				else if (cur === 'rep') rep += part
 				continue
 			}
@@ -142,17 +130,13 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 				}
 				if (bestMarker == null) {
 					if (cur === 'exec') exec += s
-					else if (cur === 'conversation') conversation += s
-					else if (cur === 'buyer') buyer += s
-					else if (cur === 'competitive') competitive += s
+					else if (cur === 'chance') chance += s
 					else if (cur === 'rep') rep += s
 					break
 				}
 				const before = s.slice(0, bestIdx)
 				if (cur === 'exec') exec += before
-				else if (cur === 'conversation') conversation += before
-				else if (cur === 'buyer') buyer += before
-				else if (cur === 'competitive') competitive += before
+				else if (cur === 'chance') chance += before
 				else if (cur === 'rep') rep += before
 
 				// advance past marker
@@ -167,13 +151,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 		}
 
 		const trim = (x: string) => (x || '').replace(/^\n+|\s+$/g, '').trim()
-		return { 
-			executive: trim(exec) || undefined, 
-			conversation: trim(conversation) || undefined,
-			buyer: trim(buyer) || undefined,
-			competitive: trim(competitive) || undefined,
-			rep: trim(rep) || undefined 
-		}
+		return { executive: trim(exec) || undefined, chance: trim(chance) || undefined, rep: trim(rep) || undefined }
 	}
 
 	return (
@@ -220,9 +198,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 				<Tabs value={active} onValueChange={setActive}>
 					<TabsList>
 						<TabsTrigger value="executive">Executive Summary</TabsTrigger>
-						<TabsTrigger value="conversation">Conversation Dynamics</TabsTrigger>
-						<TabsTrigger value="buyer">Buyer Intelligence</TabsTrigger>
-						<TabsTrigger value="competitive">Competitive Intel</TabsTrigger>
+						<TabsTrigger value="chance">Chance of Sale</TabsTrigger>
 						<TabsTrigger value="rep-performance">Sales Rep Performance</TabsTrigger>
 						<TabsTrigger value="detailed">Detailed Report</TabsTrigger>
 						<TabsTrigger value="transcript">Transcript</TabsTrigger>
@@ -258,12 +234,12 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 						)}
 					</TabsContent>
 
-					<TabsContent value="conversation">
+					<TabsContent value="chance">
 						{tabsError && (
 							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
 								<CardContent className="pt-4 flex items-start justify-between gap-2">
 									<div>
-										<div className="text-sm font-medium">Conversation Dynamics generation failed</div>
+										<div className="text-sm font-medium">Chance of Sale generation failed</div>
 										<div className="text-xs">{tabsError}</div>
 									</div>
 									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
@@ -275,74 +251,14 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 								<CardContent className="pt-6">
 									<div className="flex items-center gap-2 text-sm text-muted-foreground">
 										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Conversation…' : 'Loading report…'}</span>
+										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Deal Probability…' : 'Loading report…'}</span>
 									</div>
 								</CardContent>
 							</Card>
 						) : (
 							<Card>
 								<CardContent className="pt-6 text-sm">
-									{renderMarkdownIfAny(tabsData, 'conversation')}
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
-
-					<TabsContent value="buyer">
-						{tabsError && (
-							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
-								<CardContent className="pt-4 flex items-start justify-between gap-2">
-									<div>
-										<div className="text-sm font-medium">Buyer Intelligence generation failed</div>
-										<div className="text-xs">{tabsError}</div>
-									</div>
-									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
-								</CardContent>
-							</Card>
-						)}
-						{tabsLoading || !tabsData ? (
-							<Card>
-								<CardContent className="pt-6">
-									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Buyer…' : 'Loading report…'}</span>
-									</div>
-								</CardContent>
-							</Card>
-						) : (
-							<Card>
-								<CardContent className="pt-6 text-sm">
-									{renderMarkdownIfAny(tabsData, 'buyer')}
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
-
-					<TabsContent value="competitive">
-						{tabsError && (
-							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
-								<CardContent className="pt-4 flex items-start justify-between gap-2">
-									<div>
-										<div className="text-sm font-medium">Competitive Intelligence generation failed</div>
-										<div className="text-xs">{tabsError}</div>
-									</div>
-									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
-								</CardContent>
-							</Card>
-						)}
-						{tabsLoading || !tabsData ? (
-							<Card>
-								<CardContent className="pt-6">
-									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Competition…' : 'Loading report…'}</span>
-									</div>
-								</CardContent>
-							</Card>
-						) : (
-							<Card>
-								<CardContent className="pt-6 text-sm">
-									{renderMarkdownIfAny(tabsData, 'competitive')}
+									{renderMarkdownIfAny(tabsData, 'chance')}
 								</CardContent>
 							</Card>
 						)}
