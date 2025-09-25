@@ -1251,18 +1251,32 @@ export async function generateReportV3(supabase: any, userId: string, sessionId:
 	if (process.env.OPENROUTER_X_TITLE) headers['X-Title'] = process.env.OPENROUTER_X_TITLE
 	
 	const controller = new AbortController()
-	const timeout = setTimeout(() => controller.abort(), 90_000)
+	const timeout = setTimeout(() => controller.abort(), 180_000)
 	let json: any
 	try {
 		console.info('[report-v3] calling OpenRouter', { model: body.model })
-		const res = await fetch(OPENROUTER_URL, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal })
-		if (!res.ok) {
-			const errText = await res.text().catch(() => '')
-			console.error('[report-v3] OpenRouter error', { status: res.status, error: errText })
-			throw new Error(`OpenRouter ${res.status}: ${errText}`)
+		let lastErr: any = null
+		for (let attempt = 1; attempt <= 3; attempt++) {
+			try {
+				const res = await fetch(OPENROUTER_URL, { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal })
+				if (!res.ok) {
+					const errText = await res.text().catch(() => '')
+					console.error('[report-v3] OpenRouter error', { status: res.status, error: errText })
+					throw new Error(`OpenRouter ${res.status}: ${errText}`)
+				}
+				json = await res.json()
+				console.info('[report-v3] OpenRouter success', { usage: json?.usage })
+				lastErr = null
+				break
+			} catch (err) {
+				lastErr = err
+				if (attempt < 3) {
+					await new Promise(r => setTimeout(r, attempt * 1000))
+					continue
+				}
+				throw err
+			}
 		}
-		json = await res.json()
-		console.info('[report-v3] OpenRouter success', { usage: json?.usage })
 	} catch (e) {
 		console.error('[report-v3] OpenRouter call failed', e)
 		await reportsRepo.incrementAttempts(sessionId)

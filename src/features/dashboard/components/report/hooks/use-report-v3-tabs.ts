@@ -45,6 +45,12 @@ export function useReportV3Tabs(sessionId?: string): UseReportV3TabsReturn {
 			
 			const result = await response.json()
 			
+			if (result?.status === 'failed') {
+				setStatus('error')
+				setError(result?.last_error || 'Report generation failed')
+				return { error: result?.last_error || 'failed' }
+			}
+			
 			if (result.report) {
 				setData(result.report)
 				setStatus('done')

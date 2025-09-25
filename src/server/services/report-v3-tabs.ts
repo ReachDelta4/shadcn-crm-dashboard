@@ -399,18 +399,31 @@ export async function generateReportV3Tabs(supabase: any, userId: string, sessio
 		const systemPrompt = buildTabsSystemPrompt()
 		const userPrompt = assembleTabsUserPrompt(session, transcripts)
 		// Call OpenRouter via shared helper
-		const { content } = await chatJsonSchema({
-			model: 'qwen/qwen3-235b-a22b:free',
-			messages: [
-				{ role: 'system', content: systemPrompt },
-				{ role: 'user', content: userPrompt },
-			],
-			schema: { name: 'ReportDataV3Tabs', strict: true, schema: REPORT_V3_TABS_JSON_SCHEMA },
-			temperature: 0.1,
-			maxTokens: 16000,
-			timeoutMs: 90_000,
-			debug: true,
-		})
+		let content: string = ''
+		for (let attempt = 1; attempt <= 3; attempt++) {
+			try {
+				const r = await chatJsonSchema({
+					model: 'qwen/qwen3-235b-a22b:free',
+					messages: [
+						{ role: 'system', content: systemPrompt },
+						{ role: 'user', content: userPrompt },
+					],
+					schema: { name: 'ReportDataV3Tabs', strict: true, schema: REPORT_V3_TABS_JSON_SCHEMA },
+					temperature: 0.1,
+					maxTokens: 16000,
+					timeoutMs: 180_000,
+					debug: true,
+				})
+				content = r.content
+				break
+			} catch (err) {
+				if (attempt < 3) {
+					await new Promise(r => setTimeout(r, attempt * 1000))
+					continue
+				}
+				throw err
+			}
+		}
 
 		let report: any = null
 		try {

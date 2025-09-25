@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ReportTabV3 } from "@/features/dashboard/components/report/ReportTabV3";
 import { useSession } from "../overview/hooks/use-sessions";
 import { useSessionTranscripts } from "./hooks/use-transcripts";
 import { useReportV3 } from "@/features/dashboard/components/report/hooks/use-report-v3";
 import { useReportV3Tabs } from "@/features/dashboard/components/report/hooks/use-report-v3-tabs";
+import { MarkdownViewer } from "@/features/dashboard/components/report/MarkdownViewer";
 
 interface SessionDetailPageProps {
 	sessionId: string;
@@ -26,6 +26,155 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 	const { transcripts, loading: transcriptsLoading, addTranscriptSegment } = useSessionTranscripts(sessionId, true);
 	const { data: reportV3, loading: reportLoading, error: reportError, status: reportStatus, retry: retryReport } = useReportV3(sessionId)
 	const { data: tabsData, loading: tabsLoading, error: tabsError, status: tabsStatus, retry: retryTabs } = useReportV3Tabs(sessionId)
+
+	const renderMarkdownIfAny = (payload: any, tab?: 'executive'|'conversation'|'buyer'|'competitive'|'rep') => {
+		if (!payload) return null
+		const rawMd =
+			(payload as any)?.raw_markdown ||
+			(payload as any)?.report_json?.raw_markdown ||
+			(payload as any)?.markdown ||
+			(payload as any)?.report_json?.markdown ||
+			(payload as any)?.content
+		if (typeof rawMd === 'string' && rawMd.trim().length > 0) {
+			const normalizedMd = normalizeMarkdownForRender(rawMd)
+			if (tab) {
+				const sections = extractTabMarkdown(normalizedMd)
+				const chosen = sections[tab]
+				if (!chosen) {
+					return <div className="text-muted-foreground">No Contents</div>
+				}
+				return <MarkdownViewer content={chosen} className="prose prose-lg max-w-none dark:prose-invert" />
+			}
+			return <MarkdownViewer content={normalizedMd} className="prose prose-lg max-w-none dark:prose-invert" />
+		}
+		if (tab) {
+			return <div className="text-muted-foreground">No Contents</div>
+		}
+		return null
+	}
+
+	// Markdown normalization to recover well-formed blocks from run-on strings
+	function normalizeMarkdownForRender(raw: string): string {
+		if (!raw || typeof raw !== 'string') return ''
+		const input = raw.replace(/\r\n?/g, '\n').trim()
+		const parts = input.split(/(```[\s\S]*?```)/g)
+		const normalized: string[] = []
+		for (const part of parts) {
+			if (part.startsWith('```')) { normalized.push(part); continue }
+			let section = part
+			section = section.replace(/([^\n])\s*(#{1,6}\s+)/g, '$1\n\n$2')
+			section = section.replace(/([^\n])\s*((?:[\*\-\+]\s+|\d+\.\s+))/g, '$1\n\n$2')
+			section = section.replace(/([^\n])\s*(>\s+)/g, '$1\n\n$2')
+			section = section.replace(/([^\n])\s*(\|.*?\|)/g, '$1\n\n$2')
+			section = section.replace(/\n{3,}/g, '\n\n')
+			normalized.push(section)
+		}
+		return normalized.join('')
+	}
+
+	function extractTabMarkdown(raw: string): { executive?: string; conversation?: string; buyer?: string; competitive?: string; rep?: string } {
+		if (!raw || typeof raw !== 'string') return {}
+		const text = raw.replace(/\r\n?/g, '\n')
+		// Split out fenced code blocks to avoid matching markers inside code
+		const parts = text.split(/(```[\s\S]*?```)/g)
+		let exec = ''
+		let conversation = ''
+		let buyer = ''
+		let competitive = ''
+		let rep = ''
+		let cur: 'none' | 'exec' | 'conversation' | 'buyer' | 'competitive' | 'rep' = 'none'
+
+		const mkStart = (name: string) => new RegExp(`<!--\\s*TAB:\\s*${name}\\s*-->`, 'i')
+		const mkEnd = (name: string) => new RegExp(`<!--\\s*\\/\\s*TAB:\\s*${name}\\s*-->`, 'i')
+
+		const startExec = mkStart('EXECUTIVE\\s+SUMMARY')
+		const endExec = mkEnd('EXECUTIVE\\s+SUMMARY')
+		const startConversation = mkStart('CONVERSATION\\s+DYNAMICS')
+		const endConversation = mkEnd('CONVERSATION\\s+DYNAMICS')
+		const startBuyer = mkStart('BUYER\\s+INTELLIGENCE')
+		const endBuyer = mkEnd('BUYER\\s+INTELLIGENCE')
+		const startCompetitive = mkStart('COMPETITIVE\\s+INTELLIGENCE')
+		const endCompetitive = mkEnd('COMPETITIVE\\s+INTELLIGENCE')
+		const startRep = mkStart('SALES\\s+REP\\s+PERFORMANCE')
+		const endRep = mkEnd('SALES\\s+REP\\s+PERFORMANCE')
+
+		type Marker = { type: 'start' | 'end'; tab: 'exec' | 'conversation' | 'buyer' | 'competitive' | 'rep'; regex: RegExp }
+
+		const markers: Marker[] = [
+			{ type: 'start', tab: 'exec', regex: startExec },
+			{ type: 'end', tab: 'exec', regex: endExec },
+			{ type: 'start', tab: 'conversation', regex: startConversation },
+			{ type: 'end', tab: 'conversation', regex: endConversation },
+			{ type: 'start', tab: 'buyer', regex: startBuyer },
+			{ type: 'end', tab: 'buyer', regex: endBuyer },
+			{ type: 'start', tab: 'competitive', regex: startCompetitive },
+			{ type: 'end', tab: 'competitive', regex: endCompetitive },
+			{ type: 'start', tab: 'rep', regex: startRep },
+			{ type: 'end', tab: 'rep', regex: endRep },
+		]
+
+		for (const part of parts) {
+			if (part.startsWith('```')) {
+				if (cur === 'exec') exec += part
+				else if (cur === 'conversation') conversation += part
+				else if (cur === 'buyer') buyer += part
+				else if (cur === 'competitive') competitive += part
+				else if (cur === 'rep') rep += part
+				continue
+			}
+
+			let s = part
+			while (s.length > 0) {
+				let bestIdx = -1
+				let bestLen = 0
+				let bestMarker: Marker | null = null
+				for (const m of markers) {
+					const match = m.regex.exec(s)
+					if (match) {
+						const idx = (match as any).index ?? s.indexOf(match[0])
+						try { (m.regex as any).lastIndex = 0 } catch {}
+						if (bestIdx === -1 || idx < bestIdx) {
+							bestIdx = idx
+							bestLen = match[0].length
+							bestMarker = m
+						}
+					}
+				}
+				if (bestMarker == null) {
+					if (cur === 'exec') exec += s
+					else if (cur === 'conversation') conversation += s
+					else if (cur === 'buyer') buyer += s
+					else if (cur === 'competitive') competitive += s
+					else if (cur === 'rep') rep += s
+					break
+				}
+				const before = s.slice(0, bestIdx)
+				if (cur === 'exec') exec += before
+				else if (cur === 'conversation') conversation += before
+				else if (cur === 'buyer') buyer += before
+				else if (cur === 'competitive') competitive += before
+				else if (cur === 'rep') rep += before
+
+				// advance past marker
+				s = s.slice(bestIdx + bestLen)
+
+				if (bestMarker.type === 'start') {
+					cur = bestMarker.tab
+				} else {
+					if (cur === bestMarker.tab) cur = 'none'
+				}
+			}
+		}
+
+		const trim = (x: string) => (x || '').replace(/^\n+|\s+$/g, '').trim()
+		return { 
+			executive: trim(exec) || undefined, 
+			conversation: trim(conversation) || undefined,
+			buyer: trim(buyer) || undefined,
+			competitive: trim(competitive) || undefined,
+			rep: trim(rep) || undefined 
+		}
+	}
 
 	return (
 		<div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
@@ -71,7 +220,9 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 				<Tabs value={active} onValueChange={setActive}>
 					<TabsList>
 						<TabsTrigger value="executive">Executive Summary</TabsTrigger>
-						<TabsTrigger value="chance">Chance of Sale</TabsTrigger>
+						<TabsTrigger value="conversation">Conversation Dynamics</TabsTrigger>
+						<TabsTrigger value="buyer">Buyer Intelligence</TabsTrigger>
+						<TabsTrigger value="competitive">Competitive Intel</TabsTrigger>
 						<TabsTrigger value="rep-performance">Sales Rep Performance</TabsTrigger>
 						<TabsTrigger value="detailed">Detailed Report</TabsTrigger>
 						<TabsTrigger value="transcript">Transcript</TabsTrigger>
@@ -100,24 +251,19 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 							</Card>
 						) : (
 							<Card>
-								<CardContent className="pt-6 text-sm text-muted-foreground">
-									Executive Summary report ready (placeholder).
-									<div className="mt-2 text-xs">
-										Schema: {tabsData?.schema_version || 'Unknown'} | 
-										Status: Ready | 
-										Executive Score: {tabsData?.executive_summary?.deal_snapshot?.priority || 'N/A'}
-									</div>
+								<CardContent className="pt-6 text-sm">
+																	{renderMarkdownIfAny(tabsData, 'executive')}
 								</CardContent>
 							</Card>
 						)}
 					</TabsContent>
 
-					<TabsContent value="chance">
+					<TabsContent value="conversation">
 						{tabsError && (
 							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
 								<CardContent className="pt-4 flex items-start justify-between gap-2">
 									<div>
-										<div className="text-sm font-medium">Chance of Sale generation failed</div>
+										<div className="text-sm font-medium">Conversation Dynamics generation failed</div>
 										<div className="text-xs">{tabsError}</div>
 									</div>
 									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
@@ -129,19 +275,74 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 								<CardContent className="pt-6">
 									<div className="flex items-center gap-2 text-sm text-muted-foreground">
 										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Deal Probability…' : 'Loading report…'}</span>
+										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Conversation…' : 'Loading report…'}</span>
 									</div>
 								</CardContent>
 							</Card>
 						) : (
 							<Card>
-								<CardContent className="pt-6 text-sm text-muted-foreground">
-									Chance of Sale report ready (placeholder).
-									<div className="mt-2 text-xs">
-										Probability: {tabsData?.chance_of_sale?.overall_score || 'N/A'}% | 
-										Confidence: {tabsData?.chance_of_sale?.confidence_level || 'N/A'} | 
-										Boosters: {tabsData?.chance_of_sale?.factors?.boosters?.length || 0}
+								<CardContent className="pt-6 text-sm">
+									{renderMarkdownIfAny(tabsData, 'conversation')}
+								</CardContent>
+							</Card>
+						)}
+					</TabsContent>
+
+					<TabsContent value="buyer">
+						{tabsError && (
+							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
+								<CardContent className="pt-4 flex items-start justify-between gap-2">
+									<div>
+										<div className="text-sm font-medium">Buyer Intelligence generation failed</div>
+										<div className="text-xs">{tabsError}</div>
 									</div>
+									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
+								</CardContent>
+							</Card>
+						)}
+						{tabsLoading || !tabsData ? (
+							<Card>
+								<CardContent className="pt-6">
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Buyer…' : 'Loading report…'}</span>
+									</div>
+								</CardContent>
+							</Card>
+						) : (
+							<Card>
+								<CardContent className="pt-6 text-sm">
+									{renderMarkdownIfAny(tabsData, 'buyer')}
+								</CardContent>
+							</Card>
+						)}
+					</TabsContent>
+
+					<TabsContent value="competitive">
+						{tabsError && (
+							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
+								<CardContent className="pt-4 flex items-start justify-between gap-2">
+									<div>
+										<div className="text-sm font-medium">Competitive Intelligence generation failed</div>
+										<div className="text-xs">{tabsError}</div>
+									</div>
+									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
+								</CardContent>
+							</Card>
+						)}
+						{tabsLoading || !tabsData ? (
+							<Card>
+								<CardContent className="pt-6">
+									<div className="flex items-center gap-2 text-sm text-muted-foreground">
+										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Competition…' : 'Loading report…'}</span>
+									</div>
+								</CardContent>
+							</Card>
+						) : (
+							<Card>
+								<CardContent className="pt-6 text-sm">
+									{renderMarkdownIfAny(tabsData, 'competitive')}
 								</CardContent>
 							</Card>
 						)}
@@ -170,13 +371,8 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 							</Card>
 						) : (
 							<Card>
-								<CardContent className="pt-6 text-sm text-muted-foreground">
-									Sales Rep Performance report ready (placeholder).
-									<div className="mt-2 text-xs">
-										Overall Score: {tabsData?.sales_rep_performance?.overall_score || 'N/A'}/100 | 
-										Stages Analyzed: {tabsData?.sales_rep_performance?.stage_performance?.length || 0} | 
-										Coaching Areas: {tabsData?.sales_rep_performance?.coaching_areas?.priorities?.length || 0}
-									</div>
+								<CardContent className="pt-6 text-sm">
+																	{renderMarkdownIfAny(tabsData, 'rep')}
 								</CardContent>
 							</Card>
 						)}
@@ -208,7 +404,9 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 								<span>{reportStatus === 'running' || reportStatus === 'queued' ? 'Analysing your Call…' : 'Loading report…'}</span>
 							</div>
 						) : (
-							<ReportTabV3 data={reportV3 as any} deckMode={deckMode} />
+							<div className="text-sm">
+								{renderMarkdownIfAny(reportV3)}
+							</div>
 						)}
 					</TabsContent>
 
@@ -298,31 +496,17 @@ function TranscriptViewer({ transcripts, loading, onAddSegment, sessionStatus }:
 							{sessionStatus === 'active' && ' Start speaking to begin transcription.'}
 						</div>
 					) : (
-						<div className="space-y-4 max-h-[600px] overflow-y-auto">
-							{transcripts.map((transcript, index) => (
-								<div key={transcript.id} className="group border-b border-gray-100 pb-4 last:border-b-0">
-									<div className="text-xs text-muted-foreground mb-1">
-										{formatTimestamp(transcript.timestamp)} · 
-										{transcript.speaker ? ` ${transcript.speaker}` : ' Unknown Speaker'}
-										{transcript.confidence && (
-											<span className="ml-2 text-green-600">
-												{Math.round(transcript.confidence * 100)}% confidence
-											</span>
-										)}
+						<div className="space-y-3">
+							{transcripts.map((t, i) => (
+								<div key={i} className="border rounded-md p-3 text-sm">
+									<div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+										<div>
+											<span className="font-medium">{t.speaker || 'Unknown'}</span>
+											<span className="ml-2">{formatTimestamp(t.created_at)}</span>
+										</div>
+										<button className="underline" onClick={() => copyToClipboard(t.text_enc || t.content_enc || '')}>Copy</button>
 									</div>
-									<div className="flex items-start justify-between">
-										<p className="text-sm max-w-3xl leading-relaxed">
-											{transcript.content_enc || 'No content'}
-										</p>
-										<Button 
-											size="sm" 
-											variant="ghost"
-											onClick={() => copyToClipboard(transcript.content_enc || '')}
-											className="opacity-0 group-hover:opacity-100 transition-opacity"
-										>
-											Copy
-										</Button>
-									</div>
+									<div className="whitespace-pre-wrap">{t.text_enc || t.content_enc || ''}</div>
 								</div>
 							))}
 						</div>
@@ -330,38 +514,25 @@ function TranscriptViewer({ transcripts, loading, onAddSegment, sessionStatus }:
 				</CardContent>
 			</Card>
 
-			{sessionStatus === 'active' && (
-				<Card>
-					<CardContent className="pt-6">
-						<div className="space-y-3">
-							<div className="text-sm font-medium">Add Transcript Segment</div>
-							<div className="flex gap-2">
-								<input
-									className="flex-1 rounded-md border px-3 py-2 text-sm bg-background"
-									placeholder="Speaker name (optional)"
-									value={speaker}
-									onChange={(e) => setSpeaker(e.target.value)}
-								/>
-							</div>
-							<div className="flex gap-2">
-								<textarea
-									className="flex-1 rounded-md border px-3 py-2 text-sm bg-background min-h-[100px]"
-									placeholder="Enter transcript content..."
-									value={newSegment}
-									onChange={(e) => setNewSegment(e.target.value)}
-								/>
-							</div>
-							<Button 
-								onClick={handleAddSegment} 
-								disabled={!newSegment.trim() || adding}
-								className="w-full"
-							>
-								{adding ? 'Adding...' : 'Add Segment'}
-							</Button>
-						</div>
-					</CardContent>
-				</Card>
-			)}
+			<Card>
+				<CardContent className="pt-6">
+					<div className="flex items-center gap-2">
+						<input 
+							className="flex-1 rounded-md border px-3 py-2 text-sm bg-background" 
+							placeholder="Add transcript segment… (dev only)"
+							value={newSegment}
+							onChange={(e) => setNewSegment(e.target.value)}
+						/>
+						<input 
+							className="w-40 rounded-md border px-3 py-2 text-sm bg-background" 
+							placeholder="Speaker"
+							value={speaker}
+							onChange={(e) => setSpeaker(e.target.value)}
+						/>
+						<Button size="sm" onClick={handleAddSegment} disabled={adding || !newSegment.trim()}>Add</Button>
+					</div>
+				</CardContent>
+			</Card>
 		</div>
 	);
 }

@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest) {
 		if (process.env.OPENROUTER_X_TITLE) headers['X-Title'] = process.env.OPENROUTER_X_TITLE
 
 		const body = {
-			model: 'qwen/qwen3-next-80b-a3b-thinking',
+			model: 'qwen/qwen3-235b-a22b:free',
 			messages: [
 				{ role: 'system', content: 'Return ONLY JSON matching the schema' },
 				{ role: 'user', content: 'Give a short exec headline and 2 bullets.' }
@@ -56,6 +56,11 @@ export async function GET(_req: NextRequest) {
 		return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 })
 	}
 }
+
+
+
+
+
 
 
 

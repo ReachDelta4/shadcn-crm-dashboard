@@ -40,6 +40,16 @@ export function useReportV3(sessionId?: string) {
 			if (!res.ok) throw new Error('Failed to fetch report')
 			const json = await res.json()
 			setData(json?.report || null)
+			if (json?.status === 'failed') {
+				setStatus('error')
+				setError(json?.last_error || 'Report generation failed')
+				return
+			}
+			if (json?.status === 'running' || json?.status === 'queued') {
+				setStatus(json.status)
+				schedule(pollOnce, 3000)
+				return
+			}
 			setStatus('done')
 		} catch (e) {
 			setError((e as Error).message)
