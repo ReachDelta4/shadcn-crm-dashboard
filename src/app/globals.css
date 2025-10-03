@@ -144,3 +144,55 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* FullCalendar base styles */
+@import '@fullcalendar/core/main.css';
+@import '@fullcalendar/daygrid/main.css';
+@import '@fullcalendar/timegrid/main.css';
+
+/* Custom FullCalendar theme overrides */
+:root {
+  --fc-border-color: hsl(var(--border));
+  --fc-button-bg-color: hsl(var(--primary));
+  --fc-button-border-color: hsl(var(--primary));
+  --fc-button-hover-bg-color: hsl(var(--primary) / 0.9);
+  --fc-button-hover-border-color: hsl(var(--primary) / 0.9);
+  --fc-button-active-bg-color: hsl(var(--primary) / 0.8);
+  --fc-button-active-border-color: hsl(var(--primary) / 0.8);
+  --fc-event-bg-color: hsl(var(--primary));
+  --fc-event-border-color: hsl(var(--primary));
+  --fc-event-text-color: hsl(var(--primary-foreground));
+  --fc-today-bg-color: hsl(var(--accent) / 0.1);
+}
+
+.dark {
+  --fc-border-color: hsl(var(--border));
+  --fc-neutral-bg-color: hsl(var(--muted));
+  --fc-neutral-text-color: hsl(var(--muted-foreground));
+  --fc-page-bg-color: hsl(var(--background));
+}
+
+/* Event pill colors by source type */
+.fc-ev-appointment {
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.fc-ev-payment {
+  background-color: hsl(45 93% 47%) !important;
+  border-color: hsl(45 93% 47%) !important;
+  color: hsl(26 83% 14%) !important;
+}
+
+.fc-ev-recurring {
+  background-color: hsl(262 83% 58%) !important;
+  border-color: hsl(262 83% 58%) !important;
+  color: hsl(0 0% 100%) !important;
+}
+
+.fc-ev-default {
+  background-color: hsl(var(--secondary)) !important;
+  border-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--secondary-foreground)) !important;
+}

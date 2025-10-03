@@ -11,6 +11,7 @@ import { startOfMonth, endOfMonth, startOfDay, endOfDay, format, parseISO, isSam
 import type { CalendarEvent } from "@/features/calendar/lib/normalize";
 import { SpeedDialNewSession } from "./components/SpeedDialNewSession";
 import { Input } from "@/components/ui/input";
+import { CalendarShell } from "@/features/calendar/components/CalendarShell";
 
 const ENABLE_EXPERIMENTAL_VIEWS = false;
 
@@ -20,6 +21,8 @@ export function SessionsCalendarPage() {
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
   const [customFrom, setCustomFrom] = React.useState<string>("");
   const [customTo, setCustomTo] = React.useState<string>("");
+  const [combinedEvents, setCombinedEvents] = React.useState<CalendarEvent[]>([]);
+  const debounceRef = React.useRef<number | null>(null);
   
   // Calculate date range based on current view
   const dateRange = React.useMemo(() => {
@@ -41,30 +44,38 @@ export function SessionsCalendarPage() {
     return { from: fromMonth.toISOString(), to: toMonth.toISOString() };
   }, [selectedDate, view, customFrom, customTo]);
 
-  const { events, loading, error } = useAppointments({
+  const { events: apptEvents, loading, error } = useAppointments({
     from: dateRange.from,
     to: dateRange.to,
   });
 
-  // Load combined events
+  // Phase 2: consolidated events with fallback to appointments
   React.useEffect(() => {
     const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (dateRange.from) params.set('from', dateRange.from);
-    if (dateRange.to) params.set('to', dateRange.to);
-    fetch(`/api/calendar/events?${params.toString()}`, { signal: controller.signal })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to load events')))
-      .then(data => setEvents(Array.isArray(data?.events) ? data.events : []))
-      .catch(() => setEvents([]));
-    return () => controller.abort();
-  }, [dateRange.from, dateRange.to]);
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams();
+        if (dateRange.from) params.set('from', dateRange.from);
+        if (dateRange.to) params.set('to', dateRange.to);
+        const res = await fetch(`/api/calendar/events?${params.toString()}`, { signal: controller.signal });
+        if (!res.ok) { setCombinedEvents(apptEvents || []); return; }
+        const data = await res.json().catch(() => ({}));
+        const list = Array.isArray(data?.events) ? data.events : [];
+        setCombinedEvents(list.length > 0 ? list : (apptEvents || []));
+      } catch {
+        setCombinedEvents(apptEvents || []);
+      }
+    }, 200);
+    return () => { controller.abort(); if (debounceRef.current) window.clearTimeout(debounceRef.current); };
+  }, [dateRange.from, dateRange.to, apptEvents]);
 
   // Get events for selected date
   const eventsForDate = React.useMemo(() => {
-    return events.filter(event => 
+    return combinedEvents.filter(event => 
       isSameDay(parseISO(event.start_at_utc), selectedDate)
     );
-  }, [events, selectedDate]);
+  }, [combinedEvents, selectedDate]);
 
   // Helper to render event badge
   const renderEventBadge = (event: CalendarEvent) => (
@@ -146,106 +157,14 @@ export function SessionsCalendarPage() {
               <Skeleton className="h-64 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : altView === "calendar" ? (
-            <div className="space-y-4">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => date && setSelectedDate(date)}
-                className="rounded-md border"
-                modifiers={{
-                  hasEvent: events.map(e => parseISO(e.start_at_utc))
-                }}
-                modifiersClassNames={{
-                  hasEvent: "bg-primary/10 font-bold"
-                }}
-              />
-
-              {view === "week" && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">
-                    Week of {format(startOfWeek(selectedDate), 'MMM d, yyyy')}
-                  </h3>
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 7 }).map((_, i) => {
-                      const day = startOfDay(addDays(startOfWeek(selectedDate), i))
-                      const dayEvents = events.filter(e => isSameDay(parseISO(e.start_at_utc), day))
-                      return (
-                        <Card key={i}>
-                          <CardHeader className="py-2">
-                            <CardTitle className="text-sm">
-                              {format(day, 'EEE, MMM d')}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-2">
-                            {dayEvents.length === 0 ? (
-                              <p className="text-xs text-muted-foreground">No events</p>
-                            ) : (
-                              dayEvents.map(ev => (
-                                <div key={ev.id} className="flex items-center justify-between gap-2 text-sm">
-                                  <span className="truncate">{format(parseISO(ev.start_at_utc), 'HH:mm')} {ev.title}</span>
-                                  {ev.links.meeting_link && (
-                                    <Button size="sm" variant="outline" asChild>
-                                      <a href={ev.links.meeting_link} target="_blank" rel="noopener noreferrer">Join</a>
-                                    </Button>
-                                  )}
-                                </div>
-                              ))
-                            )}
-                          </CardContent>
-                        </Card>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Events list for selected date */}
-              {eventsForDate.length > 0 ? (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">
-                    Events on {format(selectedDate, 'MMM d, yyyy')}
-                  </h3>
-                  <div className="space-y-2">
-                    {eventsForDate.map(event => (
-                      <Card key={event.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{event.title}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {format(parseISO(event.start_at_utc), 'h:mm a')} - {format(parseISO(event.end_at_utc), 'h:mm a')}
-                              </p>
-                            </div>
-                            {event.links.meeting_link && (
-                              <Button size="sm" variant="outline" asChild>
-                                <a href={event.links.meeting_link} target="_blank" rel="noopener noreferrer">
-                                  Join
-                                </a>
-                              </Button>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No appointments on this date
-                </p>
-              )}
-            </div>
-          ) : altView === "kanban" ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">Kanban view coming soon</p>
-              <p className="text-xs mt-1">{events.length} appointments loaded</p>
-            </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">Gantt view coming soon</p>
-              <p className="text-xs mt-1">{events.length} appointments loaded</p>
-            </div>
+            <CalendarShell 
+              view={view} 
+              events={combinedEvents}
+              onRangeChange={(from, to) => {
+                // Optional: manually update dateRange if needed for controlled mode
+              }}
+            />
           )}
         </CardContent>
       </Card>
