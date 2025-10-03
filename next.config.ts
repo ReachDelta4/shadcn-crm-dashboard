@@ -2,7 +2,14 @@ import type { NextConfig } from "next";
 
 const isWindows = process.platform === 'win32';
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns"],
+  },
+};
 
 if (!isWindows) {
   (nextConfig as any).output = 'standalone';

@@ -98,21 +98,21 @@ const testimonials = [
       "This platform has transformed how we manage customer relationships. The AI features are a game-changer for our team's productivity.",
     author: "Sarah Chen",
     role: "Head of Sales, TechCorp",
-    avatar: "/avatars/avatar.png",
+    avatar: "/avatars/avatar.webp",
   },
   {
     quote:
       "The automation capabilities have saved us countless hours. Our customer satisfaction scores have improved significantly.",
     author: "Michael Rodriguez",
     role: "Customer Success Manager, GrowthX",
-    avatar: "/avatars/avatar.png",
+    avatar: "/avatars/avatar.webp",
   },
   {
     quote:
       "The analytics insights helped us identify key opportunities we were missing. Our revenue has grown 40% since implementing.",
     author: "Emma Thompson",
     role: "VP of Operations, ScaleUp Inc",
-    avatar: "/avatars/avatar.png",
+    avatar: "/avatars/avatar.webp",
   },
 ];
 

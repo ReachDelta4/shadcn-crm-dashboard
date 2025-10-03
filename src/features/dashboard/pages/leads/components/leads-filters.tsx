@@ -19,8 +19,11 @@ const STATUS_OPTIONS: { label: string; value: LeadStatus | "all" }[] = [
   { label: "New", value: "new" },
   { label: "Contacted", value: "contacted" },
   { label: "Qualified", value: "qualified" },
-  { label: "Unqualified", value: "unqualified" },
-  { label: "Converted", value: "converted" },
+  { label: "Demo Appointment", value: "demo_appointment" },
+  { label: "Proposal/Negotiation", value: "proposal_negotiation" },
+  { label: "Invoice Sent", value: "invoice_sent" },
+  { label: "Won", value: "won" },
+  { label: "Lost", value: "lost" },
 ];
 
 export function LeadsFilters({

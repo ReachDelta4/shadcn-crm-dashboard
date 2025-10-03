@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
+import dynamic from "next/dynamic";
 
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/providers/theme-provider";
-import { CommandPaletteProvider, CommandPalette } from "@/components/command-palette";
+import { CommandPaletteProvider } from "@/components/command-palette";
+const CommandPalette = dynamic(() => import("@/components/command-palette").then(m => m.CommandPalette));
 
 export const metadata: Metadata = {
   title: "Salesy - Customer Relationship Management",

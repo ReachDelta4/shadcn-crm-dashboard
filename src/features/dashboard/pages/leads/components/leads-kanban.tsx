@@ -24,15 +24,26 @@ const COLUMNS: { key: LeadStatus; title: string }[] = [
   { key: "converted", title: "Converted" },
 ];
 
-function StatusBadge({ status }: { status: LeadStatus }) {
-  const map: Record<LeadStatus, string> = {
+function canonicalize(status: string): string {
+  if (status === 'unqualified') return 'lost'
+  if (status === 'converted') return 'won'
+  return status
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const s = canonicalize(status) as keyof typeof map
+  const map: Record<string, string> = {
     new: "bg-blue-100 text-blue-800",
     contacted: "bg-amber-100 text-amber-800",
     qualified: "bg-emerald-100 text-emerald-800",
-    unqualified: "bg-gray-200 text-gray-800",
-    converted: "bg-purple-100 text-purple-800",
+    demo_appointment: "bg-violet-100 text-violet-800",
+    proposal_negotiation: "bg-orange-100 text-orange-800",
+    invoice_sent: "bg-indigo-100 text-indigo-800",
+    won: "bg-green-100 text-green-800",
+    lost: "bg-gray-200 text-gray-800",
   };
-  return <Badge className={map[status]}>{status}</Badge>;
+  const cls = map[s] || "bg-gray-100 text-gray-700"
+  return <Badge className={cls}>{s}</Badge>;
 }
 
 export function LeadsKanban({ leads, onStatusChanged }: { leads: Lead[]; onStatusChanged?: () => void }) {

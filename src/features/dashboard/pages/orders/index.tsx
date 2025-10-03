@@ -11,8 +11,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useViewParam } from "@/hooks/use-view-param";
 import { OrdersKanban } from "./components/orders-kanban";
 import { SavedViews } from "@/components/saved-views";
+import type { Order } from "@/features/dashboard/pages/orders/types/order";
 
-export function OrdersPage() {
+export function OrdersPage({ initialOrders = [], initialCount = 0 }: { initialOrders?: Order[]; initialCount?: number }) {
   const {
     orders,
     allOrders,
@@ -25,7 +26,7 @@ export function OrdersPage() {
     handlePaginationChange,
     handleClearFilters,
     refetch,
-  } = useOrders();
+  } = useOrders({ initialOrders, initialCount });
 
   const isEmpty = allOrders.length === 0;
   const { view, setView } = useViewParam("table");

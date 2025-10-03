@@ -20,12 +20,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 interface InvoiceActionsProps {
   invoice: Invoice;
 }
 
 export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
+  const router = useRouter();
   const handleViewDetails = () => {
     // Implement view details functionality
     console.log("View invoice details", invoice.invoiceNumber);
@@ -36,9 +39,19 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
     console.log("Edit invoice", invoice.invoiceNumber);
   };
 
-  const handleMarkAsPaid = () => {
-    // Implement mark as paid functionality
-    console.log("Mark invoice as paid", invoice.invoiceNumber);
+  const handleMarkAsPaid = async () => {
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "paid" }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Invoice marked as paid");
+      router.refresh();
+    } catch (e) {
+      toast.error("Failed to mark as paid");
+    }
   };
 
   const handleSendInvoice = () => {
@@ -51,14 +64,31 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
     console.log("Download invoice", invoice.invoiceNumber);
   };
 
-  const handleCancelInvoice = () => {
-    // Implement cancel functionality
-    console.log("Cancel invoice", invoice.invoiceNumber);
+  const handleCancelInvoice = async () => {
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Invoice cancelled");
+      router.refresh();
+    } catch (e) {
+      toast.error("Failed to cancel invoice");
+    }
   };
 
-  const handleDeleteInvoice = () => {
-    // Implement delete functionality
-    console.log("Delete invoice", invoice.invoiceNumber);
+  const handleDeleteInvoice = async () => {
+    if (!confirm(`Delete invoice ${invoice.invoiceNumber}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/invoices/${invoice.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(await res.text());
+      toast.success("Invoice deleted");
+      router.refresh();
+    } catch (e) {
+      toast.error("Failed to delete invoice");
+    }
   };
 
   return (

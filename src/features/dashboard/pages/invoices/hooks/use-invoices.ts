@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Invoice, InvoiceFilters } from "@/features/dashboard/pages/invoices/types/invoice";
 import {
   SortingState,
@@ -8,6 +8,7 @@ import {
 
 interface UseInvoicesProps {
   initialInvoices?: Invoice[];
+  initialCount?: number;
 }
 
 interface ApiResponse {
@@ -18,7 +19,7 @@ interface ApiResponse {
   totalPages: number;
 }
 
-export function useInvoices({ initialInvoices = [] }: UseInvoicesProps = {}) {
+export function useInvoices({ initialInvoices = [], initialCount = 0 }: UseInvoicesProps = {}) {
   const [filters, setFilters] = useState<InvoiceFilters>({
     status: "all",
     search: "",
@@ -37,14 +38,23 @@ export function useInvoices({ initialInvoices = [] }: UseInvoicesProps = {}) {
     pageSize: 10,
   });
 
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const [totalCount, setTotalCount] = useState(initialCount);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const skipFirstFetchRef = useRef<boolean>(initialInvoices.length > 0 || initialCount > 0);
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     setError(null);
+
+    // Cancel any in-flight request
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const params = new URLSearchParams({
@@ -57,8 +67,8 @@ export function useInvoices({ initialInvoices = [] }: UseInvoicesProps = {}) {
       if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
       if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
 
-      if (sorting.length > 0) {
-        const sort = sorting[0];
+      if ((sorting as SortingState).length > 0) {
+        const sort = (sorting as SortingState)[0];
         let sortField = sort.id;
         if (sortField === 'date') sortField = 'date';
         if (sortField === 'customerName') sortField = 'customer_name';
@@ -67,7 +77,7 @@ export function useInvoices({ initialInvoices = [] }: UseInvoicesProps = {}) {
         params.set('direction', sort.desc ? 'desc' : 'asc');
       }
 
-      const response = await fetch(`/api/invoices?${params}`);
+      const response = await fetch(`/api/invoices?${params}`, { signal: controller.signal });
       if (!response.ok) throw new Error(`Failed to fetch invoices: ${response.statusText}`);
       const result: ApiResponse = await response.json();
 
@@ -87,6 +97,10 @@ export function useInvoices({ initialInvoices = [] }: UseInvoicesProps = {}) {
       setInvoices(transformed);
       setTotalCount(result.count || 0);
     } catch (err) {
+      if ((err as any)?.name === 'AbortError') {
+        // Swallow abort errors silently
+        return;
+      }
       console.error('Failed to fetch invoices:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch invoices');
       setInvoices([]);
@@ -97,7 +111,14 @@ export function useInvoices({ initialInvoices = [] }: UseInvoicesProps = {}) {
   }, [filters, sorting, pagination]);
 
   useEffect(() => {
+    if (skipFirstFetchRef.current) {
+      skipFirstFetchRef.current = false;
+      return;
+    }
     fetchInvoices();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, [fetchInvoices]);
 
   const updateFilters = (newFilters: Partial<InvoiceFilters>) => {
@@ -108,8 +129,8 @@ export function useInvoices({ initialInvoices = [] }: UseInvoicesProps = {}) {
   const handleSortingChange: OnChangeFn<SortingState> = (updaterOrValue) => {
     setSorting(
       updaterOrValue instanceof Function
-        ? updaterOrValue(sorting)
-        : updaterOrValue
+        ? updaterOrValue(sorting as SortingState)
+        : (updaterOrValue as SortingState)
     );
   };
 
@@ -139,7 +160,7 @@ export function useInvoices({ initialInvoices = [] }: UseInvoicesProps = {}) {
     invoices,
     pageCount,
     filters,
-    sorting,
+    sorting: (sorting as SortingState),
     pagination,
     loading,
     error,

@@ -11,17 +11,17 @@ export function useReportV3(sessionId?: string) {
 	const [refreshNonce, setRefreshNonce] = useState<number>(0)
 	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-	const clearTimer = () => {
+	const clearTimer = useCallback(() => {
 		if (timeoutRef.current) {
 			clearTimeout(timeoutRef.current)
 			timeoutRef.current = null
 		}
-	}
+	}, [])
 
-	const schedule = (fn: () => void, ms: number) => {
+	const schedule = useCallback((fn: () => void, ms: number) => {
 		clearTimer()
 		timeoutRef.current = setTimeout(fn, ms)
-	}
+	}, [clearTimer])
 
 	const pollOnce = useCallback(async () => {
 		if (!sessionId) return
@@ -60,7 +60,7 @@ export function useReportV3(sessionId?: string) {
 		} finally {
 			setLoading(false)
 		}
-	}, [sessionId])
+	}, [sessionId, schedule])
 
 	useEffect(() => {
 		setData(null)
@@ -72,8 +72,7 @@ export function useReportV3(sessionId?: string) {
 		return () => {
 			clearTimer()
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [sessionId, refreshNonce])
+	}, [sessionId, refreshNonce, pollOnce, clearTimer])
 
 	const retry = useCallback(() => {
 		setRefreshNonce(n => n + 1)

@@ -11,10 +11,27 @@ const leadUpdateSchema = z.object({
 	phone: z.string().optional(),
 	company: z.string().optional(),
 	value: z.coerce.number().min(0).optional(),
-	status: z.enum(['new','contacted','qualified','unqualified','converted']).optional(),
+	status: z.enum([
+		'new',
+		'contacted',
+		'qualified',
+		'unqualified', // legacy -> lost
+		'demo_appointment',
+		'proposal_negotiation',
+		'invoice_sent',
+		'won',
+		'lost',
+		'converted' // legacy -> won
+	]).optional(),
 	source: z.string().optional(),
 	date: z.string().optional(),
 })
+
+function toCanonicalStatus(input: string): string {
+	if (input === 'unqualified') return 'lost'
+	if (input === 'converted') return 'won'
+	return input
+}
 
 async function getServerClient() {
 	const cookieStore = await cookies()
@@ -66,9 +83,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 			}).catch(() => {})
 			return NextResponse.json(lead)
 		}
-		const lead = await repo.update(id, validated, user.id)
+		// Canonicalize status on update
+		const updates = { ...validated } as any
+		if (updates.status) updates.status = toCanonicalStatus(updates.status)
+		const lead = await repo.update(id, updates, user.id)
 		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
-			const status = (validated as any).status
+			const status = (updates as any).status
 			if (status) {
 				await logActivity(supabase as any, user.id, {
 					type: 'lead',

@@ -14,9 +14,11 @@ type LeadUpdate = any
 
 export interface LeadFilters {
 	search?: string
-	status?: 'all' | 'new' | 'contacted' | 'qualified' | 'unqualified' | 'converted'
+	status?: 'all' | 'new' | 'contacted' | 'qualified' | 'unqualified' | 'converted' | 'demo_appointment' | 'proposal_negotiation' | 'invoice_sent' | 'won' | 'lost'
 	dateFrom?: string
 	dateTo?: string
+	// New: allow filtering by multiple statuses (e.g., canonical + legacy equivalents)
+	statusAny?: string[]
 }
 
 export interface LeadListOptions {
@@ -26,6 +28,7 @@ export interface LeadListOptions {
 	page?: number
 	pageSize?: number
 	userId: string
+	ownerIds?: string[] // Optional scope-aware owner list (defaults to [userId])
 }
 
 export class LeadsRepository {
@@ -40,18 +43,24 @@ export class LeadsRepository {
 	}
 
 	async list(options: LeadListOptions) {
-		const { filters = {}, sort = 'date', direction = 'desc', page = 0, pageSize = 10, userId } = options
+		const { filters = {}, sort = 'date', direction = 'desc', page = 0, pageSize = 10, userId, ownerIds } = options
+		
+		// Use ownerIds if provided, otherwise default to userId (backward compatible)
+		const effectiveOwnerIds = ownerIds || [userId]
 
 		let query = this.client
 			.from('leads')
 			.select('*', { count: 'exact' })
-			.eq('owner_id', userId)
+			.in('owner_id', effectiveOwnerIds)
 
 		if (filters.search) {
 			query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,company.ilike.%${filters.search}%,lead_number.ilike.%${filters.search}%`)
 		}
 
-		if (filters.status && filters.status !== 'all') {
+		// Support canonical or legacy status, or both via statusAny
+		if (filters.statusAny && filters.statusAny.length > 0) {
+			query = query.in('status', filters.statusAny)
+		} else if (filters.status && filters.status !== 'all') {
 			query = query.eq('status', filters.status)
 		}
 
@@ -70,12 +79,14 @@ export class LeadsRepository {
 		return { data: data || [], count: count || 0, page, pageSize, totalPages: Math.ceil((count || 0) / pageSize) }
 	}
 
-	async getById(id: string, userId: string): Promise<Lead | null> {
+	async getById(id: string, userId: string, ownerIds?: string[]): Promise<Lead | null> {
+		const effectiveOwnerIds = ownerIds || [userId]
+		
 		const { data, error } = await this.client
 			.from('leads')
 			.select('*')
 			.eq('id', id)
-			.eq('owner_id', userId)
+			.in('owner_id', effectiveOwnerIds)
 			.single()
 		if (error) {
 			if ((error as any).code === 'PGRST116') return null

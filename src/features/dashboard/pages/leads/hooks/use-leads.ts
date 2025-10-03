@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
-import { Lead, LeadFilters } from "@/features/dashboard/pages/leads/types/lead";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { Lead, LeadFilters, LeadStatus } from "@/features/dashboard/pages/leads/types/lead";
 import {
   SortingState,
   PaginationState,
@@ -8,6 +8,7 @@ import {
 
 interface UseLeadsProps {
   initialLeads?: Lead[];
+  initialCount?: number;
 }
 
 interface ApiResponse {
@@ -18,7 +19,13 @@ interface ApiResponse {
   totalPages: number;
 }
 
-export function useLeads({ initialLeads = [] }: UseLeadsProps = {}) {
+function toCanonicalStatus(status: LeadStatus): LeadStatus {
+  if (status === 'unqualified') return 'lost'
+  if (status === 'converted') return 'won'
+  return status
+}
+
+export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps = {}) {
   const [filters, setFilters] = useState<LeadFilters>({
     status: "all",
     search: "",
@@ -37,10 +44,11 @@ export function useLeads({ initialLeads = [] }: UseLeadsProps = {}) {
     pageSize: 10,
   });
 
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  const [totalCount, setTotalCount] = useState(initialCount);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const skipFirstFetchRef = useRef<boolean>(initialLeads.length > 0 || initialCount > 0);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -53,7 +61,9 @@ export function useLeads({ initialLeads = [] }: UseLeadsProps = {}) {
       });
 
       if (filters.search) params.set('search', filters.search);
-      if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+      if (filters.status && filters.status !== 'all') {
+        params.set('status', toCanonicalStatus(filters.status as LeadStatus) as string)
+      }
       if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
       if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
 
@@ -79,7 +89,7 @@ export function useLeads({ initialLeads = [] }: UseLeadsProps = {}) {
         phone: lead.phone || '',
         company: lead.company || '',
         value: typeof lead.value === 'number' ? lead.value : 0,
-        status: (lead.status || 'new') as any,
+        status: toCanonicalStatus((lead.status || 'new') as LeadStatus) as any,
         date: lead.date || new Date().toISOString(),
         source: lead.source || 'unknown',
       }));
@@ -97,6 +107,10 @@ export function useLeads({ initialLeads = [] }: UseLeadsProps = {}) {
   }, [filters, sorting, pagination]);
 
   useEffect(() => {
+    if (skipFirstFetchRef.current) {
+      skipFirstFetchRef.current = false;
+      return;
+    }
     fetchLeads();
   }, [fetchLeads]);
 

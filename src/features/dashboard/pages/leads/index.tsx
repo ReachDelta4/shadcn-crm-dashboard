@@ -11,8 +11,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useViewParam } from "@/hooks/use-view-param";
 import { LeadsKanban } from "./components/leads-kanban";
 import { SavedViews } from "@/components/saved-views";
+import type { Lead } from "@/features/dashboard/pages/leads/types/lead";
 
-export function LeadsPage() {
+export function LeadsPage({ initialLeads = [], initialCount = 0 }: { initialLeads?: Lead[]; initialCount?: number }) {
   const {
     leads,
     allLeads,
@@ -25,7 +26,7 @@ export function LeadsPage() {
     handlePaginationChange,
     handleClearFilters,
     refetch,
-  } = useLeads();
+  } = useLeads({ initialLeads, initialCount });
 
   const isEmpty = allLeads.length === 0;
   const { view, setView } = useViewParam("table");

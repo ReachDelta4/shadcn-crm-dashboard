@@ -37,6 +37,7 @@ function mapDbSession(row: any): any {
 	return {
 		id: row.id,
 		owner_id: row.user_id,
+		subject_id: row.subject_id || null,
 		title: (row.title_enc && !looksEncoded) ? row.title_enc : fallbackTitle,
 		type: row.session_type,
 		status: row.ended_at ? 'completed' : 'active',
@@ -70,7 +71,7 @@ export class SessionsRepository {
 
 		let query = this.supabase
 			.from('sessions')
-			.select('id,user_id,title_enc,session_type,started_at,ended_at,updated_at', { count: 'exact' })
+			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at', { count: 'exact' })
 			.eq('user_id', userId)
 
 		// Apply filters
@@ -122,7 +123,7 @@ export class SessionsRepository {
 	async findById(id: string, userId: string): Promise<Session | null> {
 		const { data: row, error } = await this.supabase
 			.from('sessions')
-			.select('id,user_id,title_enc,session_type,started_at,ended_at,updated_at')
+			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at')
 			.eq('id', id)
 			.eq('user_id', userId)
 			.single()
@@ -148,7 +149,7 @@ export class SessionsRepository {
 
 		const { data: row, error } = await this.supabase
 			.from('sessions')
-			.select('id,user_id,title_enc,session_type,started_at,ended_at,updated_at')
+			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at')
 			.eq('id', newSessionId)
 			.eq('user_id', userId)
 			.single()
@@ -178,7 +179,7 @@ export class SessionsRepository {
 
 		const { data: row, error } = await this.supabase
 			.from('sessions')
-			.select('id,user_id,title_enc,session_type,started_at,ended_at,updated_at')
+			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at')
 			.eq('id', id)
 			.eq('user_id', userId)
 			.single()

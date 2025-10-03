@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Order, OrderFilters } from "@/features/dashboard/pages/orders/types/order";
 import {
   SortingState,
@@ -8,6 +8,7 @@ import {
 
 interface UseOrdersProps {
   initialOrders?: Order[];
+  initialCount?: number;
 }
 
 interface ApiResponse {
@@ -18,7 +19,7 @@ interface ApiResponse {
   totalPages: number;
 }
 
-export function useOrders({ initialOrders = [] }: UseOrdersProps = {}) {
+export function useOrders({ initialOrders = [], initialCount = 0 }: UseOrdersProps = {}) {
   const [filters, setFilters] = useState<OrderFilters>({
     status: "all",
     search: "",
@@ -37,10 +38,11 @@ export function useOrders({ initialOrders = [] }: UseOrdersProps = {}) {
     pageSize: 10,
   });
 
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  const [orders, setOrders] = useState<Order[]>(initialOrders);
+  const [totalCount, setTotalCount] = useState(initialCount);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const skipFirstFetchRef = useRef<boolean>(initialOrders.length > 0 || initialCount > 0);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -96,6 +98,10 @@ export function useOrders({ initialOrders = [] }: UseOrdersProps = {}) {
   }, [filters, sorting, pagination]);
 
   useEffect(() => {
+    if (skipFirstFetchRef.current) {
+      skipFirstFetchRef.current = false;
+      return;
+    }
     fetchOrders();
   }, [fetchOrders]);
 

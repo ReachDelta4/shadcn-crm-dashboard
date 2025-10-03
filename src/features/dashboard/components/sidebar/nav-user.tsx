@@ -10,9 +10,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 // Internal components
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,7 +77,11 @@ export function NavUser({
               aria-label="User profile and options"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.avatar} alt={`${user.name}'s profile`} />
+                {user.avatar ? (
+                  <div className="h-8 w-8 rounded-lg overflow-hidden">
+                    <Image src={user.avatar} alt={`${user.name}'s profile`} width={32} height={32} sizes="32px" referrerPolicy="no-referrer" />
+                  </div>
+                ) : null}
                 <AvatarFallback className="rounded-lg">
                   {user.name
                     .split(" ")
@@ -104,10 +109,11 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage
-                    src={user.avatar}
-                    alt={`${user.name}'s profile`}
-                  />
+                  {user.avatar ? (
+                    <div className="h-8 w-8 rounded-lg overflow-hidden">
+                      <Image src={user.avatar} alt={`${user.name}'s profile`} width={32} height={32} sizes="32px" referrerPolicy="no-referrer" />
+                    </div>
+                  ) : null}
                   <AvatarFallback className="rounded-lg">
                     {user.name
                       .split(" ")

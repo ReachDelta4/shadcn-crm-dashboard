@@ -3,6 +3,7 @@
 // External dependencies
 import React from "react";
 import { useIsClient } from "@uidotdev/usehooks";
+import dynamic from "next/dynamic";
 
 // Internal components
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -10,7 +11,7 @@ import { AppSidebar } from "./sidebar/app-sidebar";
 import { DashboardHeader } from "./dashboard-header";
 import { Separator } from "@/components/ui/separator";
 import { DashboardSkeleton } from "./dashboard-skeleton";
-import { QuickActionsDock } from "./quick-actions-dock/QuickActionsDock";
+const QuickActionsDock = dynamic(() => import("./quick-actions-dock/QuickActionsDock").then(m => m.QuickActionsDock), { loading: () => null });
 
 /**
  * Props interface for DashboardLayoutWrapper component

@@ -5,7 +5,8 @@ import {
   InvoiceStatus,
 } from "@/features/dashboard/pages/invoices/types/invoice";
 import { Input } from "@/components/ui/input";
-import { DatePickerWithRange } from "@/components/shared/date-picker-with-range";
+import dynamic from "next/dynamic";
+const DatePickerWithRange = dynamic(() => import("@/components/shared/date-picker-with-range").then(m => m.DatePickerWithRange), { loading: () => null });
 import { Search } from "lucide-react";
 import { Combobox } from "@/components/ui/combobox";
 

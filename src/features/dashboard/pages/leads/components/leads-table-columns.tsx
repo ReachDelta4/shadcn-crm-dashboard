@@ -7,12 +7,21 @@ import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
 import { LeadActionsDropdown } from "./leads-actions-dropdown";
 
-export const statusColors: Record<LeadStatus, string> = {
+function canonicalize(status: LeadStatus): Exclude<LeadStatus, 'unqualified' | 'converted'> {
+  if (status === 'unqualified') return 'lost'
+  if (status === 'converted') return 'won'
+  return status as any
+}
+
+export const statusColors: Record<string, string> = {
   new: "bg-blue-100 text-blue-800",
   contacted: "bg-yellow-100 text-yellow-800",
   qualified: "bg-green-100 text-green-800",
-  unqualified: "bg-red-100 text-red-800",
-  converted: "bg-purple-100 text-purple-800",
+  demo_appointment: "bg-indigo-100 text-indigo-800",
+  proposal_negotiation: "bg-amber-100 text-amber-800",
+  invoice_sent: "bg-cyan-100 text-cyan-800",
+  won: "bg-emerald-100 text-emerald-800",
+  lost: "bg-gray-200 text-gray-700",
 };
 
 export const formatCurrency = (amount: number) => {
@@ -63,14 +72,17 @@ export const useLeadColumns = () => {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => {
-          const status = row.getValue("status") as LeadStatus;
+          const canonical = canonicalize(row.original.status)
           return (
-            <Badge className={statusColors[status]}>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={statusColors[canonical] || "bg-gray-100 text-gray-700"}>
+                {canonical.charAt(0).toUpperCase() + canonical.slice(1)}
+              </Badge>
+            </div>
           );
         },
       },
+      // Removed inline status dropdown; use Kanban and actions for lifecycle changes
       {
         accessorKey: "source",
         header: "Source",

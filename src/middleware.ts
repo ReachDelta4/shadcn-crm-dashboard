@@ -17,6 +17,12 @@ export async function middleware(req: NextRequest) {
     return redirectToLogin(req, url.pathname)
   }
 
+  // Fast-path: if no auth cookies at all, avoid calling Supabase
+  const hasSupabaseSessionCookie = req.cookies.getAll().some(c => c.name.startsWith('sb-'))
+  if (!hasSupabaseSessionCookie) {
+    return redirectToLogin(req, url.pathname)
+  }
+
   try {
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {

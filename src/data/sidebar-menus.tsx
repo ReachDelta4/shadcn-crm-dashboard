@@ -18,7 +18,7 @@ export const sidebarMenus = {
   user: {
     name: "James",
     email: "james@example.com",
-    avatar: "/avatars/avatar.png",
+    avatar: "/avatars/avatar.webp",
   },
   navMain: [
     {
@@ -164,6 +164,10 @@ export const sidebarMenus = {
         {
           title: "API Settings",
           url: "/dashboard/settings/api",
+        },
+        {
+          title: "Products",
+          url: "/dashboard/settings/products",
         },
         {
           title: "Link Device",

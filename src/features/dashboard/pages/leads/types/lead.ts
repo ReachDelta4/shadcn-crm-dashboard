@@ -1,4 +1,6 @@
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'unqualified' | 'converted';
+export type CanonicalLeadStatus = 'new' | 'contacted' | 'qualified' | 'demo_appointment' | 'proposal_negotiation' | 'invoice_sent' | 'won' | 'lost';
+export type LegacyLeadStatus = 'unqualified' | 'converted';
+export type LeadStatus = CanonicalLeadStatus | LegacyLeadStatus;
 
 export interface Lead {
   id: string;

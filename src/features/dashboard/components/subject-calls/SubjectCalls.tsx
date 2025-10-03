@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { DateRange } from 'react-day-picker';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,20 +21,20 @@ export function SubjectCalls({ subjectId, subjectName, subjectType }: SubjectCal
 	const router = useRouter();
 	const [page, setPage] = useState(1);
 	const [filters, setFilters] = useState<SubjectSessionFilters>({});
-	const [dateRange, setDateRange] = useState<{from?: Date, to?: Date}>({});
+	const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
 	const { sessions, total, loading, error, refetch } = useSubjectSessions(
 		subjectId,
 		{
 			...filters,
-			dateFrom: dateRange.from?.toISOString(),
-			dateTo: dateRange.to?.toISOString()
+			dateFrom: dateRange?.from?.toISOString(),
+			dateTo: dateRange?.to?.toISOString()
 		},
 		page,
 		10
 	);
 
-	const handleDateRangeChange = (range: {from?: Date, to?: Date}) => {
+	const handleDateRangeChange = (range?: DateRange) => {
 		setDateRange(range);
 		setPage(1); // Reset to first page when filtering
 	};
@@ -53,7 +54,7 @@ export function SubjectCalls({ subjectId, subjectName, subjectType }: SubjectCal
 		});
 	};
 
-	const formatDuration = (seconds: number | null) => {
+	const formatDuration = (seconds: number | undefined | null) => {
 		if (!seconds) return 'Unknown';
 		const minutes = Math.floor(seconds / 60);
 		const remainingSeconds = seconds % 60;
@@ -76,21 +77,21 @@ export function SubjectCalls({ subjectId, subjectName, subjectType }: SubjectCal
 			<CardContent className="space-y-4">
 				{/* Filters */}
 				<div className="flex items-center gap-4">
-					<div className="flex items-center gap-2">
-						<CalendarDays className="w-4 h-4 text-muted-foreground" />
-						<DatePickerWithRange
-							date={dateRange}
-							onDateChange={handleDateRangeChange}
-						/>
-					</div>
-					{(dateRange.from || dateRange.to) && (
+									<div className="flex items-center gap-2">
+					<CalendarDays className="w-4 h-4 text-muted-foreground" />
+					<DatePickerWithRange
+						value={dateRange}
+						onChange={handleDateRangeChange}
+					/>
+				</div>
+										{(dateRange?.from || dateRange?.to) && (
 						<Button 
 							variant="outline" 
 							size="sm"
 							onClick={() => {
-								setDateRange({});
-								setPage(1);
-							}}
+							setDateRange(undefined);
+							setPage(1);
+						}}
 						>
 							Clear
 						</Button>
@@ -117,7 +118,7 @@ export function SubjectCalls({ subjectId, subjectName, subjectType }: SubjectCal
 					<div className="text-center py-8 text-muted-foreground">
 						<PhoneCall className="w-8 h-8 mx-auto mb-2 opacity-50" />
 						<p>No calls found</p>
-						{dateRange.from || dateRange.to ? (
+						{dateRange?.from || dateRange?.to ? (
 							<p className="text-sm">Try adjusting the date range</p>
 						) : (
 							<p className="text-sm">No calls have been made with this {subjectType} yet</p>

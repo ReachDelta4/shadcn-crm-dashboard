@@ -11,7 +11,9 @@ import { useSession } from "../overview/hooks/use-sessions";
 import { useSessionTranscripts } from "./hooks/use-transcripts";
 import { useReportV3 } from "@/features/dashboard/components/report/hooks/use-report-v3";
 import { useReportV3Tabs } from "@/features/dashboard/components/report/hooks/use-report-v3-tabs";
-import { MarkdownViewer } from "@/features/dashboard/components/report/MarkdownViewer";
+import dynamic from "next/dynamic";
+const MarkdownViewer = dynamic(() => import("@/features/dashboard/components/report/MarkdownViewer"), { loading: () => null });
+import { UpcomingAppointments } from "./components/UpcomingAppointments";
 
 interface SessionDetailPageProps {
 	sessionId: string;
@@ -82,19 +84,19 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 		let chance = ''
 		let rep = ''
 		let cur: 'none' | 'exec' | 'chance' | 'rep' = 'none'
-
+		
 		const mkStart = (name: string) => new RegExp(`<!--\\s*TAB:\\s*${name}\\s*-->`, 'i')
 		const mkEnd = (name: string) => new RegExp(`<!--\\s*\\/\\s*TAB:\\s*${name}\\s*-->`, 'i')
-
+		
 		const startExec = mkStart('EXECUTIVE\\s+SUMMARY')
 		const endExec = mkEnd('EXECUTIVE\\s+SUMMARY')
 		const startChance = mkStart('CHANCE\\s+OF\\s+SALE')
 		const endChance = mkEnd('CHANCE\\s+OF\\s+SALE')
 		const startRep = mkStart('SALES\\s+REP\\s+PERFORMANCE')
 		const endRep = mkEnd('SALES\\s+REP\\s+PERFORMANCE')
-
+		
 		type Marker = { type: 'start' | 'end'; tab: 'exec' | 'chance' | 'rep'; regex: RegExp }
-
+		
 		const markers: Marker[] = [
 			{ type: 'start', tab: 'exec', regex: startExec },
 			{ type: 'end', tab: 'exec', regex: endExec },
@@ -103,7 +105,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 			{ type: 'start', tab: 'rep', regex: startRep },
 			{ type: 'end', tab: 'rep', regex: endRep },
 		]
-
+		
 		for (const part of parts) {
 			if (part.startsWith('```')) {
 				if (cur === 'exec') exec += part
@@ -111,7 +113,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 				else if (cur === 'rep') rep += part
 				continue
 			}
-
+			
 			let s = part
 			while (s.length > 0) {
 				let bestIdx = -1
@@ -139,10 +141,10 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 				if (cur === 'exec') exec += before
 				else if (cur === 'chance') chance += before
 				else if (cur === 'rep') rep += before
-
+				
 				// advance past marker
 				s = s.slice(bestIdx + bestLen)
-
+				
 				if (bestMarker.type === 'start') {
 					cur = bestMarker.tab
 				} else {
@@ -150,7 +152,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 				}
 			}
 		}
-
+		
 		const trim = (x: string) => (x || '').replace(/^\n+|\s+$/g, '').trim()
 		return { executive: trim(exec) || undefined, chance: trim(chance) || undefined, rep: trim(rep) || undefined }
 	}
@@ -196,6 +198,8 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 					</div>
 				</div>
 
+				<UpcomingAppointments subjectId={session?.subject_id || null} />
+
 				<Tabs value={active} onValueChange={setActive}>
 					<TabsList>
 						<TabsTrigger value="executive">Executive Summary</TabsTrigger>
@@ -229,7 +233,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 						) : (
 							<Card>
 								<CardContent className="pt-6 text-sm">
-																	{renderMarkdownIfAny(tabsData, 'executive')}
+												{renderMarkdownIfAny(tabsData, 'executive')}
 								</CardContent>
 							</Card>
 						)}

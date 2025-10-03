@@ -49,7 +49,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           setUser({
             name: authUser.user_metadata?.full_name || authUser.email.split('@')[0] || 'User',
             email: authUser.email,
-            avatar: authUser.user_metadata?.avatar_url || '/avatars/avatar.png',
+            avatar: authUser.user_metadata?.avatar_url || '/avatars/avatar.webp',
           });
         }
       } catch (error) {
@@ -65,7 +65,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         setUser({
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
           email: session.user.email || '',
-          avatar: session.user.user_metadata?.avatar_url || '/avatars/avatar.png',
+          avatar: session.user.user_metadata?.avatar_url || '/avatars/avatar.webp',
         });
       } else if (event === 'SIGNED_OUT') {
         setUser(sidebarMenus.user); // fallback

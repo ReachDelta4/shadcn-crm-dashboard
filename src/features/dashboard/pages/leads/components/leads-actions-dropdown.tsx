@@ -10,7 +10,8 @@ import {
   Mail, 
   UserCheck,
   UserX,
-  UserPlus
+  UserPlus,
+  UserCog
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,6 +24,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useState } from "react";
+import { EditLeadDialog } from "./modals/edit-lead-dialog";
 
 interface LeadActionsProps {
   lead: Lead;
@@ -30,15 +33,14 @@ interface LeadActionsProps {
 
 export function LeadActionsDropdown({ lead }: LeadActionsProps) {
   const router = useRouter();
+  const [openEdit, setOpenEdit] = useState(false);
 
   const handleViewDetails = () => {
-    // Implement view details functionality
-    console.log("View lead details", lead.leadNumber);
+    router.push(`/dashboard/leads/${lead.id}`);
   };
 
   const handleEditLead = () => {
-    // Implement edit lead functionality
-    console.log("Edit lead", lead.leadNumber);
+    setOpenEdit(true);
   };
 
   const handleCallLead = () => {
@@ -71,7 +73,7 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
       const res = await fetch(`/api/leads/${lead.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "unqualified" })
+        body: JSON.stringify({ status: "lost" })
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead marked as unqualified");
@@ -92,6 +94,11 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
       toast.error("Failed to delete lead");
     }
   };
+
+  // Canonicalized checks for visibility
+  const isQualified = lead.status === 'qualified'
+  const isLost = lead.status === 'lost' || lead.status === 'unqualified'
+  const isWon = lead.status === 'won' || lead.status === 'converted'
 
   return (
     <div className="text-right">
@@ -122,19 +129,19 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
             <span>Send Email</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {lead.status !== "qualified" && (
+          {!isQualified && (
             <DropdownMenuItem onClick={handleMarkAsQualified}>
               <UserCheck className="mr-2 h-4 w-4" />
               <span>Mark as Qualified</span>
             </DropdownMenuItem>
           )}
-          {lead.status !== "unqualified" && (
+          {!isLost && (
             <DropdownMenuItem onClick={handleMarkAsUnqualified}>
               <UserX className="mr-2 h-4 w-4" />
               <span>Mark as Unqualified</span>
             </DropdownMenuItem>
           )}
-          {lead.status !== "converted" && (
+          {!isWon && (
             <DropdownMenuItem onClick={async () => {
               try {
                 const res = await fetch(`/api/leads/${lead.id}/convert`, { method: "POST" });
@@ -145,7 +152,7 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
                 toast.error("Failed to convert lead");
               }
             }}>
-              <UserPlus className="mr-2 h-4 w-4" />
+              <UserCog className="mr-2 h-4 w-4" />
               <span>Convert to Customer</span>
             </DropdownMenuItem>
           )}
@@ -159,6 +166,7 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <EditLeadDialog open={openEdit} onOpenChange={setOpenEdit} lead={lead} />
     </div>
   );
 } 

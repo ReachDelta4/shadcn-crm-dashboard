@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,14 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 const schema = z.object({
   customer_name: z.string().min(1, "Customer name is required"),
   email: z.string().email("Valid email is required"),
-  amount: z.coerce.number().min(0),
   status: z.enum(["draft","pending","paid","overdue","cancelled"]).default("draft"),
+  lead_id: z.string().uuid().optional(),
+  line_items: z.array(z.object({
+    product_id: z.string().uuid(),
+    quantity: z.coerce.number().int().min(1),
+    discount_type: z.enum(["percent","amount"]).optional(),
+    discount_value: z.coerce.number().int().min(0).optional(),
+  })).min(1),
 });
 
 interface NewInvoiceDialogProps {
@@ -24,18 +30,44 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
   const [open, setOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [email, setEmail] = useState("");
-  const [amount, setAmount] = useState<string>("");
   const [status, setStatus] = useState<"draft"|"pending"|"paid"|"overdue"|"cancelled">("draft");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string }>>([])
+  const [leadId, setLeadId] = useState<string | undefined>(undefined)
+
+  const [lineItems, setLineItems] = useState<Array<{ product_id: string; quantity: string; discount_type?: "percent"|"amount"; discount_value?: string }>>([
+    { product_id: "", quantity: "1" },
+  ])
+
+  useEffect(() => { loadLeads() }, [])
+
+  async function loadLeads() {
+    try {
+      const res = await fetch('/api/leads?pageSize=50')
+      if (!res.ok) return
+      const data = await res.json()
+      const list = (data?.data || []).map((l:any) => ({ id: l.id, full_name: l.full_name, email: l.email }))
+      setLeads(list)
+    } catch {}
+  }
+
   function resetForm() {
     setCustomerName("");
     setEmail("");
-    setAmount("");
     setStatus("draft");
+    setLeadId(undefined)
+    setLineItems([{ product_id: "", quantity: "1" }])
     setError(null);
   }
+
+  function updateLine(idx: number, patch: Partial<{ product_id: string; quantity: string; discount_type?: "percent"|"amount"; discount_value?: string }>) {
+    setLineItems(prev => prev.map((li, i) => i === idx ? { ...li, ...patch } : li))
+  }
+
+  function addLine() { setLineItems(prev => [...prev, { product_id: "", quantity: "1" }]) }
+  function removeLine(idx: number) { setLineItems(prev => prev.filter((_, i) => i !== idx)) }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -44,8 +76,14 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
     const parsed = schema.safeParse({
       customer_name: customerName.trim(),
       email: email.trim(),
-      amount: amount === "" ? 0 : Number(amount),
       status,
+      lead_id: leadId,
+      line_items: lineItems.map(li => ({
+        product_id: li.product_id,
+        quantity: Number(li.quantity || 1),
+        discount_type: li.discount_type,
+        discount_value: li.discount_value ? Number(li.discount_value) : undefined,
+      })),
     });
 
     if (!parsed.success) {
@@ -58,7 +96,13 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
         const res = await fetch("/api/invoices", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(parsed.data),
+          body: JSON.stringify({
+            customer_name: parsed.data.customer_name,
+            email: parsed.data.email,
+            status: parsed.data.status,
+            lead_id: parsed.data.lead_id,
+            line_items: parsed.data.line_items,
+          }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -81,40 +125,59 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
           New Invoice
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[560px]">
+      <DialogContent className="sm:max-w-[720px]">
         <DialogHeader>
           <DialogTitle>Create new invoice</DialogTitle>
           <DialogDescription>Enter invoice details and save.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="customer_name">Customer name</Label>
-            <Input id="customer_name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-          </div>
           <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="amount">Amount (USD)</Label>
-              <Input id="amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Label htmlFor="customer_name">Customer name</Label>
+              <Input id="customer_name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
             </div>
             <div className="grid gap-2">
-              <Label>Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as any)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Lead (optional)</Label>
+            <Select value={leadId} onValueChange={(v:any) => setLeadId(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select lead to link" />
+              </SelectTrigger>
+              <SelectContent>
+                {leads.map(l => (
+                  <SelectItem key={l.id} value={l.id}>{l.full_name} ({l.email})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-3">
+            <div className="flex items-center justify-between">
+              <Label>Line items</Label>
+              <Button type="button" variant="outline" onClick={addLine}>Add line</Button>
+            </div>
+            {lineItems.map((li, idx) => (
+              <div key={idx} className="grid gap-2 sm:grid-cols-5 sm:gap-4">
+                <Input placeholder="Product ID (UUID)" value={li.product_id} onChange={e => updateLine(idx, { product_id: e.target.value })} />
+                <Input placeholder="Qty" type="number" min={1} value={li.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} />
+                <Select value={li.discount_type} onValueChange={(v:any) => updateLine(idx, { discount_type: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Discount type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percent">Percent</SelectItem>
+                    <SelectItem value="amount">Amount</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input placeholder="Discount value" type="number" min={0} value={li.discount_value || ""} onChange={e => updateLine(idx, { discount_value: e.target.value })} />
+                <Button type="button" variant="ghost" onClick={() => removeLine(idx)}>Remove</Button>
+              </div>
+            ))}
           </div>
 
           {error && <div className="text-sm text-red-600" role="alert">{error}</div>}

@@ -6,13 +6,14 @@ import { useInvoices } from "./hooks/use-invoices";
 import { InvoicesTable } from "./components/invoices-table";
 import { InvoicesFilters } from "./components/invoices-filters";
 import { Button } from "@/components/ui/button";
-import { NewInvoiceDialog } from "./components/new-invoice-dialog";
+import { NewInvoiceDialogV2 } from "./components/new-invoice-dialog-v2";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useViewParam } from "@/hooks/use-view-param";
 import { InvoicesKanban } from "./components/invoices-kanban";
 import { SavedViews } from "@/components/saved-views";
+import type { Invoice } from "@/features/dashboard/pages/invoices/types/invoice";
 
-export function InvoicesPage() {
+export function InvoicesPage({ initialInvoices = [], initialCount = 0 }: { initialInvoices?: Invoice[]; initialCount?: number }) {
   const {
     invoices,
     allInvoices,
@@ -25,7 +26,7 @@ export function InvoicesPage() {
     handlePaginationChange,
     handleClearFilters,
     refetch,
-  } = useInvoices();
+  } = useInvoices({ initialInvoices, initialCount });
 
   const isEmpty = allInvoices.length === 0;
   const { view, setView } = useViewParam("table");
@@ -45,7 +46,7 @@ export function InvoicesPage() {
               if (params.view) setView(params.view);
             }}
           />
-          <NewInvoiceDialog onCreated={refetch} />
+          <NewInvoiceDialogV2 onCreated={refetch} />
         </div>
       </div>
 

@@ -11,6 +11,7 @@ export interface SessionFilters {
 export interface Session {
 	id: string
 	owner_id: string
+	subject_id: string | null
 	title: string
 	description?: string
 	status: 'active' | 'completed' | 'cancelled'
