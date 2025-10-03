@@ -7,12 +7,14 @@ export interface CalendarEvent {
 	source_type: CalendarEventSourceType
 	title: string
 	start_at_utc: string
-	end_at_utc: string
-	timezone: string
+	end_at_utc?: string
+	timezone?: string
 	links: {
 		subject_id?: string | null
 		lead_id?: string | null
 		meeting_link?: string | null
+		invoice_id?: string | null
+		invoice_line_id?: string | null
 	}
 	meta: Record<string, any>
 }
@@ -97,6 +99,34 @@ export function normalizeAppointments(appointments: LeadAppointment[]): Calendar
 	return appointments
 		.map(normalizeAppointment)
 		.filter((event): event is CalendarEvent => event !== null)
+}
+
+// Payment schedules → events
+export interface PaymentScheduleLike { id: string; invoice_id: string; invoice_line_id?: string | null; due_at_utc: string; amount_minor: number; description?: string; status?: string }
+export function normalizePaymentSchedules(schedules: PaymentScheduleLike[]): CalendarEvent[] {
+	if (!Array.isArray(schedules)) return []
+	return schedules.map(s => ({
+		id: s.id,
+		source_type: 'payment_schedule' as const,
+		title: `Invoice Payment Due` + (s.description ? ` (${s.description})` : ''),
+		start_at_utc: s.due_at_utc,
+		links: { invoice_id: s.invoice_id || null, invoice_line_id: s.invoice_line_id || null },
+		meta: { amount_minor: s.amount_minor, status: s.status || 'pending' },
+	}))
+}
+
+// Recurring revenue schedules → events
+export interface RecurringScheduleLike { id: string; invoice_line_id: string; billing_at_utc: string; amount_minor: number; description?: string; status?: string }
+export function normalizeRecurringSchedules(schedules: RecurringScheduleLike[]): CalendarEvent[] {
+	if (!Array.isArray(schedules)) return []
+	return schedules.map(s => ({
+		id: s.id,
+		source_type: 'recurring_revenue' as const,
+		title: `Recurring Revenue` + (s.description ? ` (${s.description})` : ''),
+		start_at_utc: s.billing_at_utc,
+		links: { invoice_line_id: s.invoice_line_id || null },
+		meta: { amount_minor: s.amount_minor, status: s.status || 'scheduled' },
+	}))
 }
 
 /**

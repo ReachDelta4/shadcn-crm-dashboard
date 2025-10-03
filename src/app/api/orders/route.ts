@@ -13,6 +13,7 @@ const orderCreateSchema = z.object({
 	date: z.string().optional(),
 	items: z.coerce.number().min(0).default(0),
 	payment_method: z.string().optional(),
+	lead_id: z.string().uuid().optional(),
 })
 
 const orderFiltersSchema = z.object({

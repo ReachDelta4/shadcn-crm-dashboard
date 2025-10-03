@@ -35,6 +35,10 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
   const [status, setStatus] = useState<LeadStatus>((lead.status as LeadStatus) || "new");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Scheduling state for demo/appointment
+  const [startAt, setStartAt] = useState("");
+  const [endAt, setEndAt] = useState("");
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
   function reset() {
     setFullName(lead.fullName || "");
@@ -44,10 +48,44 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
     setValue(String(lead.value ?? 0));
     setStatus((lead.status as LeadStatus) || "new");
     setError(null);
+    setStartAt("");
+    setEndAt("");
+    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
   }
 
   async function handleSave() {
     setError(null);
+    // If moving to demo/appointment and scheduling provided, use transition API to enforce lifecycle and create appointment
+    if (status === "demo_appointment") {
+      if (!startAt || !endAt) {
+        setError("Start and end time are required for demo/appointment");
+        return;
+      }
+      startTransition(async () => {
+        try {
+          const res = await fetch(`/api/leads/${lead.id}/transition`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              target_status: "demo_appointment",
+              appointment: {
+                provider: "none",
+                start_at_utc: new Date(startAt).toISOString(),
+                end_at_utc: new Date(endAt).toISOString(),
+                timezone,
+              },
+            }),
+          });
+          if (!res.ok) throw new Error(await res.text());
+          onSaved?.();
+          onOpenChange(false);
+        } catch (e: any) {
+          setError(typeof e?.message === "string" ? e.message : "Failed to save lead");
+        }
+      });
+      return;
+    }
+
     const payload: any = {
       full_name: fullName.trim(),
       email: email.trim(),
@@ -115,6 +153,23 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
             <Input type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} />
           </div>
         </div>
+
+        {status === "demo_appointment" && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <Label>Start</Label>
+              <Input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+            </div>
+            <div>
+              <Label>End</Label>
+              <Input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
+            </div>
+            <div>
+              <Label>Timezone</Label>
+              <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+            </div>
+          </div>
+        )}
 
         {error && <div className="text-sm text-destructive bg-destructive/10 p-2 rounded mt-2">{error}</div>}
 

@@ -66,6 +66,8 @@ export function OrderActionsDropdown({ order }: OrderActionsProps) {
           email: order.email,
           status: 'draft',
           line_items: valid,
+          // If the order carries a lead_id, include it so lifecycle advances to invoice_sent
+          lead_id: (order as any).lead_id || undefined,
         })
       });
       if (!res.ok) throw new Error(await res.text());

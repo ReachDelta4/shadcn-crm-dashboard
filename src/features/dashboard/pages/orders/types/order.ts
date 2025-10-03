@@ -10,6 +10,7 @@ export interface Order {
   date: string;
   items: number;
   paymentMethod: string;
+  lead_id?: string;
 }
 
 export interface OrderFilters {

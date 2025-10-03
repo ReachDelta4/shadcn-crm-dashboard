@@ -83,6 +83,7 @@ export function useOrders({ initialOrders = [], initialCount = 0 }: UseOrdersPro
         date: order.date || new Date().toISOString(),
         items: typeof order.items === 'number' ? order.items : 0,
         paymentMethod: order.payment_method || 'card',
+        lead_id: order.lead_id || undefined,
       }));
 
       setOrders(transformed);

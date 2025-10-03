@@ -14,6 +14,7 @@ const schema = z.object({
   email: z.string().email("Valid email is required"),
   amount: z.coerce.number().min(0),
   status: z.enum(["pending","processing","completed","cancelled"]).default("pending"),
+  lead_id: z.string().uuid().optional(),
 });
 
 interface NewOrderDialogProps {
@@ -28,6 +29,18 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
   const [status, setStatus] = useState<"pending"|"processing"|"completed"|"cancelled">("pending");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string }>>([]);
+  const [leadId, setLeadId] = useState<string | undefined>(undefined);
+
+  async function loadLeads() {
+    try {
+      const res = await fetch('/api/leads?pageSize=50');
+      if (!res.ok) return;
+      const data = await res.json();
+      const list = (data?.data || []).map((l: any) => ({ id: l.id, full_name: l.full_name, email: l.email }));
+      setLeads(list);
+    } catch {}
+  }
 
   function resetForm() {
     setCustomerName("");
@@ -35,6 +48,7 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
     setAmount("");
     setStatus("pending");
     setError(null);
+    setLeadId(undefined);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -46,6 +60,7 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
       email: email.trim(),
       amount: amount === "" ? 0 : Number(amount),
       status,
+      lead_id: leadId,
     });
 
     if (!parsed.success) {
@@ -74,7 +89,7 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) loadLeads(); else resetForm(); }}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="size-4" />
@@ -87,6 +102,26 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
           <DialogDescription>Enter order details and save.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4">
+          <div className="grid gap-2">
+            <Label>Link to Lead (Optional)</Label>
+            <Select value={leadId} onValueChange={(v: any) => {
+              setLeadId(v);
+              const selected = leads.find(l => l.id === v);
+              if (selected) {
+                setCustomerName(selected.full_name || "");
+                setEmail(selected.email || "");
+              }
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select lead to link" />
+              </SelectTrigger>
+              <SelectContent>
+                {leads.map(l => (
+                  <SelectItem key={l.id} value={l.id}>{l.full_name} ({l.email})</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="customer_name">Customer name</Label>
             <Input id="customer_name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />

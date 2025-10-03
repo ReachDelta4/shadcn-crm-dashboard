@@ -45,6 +45,10 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
+  // Scheduling state for demo/appointment
+  const [startAt, setStartAt] = useState("");
+  const [endAt, setEndAt] = useState("");
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,7 +63,23 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
     });
     if (!parsed.success) return;
     const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(parsed.data) });
-    if (res.ok) { onCreated?.(); setOpen(false); }
+    if (res.ok) {
+      const lead = await res.json().catch(() => null);
+      const leadId = lead?.id || lead?.data?.id || lead?.lead?.id;
+      if (status === 'demo_appointment' && leadId) {
+        if (!startAt || !endAt) {
+          // If status requires schedule but times not provided, skip transition (create only)
+        } else {
+          await fetch(`/api/leads/${leadId}/transition`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+              target_status: 'demo_appointment',
+              appointment: { provider: 'none', start_at_utc: new Date(startAt).toISOString(), end_at_utc: new Date(endAt).toISOString(), timezone }
+            })
+          }).catch(() => {})
+        }
+      }
+      onCreated?.(); setOpen(false);
+    }
   }
 
   return (
@@ -95,6 +115,22 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
               </SelectContent>
             </Select>
           </div>
+          {status === 'demo_appointment' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm">Start</label>
+                <Input type="datetime-local" value={startAt} onChange={(e) => setStartAt(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm">End</label>
+                <Input type="datetime-local" value={endAt} onChange={(e) => setEndAt(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm">Timezone</label>
+                <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+              </div>
+            </div>
+          )}
           <DialogFooter>
             <Button type="submit">Create</Button>
           </DialogFooter>

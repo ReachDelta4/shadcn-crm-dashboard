@@ -95,15 +95,18 @@ export const sidebarMenus = {
       ],
     },
     {
-      title: "Sessions",
+      title: "Sessions & Reports",
       url: "/dashboard/sessions",
       icon: Headphones,
       items: [
-        { title: "Overview", url: "/dashboard/sessions" },
+        { title: "Sessions Overview", url: "/dashboard/sessions" },
         { title: "All Sessions", url: "/dashboard/sessions/all" },
         { title: "Calendar", url: "/dashboard/sessions/calendar" },
-        { title: "Reports", url: "/dashboard/sessions/reports" },
+        { title: "Session Reports", url: "/dashboard/sessions/reports" },
         { title: "Bulk Reports", url: "/dashboard/sessions/bulk-reports" },
+        { title: "Sales Report", url: "/dashboard/reports/sales" },
+        { title: "Customer Insights", url: "/dashboard/reports/customer-insights" },
+        { title: "Revenue", url: "/dashboard/reports/revenue" },
       ],
     },
     {
@@ -122,25 +125,6 @@ export const sidebarMenus = {
         {
           title: "Paid",
           url: "/dashboard/invoices/paid",
-        },
-      ],
-    },
-    {
-      title: "Reports",
-      url: "/dashboard/reports/sales",
-      icon: BarChart,
-      items: [
-        {
-          title: "Sales Report",
-          url: "/dashboard/reports/sales",
-        },
-        {
-          title: "Customer Insights",
-          url: "/dashboard/reports/customer-insights",
-        },
-        {
-          title: "Revenue",
-          url: "/dashboard/reports/revenue",
         },
       ],
     },

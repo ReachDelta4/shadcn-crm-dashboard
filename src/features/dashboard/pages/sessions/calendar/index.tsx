@@ -46,6 +46,19 @@ export function SessionsCalendarPage() {
     to: dateRange.to,
   });
 
+  // Load combined events
+  React.useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (dateRange.from) params.set('from', dateRange.from);
+    if (dateRange.to) params.set('to', dateRange.to);
+    fetch(`/api/calendar/events?${params.toString()}`, { signal: controller.signal })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('Failed to load events')))
+      .then(data => setEvents(Array.isArray(data?.events) ? data.events : []))
+      .catch(() => setEvents([]));
+    return () => controller.abort();
+  }, [dateRange.from, dateRange.to]);
+
   // Get events for selected date
   const eventsForDate = React.useMemo(() => {
     return events.filter(event => 
