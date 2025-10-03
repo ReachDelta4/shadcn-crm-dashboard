@@ -62,6 +62,7 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead marked as qualified");
+      window.dispatchEvent(new Event('leads:changed'));
       router.refresh();
     } catch (e) {
       toast.error("Failed to mark as qualified");
@@ -77,6 +78,7 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead marked as unqualified");
+      window.dispatchEvent(new Event('leads:changed'));
       router.refresh();
     } catch (e) {
       toast.error("Failed to mark as unqualified");
@@ -89,6 +91,7 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
       const res = await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead deleted");
+      window.dispatchEvent(new Event('leads:changed'));
       router.refresh();
     } catch (e) {
       toast.error("Failed to delete lead");
@@ -147,6 +150,7 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
                 const res = await fetch(`/api/leads/${lead.id}/convert`, { method: "POST" });
                 if (!res.ok) throw new Error(await res.text());
                 toast.success("Lead converted to customer");
+                window.dispatchEvent(new Event('leads:changed'));
                 router.refresh();
               } catch (e) {
                 toast.error("Failed to convert lead");

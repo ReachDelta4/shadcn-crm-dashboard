@@ -80,6 +80,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		if (parsed.target_status === 'demo_appointment') {
 			if (!parsed.appointment) return NextResponse.json({ error: 'Appointment required' }, { status: 400 })
 			const apptRepo = new LeadAppointmentsRepository()
+			// Server-side overlap check to prevent race conditions
+			const existing = await apptRepo.findByLeadId(leadId)
+			const sNew = new Date(parsed.appointment.start_at_utc).getTime()
+			const eNew = new Date(parsed.appointment.end_at_utc).getTime()
+			const overlaps = (existing || []).some((a: any) => a.status === 'scheduled' && !(eNew <= new Date(a.start_at_utc).getTime() || sNew >= new Date(a.end_at_utc).getTime()))
+			if (overlaps) {
+				return NextResponse.json({ error: 'Overlapping appointment exists' }, { status: 409 })
+			}
 			const created = await apptRepo.create({
 				lead_id: leadId,
 				subject_id: (lead as any).subject_id || null,

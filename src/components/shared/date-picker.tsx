@@ -64,7 +64,7 @@ export function DatePicker({
           name={name}
           variant="outline"
           className={cn(
-            "w-full justify-start text-left font-normal",
+            "w-full justify-start text-left font-normal min-w-0 overflow-hidden whitespace-nowrap",
             !date && "text-muted-foreground",
           )}
           aria-label="Choose date"
@@ -73,9 +73,9 @@ export function DatePicker({
         >
           <CalendarIcon className="mr-2 h-4 w-4" aria-hidden="true" />
           {formattedDate ? (
-            <span aria-live="polite">{formattedDate}</span>
+            <span aria-live="polite" className="truncate">{formattedDate}</span>
           ) : (
-            <span className="text-muted-foreground">Pick a date</span>
+            <span className="text-muted-foreground truncate">Pick a date</span>
           )}
         </Button>
       </PopoverTrigger>

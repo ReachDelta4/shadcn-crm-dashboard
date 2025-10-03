@@ -114,6 +114,13 @@ export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps 
     fetchLeads();
   }, [fetchLeads]);
 
+  // Instant refresh on global events
+  useEffect(() => {
+    const onChanged = () => { fetchLeads(); };
+    window.addEventListener('leads:changed', onChanged);
+    return () => window.removeEventListener('leads:changed', onChanged);
+  }, [fetchLeads]);
+
   const updateFilters = (newFilters: Partial<LeadFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
