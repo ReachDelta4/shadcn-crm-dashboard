@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 
-export default async function Page({ params }: { params: { id: string } }) {
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
 	const cookieStore = await cookies();
 	const supabase = createServerClient(
 		process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,12 +23,14 @@ export default async function Page({ params }: { params: { id: string } }) {
 	const { data: { user } } = await supabase.auth.getUser();
 	if (!user) return null;
 
+	const { id } = await params;
+
 	const leadsRepo = new LeadsRepository(supabase);
-	const lead = await leadsRepo.getById(params.id, user.id);
+	const lead = await leadsRepo.getById(id, user.id);
 	if (!lead) return <div className="p-4">Lead not found</div> as any;
 
 	const apptRepo = new LeadAppointmentsRepository(supabase);
-	const appts = await apptRepo.findByLeadId(params.id);
+	const appts = await apptRepo.findByLeadId(id);
 
 	const logsRepo = new ActivityLogsRepository(supabase);
 	const logs = await logsRepo.list({ userId: user.id, page: 0, pageSize: 20, sort: 'timestamp', direction: 'desc', filters: { type: 'all' } });
@@ -81,3 +83,4 @@ export default async function Page({ params }: { params: { id: string } }) {
 		</div>
 	);
 }
+
