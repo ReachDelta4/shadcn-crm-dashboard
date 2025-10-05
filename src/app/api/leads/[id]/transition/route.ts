@@ -103,7 +103,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			try {
 				const createdId = result.data?.appointment_id
 				if (createdId) {
-					const notifService = new NotificationService()
+			const notifService = new NotificationService()
 					await notifService.scheduleAppointmentReminders(createdId, scope.userId, parsed.appointment.start_at_utc)
 				}
 			} catch {}
@@ -129,19 +129,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		// For simple transitions without appointment/invoice, log + update locally
 		if (parsed.target_status !== 'demo_appointment' && parsed.target_status !== 'invoice_sent' && parsed.target_status !== 'won') {
-			await transitionsRepo.create({
-				lead_id: leadId,
-				subject_id: (lead as any).subject_id || null,
-				actor_id: scope.userId,
-				event_type: 'status_change',
-				status_from: (lead as any).status || null,
-				status_to: parsed.target_status as any,
-				override_flag: !!parsed.override,
-				override_reason: parsed.override_reason || null,
-				idempotency_key: parsed.idempotency_key || null,
-				metadata: parsed.metadata || null,
-			})
-			await (new LeadsRepository()).update(leadId, { status: parsed.target_status as any }, scope.userId)
+		await transitionsRepo.create({
+			lead_id: leadId,
+			subject_id: (lead as any).subject_id || null,
+			actor_id: scope.userId,
+			event_type: 'status_change',
+			status_from: (lead as any).status || null,
+			status_to: parsed.target_status as any,
+			override_flag: !!parsed.override,
+			override_reason: parsed.override_reason || null,
+			idempotency_key: parsed.idempotency_key || null,
+			metadata: parsed.metadata || null,
+		})
+		await (new LeadsRepository()).update(leadId, { status: parsed.target_status as any }, scope.userId)
 		}
 
 		// Send notification (best-effort)

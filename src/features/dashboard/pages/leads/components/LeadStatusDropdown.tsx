@@ -17,7 +17,7 @@ type TargetStatus = 'new'|'contacted'|'qualified'|'demo_appointment'|'proposal_n
 export function LeadStatusDropdown({ lead, onChanged }: Props) {
 	const [target, setTarget] = useState<TargetStatus>(lead.status as any)
 	const [openAppt, setOpenAppt] = useState(false)
-    const [openInvoice, setOpenInvoice] = useState(false)
+	const [openInvoice, setOpenInvoice] = useState(false)
     const [openTransition, setOpenTransition] = useState<null|'demo_appointment'|'invoice_sent'|'won'>(null)
 
 	// Appointment modal state

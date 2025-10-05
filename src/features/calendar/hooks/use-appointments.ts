@@ -59,12 +59,5 @@ export function useAppointments(options: UseAppointmentsOptions = {}): UseAppoin
 		fetchAppointments()
 	}, [from, to, limit, enabled, refetchTrigger])
 
-	// React to global calendar changes
-	useEffect(() => {
-		const handler = () => refetch()
-		window.addEventListener('calendar:changed', handler)
-		return () => window.removeEventListener('calendar:changed', handler)
-	}, [])
-
 	return { events, loading, error, refetch }
 }
