@@ -36,7 +36,7 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
   const [status, setStatus] = useState<LeadStatus>((lead.status as LeadStatus) || "new");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [openTransition, setOpenTransition] = useState<null|'demo_appointment'>(null)
+  const [openTransition, setOpenTransition] = useState<null|'demo_appointment'|'invoice_sent'|'won'>(null)
 
   function reset() {
     setFullName(lead.fullName || "");
@@ -61,9 +61,9 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
 
     startTransition(async () => {
       try {
-        // If moving to demo_appointment, open transition modal instead of PATCH
-        if (status === 'demo_appointment') {
-          setOpenTransition('demo_appointment');
+        // If moving to appointment/invoice/won, open transition modal instead of PATCH
+        if (status === 'demo_appointment' || status === 'invoice_sent' || status === 'won') {
+          setOpenTransition(status as any);
           return;
         }
         const res = await fetch(`/api/leads/${lead.id}`, {
@@ -135,7 +135,7 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
         leadName={lead.fullName}
         mode={openTransition}
         open={!!openTransition}
-        onOpenChange={(o)=> setOpenTransition(o ? 'demo_appointment' : null)}
+        onOpenChange={(o)=> setOpenTransition(prev => (o ? prev : null))}
         onSuccess={() => { onSaved?.(); onOpenChange(false); }}
       />
     </Dialog>

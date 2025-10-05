@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/shared/date-picker";
 import { toast } from "sonner";
+import { ProductPicker, type Product } from "@/features/dashboard/components/product-picker";
+import { PaymentPlanPicker, type PaymentPlan } from "@/features/dashboard/components/payment-plan-picker";
 
 type Mode = 'demo_appointment' | 'invoice_sent' | 'won'
 
@@ -43,13 +45,88 @@ export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChang
   const [startTime, setStartTime] = useState<string>("")
   const [durationMin, setDurationMin] = useState<string>("30")
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
+
+  // Invoice/Won form state
+  const [product, setProduct] = useState<Product | null>(null)
   const [productId, setProductId] = useState("")
   const [quantity, setQuantity] = useState("1")
-  const [discountType, setDiscountType] = useState<'percent'|'amount'|''>('')
-  const [discountValue, setDiscountValue] = useState<string>("")
+  const [discountType, setDiscountType] = useState<'percent'|'amount'|'none'>('none')
+  const [discountValueDisplay, setDiscountValueDisplay] = useState<string>("")
+  const [plan, setPlan] = useState<PaymentPlan | null>(null)
+  const [planId, setPlanId] = useState<string | null>(null)
 
   const isAppointment = mode === 'demo_appointment'
   const isInvoice = mode === 'invoice_sent' || mode === 'won'
+
+  // Simple live preview for a single line
+  const preview = (() => {
+    if (!product) return null
+    const qty = Math.max(1, Number(quantity) || 1)
+    const subtotal = product.price_minor * qty
+
+    let discountMinor = 0
+    if (discountType !== 'none' && discountValueDisplay) {
+      const num = Number(discountValueDisplay) || 0
+      if (discountType === 'percent') {
+        const bp = Math.max(0, Math.round(num * 100))
+        discountMinor = Math.floor((subtotal * bp) / 10000)
+      } else {
+        discountMinor = Math.max(0, Math.round(num * 100))
+      }
+    }
+
+    const afterDiscount = Math.max(0, subtotal - discountMinor)
+    const taxBp = (product as any).tax_rate_bp || 0
+    const taxMinor = Math.floor((afterDiscount * taxBp) / 10000)
+    const totalMinor = afterDiscount + taxMinor
+
+    return {
+      currency: product.currency,
+      subtotal,
+      discount: discountMinor,
+      tax: taxMinor,
+      total: totalMinor,
+    }
+  })()
+
+  function fmtCurrency(minor: number, currency: string) {
+    return (minor / 100).toLocaleString(undefined, { style: 'currency', currency })
+  }
+
+  // Prefill from last sale metadata when modal opens for won/invoice
+  useEffect(() => {
+    let cancelled = false
+    async function loadPrefill() {
+      if (!open || !isInvoice) return
+      try {
+        const res = await fetch(`/api/leads/${leadId}/last-sale`)
+        if (!res.ok) return
+        const data = await res.json()
+        const item = data?.data?.line_items?.[0]
+        if (!cancelled && item) {
+          setProductId(item.product_id || '')
+          setQuantity(String(item.quantity || 1))
+          if (item.payment_plan_id) setPlanId(item.payment_plan_id)
+          if (item.discount_type) {
+            setDiscountType(item.discount_type)
+            // convert API units back to display: percent bp->percent, amount minor->major
+            if (typeof item.discount_value === 'number') {
+              if (item.discount_type === 'percent') {
+                setDiscountValueDisplay(String(item.discount_value / 100))
+              } else {
+                setDiscountValueDisplay(String(item.discount_value / 100))
+              }
+            }
+          } else {
+            setDiscountType('none')
+            setDiscountValueDisplay('')
+          }
+        }
+      } catch {}
+    }
+    loadPrefill()
+    return () => { cancelled = true }
+  }, [open, isInvoice, leadId])
 
   async function submit() {
     try {
@@ -66,14 +143,56 @@ export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChang
         if (!res.ok) throw new Error(await res.text())
       } else if (isInvoice) {
         if (!productId) { toast.error('Select a product'); return }
+        const qty = Math.max(1, Number(quantity) || 1)
+
+        let discount_type: 'percent' | 'amount' | undefined
+        let discount_value: number | undefined
+        if (discountType !== 'none' && discountValueDisplay) {
+          discount_type = discountType
+          if (discountType === 'percent') {
+            discount_value = Math.max(0, Math.round(Number(discountValueDisplay) * 100))
+          } else {
+            discount_value = Math.max(0, Math.round(Number(discountValueDisplay) * 100))
+          }
+        }
+
+        const lineTotalMinor = preview ? preview.total : undefined
+        const unitPriceMinor = product ? product.price_minor : undefined
+        const currency = product ? product.currency : undefined
+        const taxRateBp = product ? (product as any).tax_rate_bp : undefined
+        const idempotency_key = `${leadId}:${mode}:${productId}:${qty}:${discount_type || 'none'}:${discount_value || 0}`
+
         const payload: any = {
           target_status: mode,
-          invoice: { line_items: [{ product_id: productId, quantity: Number(quantity), ...(discountType ? { discount_type: discountType, discount_value: Number(discountValue||0) } : {}) }] }
+          idempotency_key,
+          invoice: {
+            line_items: [
+              {
+                product_id: productId,
+                quantity: qty,
+                ...(discount_type ? { discount_type, discount_value } : {}),
+                ...(planId ? { payment_plan_id: planId } : {}),
+                ...(typeof unitPriceMinor === 'number' ? { unit_price_minor: unitPriceMinor } : {}),
+                ...(typeof taxRateBp === 'number' ? { tax_rate_bp: taxRateBp } : {}),
+                ...(currency ? { currency } : {}),
+                ...(typeof lineTotalMinor === 'number' ? { total_minor: lineTotalMinor } : {}),
+              }
+            ]
+          }
         }
         const res = await fetch(`/api/leads/${leadId}/transition`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         })
-        if (!res.ok) throw new Error(await res.text())
+        if (!res.ok) {
+          let msg = 'Transition failed'
+          try {
+            const err = await res.json()
+            msg = err?.error || msg
+          } catch {
+            try { msg = await res.text() } catch {}
+          }
+          throw new Error(msg)
+        }
       }
       toast.success('Transition completed')
       onOpenChange(false)
@@ -123,24 +242,55 @@ export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChang
         {isInvoice && (
           <div className="grid gap-3">
             <div>
-              <div className="text-sm">Product ID (UUID)</div>
-              <Input value={productId} onChange={(e)=>setProductId(e.target.value)} placeholder="UUID" />
+              <div className="text-sm">Product</div>
+              <ProductPicker
+                value={productId}
+                onValueChange={(id, p) => { setProductId(id); setProduct(p) }}
+              />
             </div>
-            <div>
-              <div className="text-sm">Quantity</div>
-              <Input type="number" min={1} value={quantity} onChange={(e)=>setQuantity(e.target.value)} />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <div className="text-sm">Quantity</div>
+                <Input type="number" min={1} value={quantity} onChange={(e)=>setQuantity(e.target.value)} />
+              </div>
+              <div>
+                <div className="text-sm">Payment plan (optional)</div>
+                <PaymentPlanPicker
+                  productId={productId || null}
+                  value={planId || undefined}
+                  onValueChange={(id, p) => { setPlanId(id); setPlan(p) }}
+                />
+              </div>
             </div>
+
             <div className="grid grid-cols-2 gap-2">
               <Select value={discountType} onValueChange={(v:any)=>setDiscountType(v)}>
                 <SelectTrigger><SelectValue placeholder="Discount type" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No discount</SelectItem>
+                  <SelectItem value="none">No discount</SelectItem>
                   <SelectItem value="percent">Percent</SelectItem>
                   <SelectItem value="amount">Amount</SelectItem>
                 </SelectContent>
               </Select>
-              <Input type="number" min={0} value={discountValue} onChange={(e)=>setDiscountValue(e.target.value)} placeholder="Value" />
+              <Input
+                type="number"
+                min={0}
+                value={discountValueDisplay}
+                onChange={(e)=>setDiscountValueDisplay(e.target.value)}
+                placeholder={discountType === 'percent' ? 'e.g. 10 for 10%' : 'e.g. 25 for $25.00'}
+                disabled={discountType === 'none'}
+              />
             </div>
+
+            {!!preview && (
+              <div className="rounded-md border p-3 text-sm grid grid-cols-2 gap-2">
+                <div>Subtotal</div><div className="text-right">{fmtCurrency(preview.subtotal, preview.currency)}</div>
+                <div>Discount</div><div className="text-right">- {fmtCurrency(preview.discount, preview.currency)}</div>
+                <div>Tax</div><div className="text-right">{fmtCurrency(preview.tax, preview.currency)}</div>
+                <div className="font-medium">Total</div><div className="text-right font-medium">{fmtCurrency(preview.total, preview.currency)}</div>
+              </div>
+            )}
           </div>
         )}
         <DialogFooter>

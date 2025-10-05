@@ -125,6 +125,32 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			if (result.error) {
 				return NextResponse.json({ error: result.error.message || 'Transition failed' }, { status: 409 })
 			}
+
+			// Also log a transition row with sale metadata for prefill/retention
+			try {
+				await transitionsRepo.create({
+					lead_id: leadId,
+					subject_id: (lead as any).subject_id || null,
+					actor_id: scope.userId,
+					event_type: 'status_change',
+					status_from: (lead as any).status || null,
+					status_to: parsed.target_status as any,
+					override_flag: !!parsed.override,
+					override_reason: parsed.override_reason || null,
+					idempotency_key: parsed.idempotency_key || null,
+					metadata: {
+						invoice: {
+							line_items: (parsed.invoice?.line_items || []).map((li) => ({
+								product_id: li.product_id,
+								quantity: li.quantity,
+								discount_type: li.discount_type || null,
+								discount_value: typeof li.discount_value === 'number' ? li.discount_value : null,
+								payment_plan_id: li.payment_plan_id || null,
+							})),
+						},
+					},
+				})
+			} catch {}
 		}
 
 		// For simple transitions without appointment/invoice, log + update locally
