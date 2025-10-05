@@ -2,24 +2,27 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
 import type { CalendarEvent } from "@/features/calendar/lib/normalize";
 
 // FullCalendar needs to be imported dynamically to avoid SSR issues
 const FullCalendar = dynamic(() => import("@fullcalendar/react"), { ssr: false }) as any;
-const dayGridPlugin = dynamic(() => import("@fullcalendar/daygrid"), { ssr: false }) as any;
-const timeGridPlugin = dynamic(() => import("@fullcalendar/timegrid"), { ssr: false }) as any;
-const interactionPlugin = dynamic(() => import("@fullcalendar/interaction"), { ssr: false }) as any;
 
 interface CalendarShellProps {
 	view: "month" | "week" | "day";
 	events: CalendarEvent[];
 	onRangeChange?: (fromIso: string, toIso: string) => void;
+	visibleRange?: { start: string; end: string } | undefined;
+	onEventClick?: (ev: CalendarEvent) => void;
+	onReady?: (api: any) => void;
 }
 
 /**
  * CalendarShell wraps FullCalendar with our defaults and a simple API.
  */
-export function CalendarShell({ view, events, onRangeChange }: CalendarShellProps) {
+export function CalendarShell({ view, events, onRangeChange, visibleRange, onEventClick, onReady }: CalendarShellProps) {
 	const ref = React.useRef<any>(null);
 
 	// Map our events to FullCalendar event objects
@@ -41,8 +44,24 @@ export function CalendarShell({ view, events, onRangeChange }: CalendarShellProp
 	// Maintain view when prop changes
 	React.useEffect(() => {
 		const api = ref.current?.getApi?.();
-		if (api && api.view?.type !== fcView) api.changeView(fcView);
+		if (!api) return;
+		if (api.view?.type !== fcView) api.changeView(fcView);
 	}, [fcView]);
+
+	// Expose API to parent once ready
+	React.useEffect(() => {
+		const api = ref.current?.getApi?.();
+		if (api && onReady) onReady(api);
+	}, [onReady]);
+
+	// Apply visibleRange when provided
+	React.useEffect(() => {
+		const api = ref.current?.getApi?.();
+		if (!api) return;
+		if (visibleRange?.start && visibleRange?.end) {
+			api.setOption('visibleRange', { start: visibleRange.start, end: visibleRange.end });
+		}
+	}, [visibleRange?.start, visibleRange?.end]);
 
 	return (
 		<div className="rounded-lg border bg-card p-2">
@@ -64,6 +83,10 @@ export function CalendarShell({ view, events, onRangeChange }: CalendarShellProp
 					const start = arg.start?.toISOString?.();
 					const end = arg.end?.toISOString?.();
 					if (start && end) onRangeChange?.(start, end);
+				}}
+				eventClick={(arg: any) => {
+					const payload = arg?.event?.extendedProps as CalendarEvent | undefined;
+					if (payload && onEventClick) onEventClick(payload);
 				}}
 			/>
 		</div>

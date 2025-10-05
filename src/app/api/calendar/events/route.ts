@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { LeadAppointmentsRepository } from '@/server/repositories/lead-appointments'
 import { normalizeAppointments, normalizePaymentSchedules, normalizeRecurringSchedules, type CalendarEvent } from '@/features/calendar/lib/normalize'
+import { startOfMonth, endOfMonth, isValid as isValidDate, parseISO } from 'date-fns'
 
 const querySchema = z.object({
 	from: z.string().optional(),
@@ -25,19 +26,41 @@ async function getServerClient() {
 	)
 }
 
+function sanitizeRange(fromRaw?: string | null, toRaw?: string | null): { from: string; to: string } {
+	// Default to current month
+	const now = new Date()
+	let fromDate = startOfMonth(now)
+	let toDate = endOfMonth(now)
+	if (fromRaw) {
+		const d = parseISO(fromRaw)
+		if (isValidDate(d)) fromDate = d
+	}
+	if (toRaw) {
+		const d = parseISO(toRaw)
+		if (isValidDate(d)) toDate = d
+	}
+	// Ensure from < to; if invalid order, reset to current month
+	if (!(fromDate instanceof Date) || !(toDate instanceof Date) || !(fromDate.getTime() < toDate.getTime())) {
+		fromDate = startOfMonth(now)
+		toDate = endOfMonth(now)
+	}
+	return { from: fromDate.toISOString(), to: toDate.toISOString() }
+}
+
 export async function GET(request: NextRequest) {
 	try {
 		const supabase = await getServerClient()
 		const { data: { user } } = await supabase.auth.getUser()
-		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+		if (!user) return NextResponse.json({ events: [] }, { status: 401 })
 
 		const { searchParams } = new URL(request.url)
 		const parsed = querySchema.safeParse({ from: searchParams.get('from'), to: searchParams.get('to'), limit: searchParams.get('limit') })
-		if (!parsed.success) return NextResponse.json({ error: 'Invalid params' }, { status: 400 })
+		// If parse fails, still continue with safe defaults
+		const rawFrom = parsed.success ? parsed.data.from : searchParams.get('from')
+		const rawTo = parsed.success ? parsed.data.to : searchParams.get('to')
+		const limit = parsed.success && parsed.data.limit ? Math.min(Math.max(parsed.data.limit, 1), 2000) : 1000
 
-		const from = parsed.data.from || undefined
-		const to = parsed.data.to || undefined
-		const limit = parsed.data.limit ?? 1000
+		const { from, to } = sanitizeRange(rawFrom, rawTo)
 
 		// 1) Appointments via repository (owner scoped)
 		const apptsRepo = new LeadAppointmentsRepository(supabase)
@@ -51,8 +74,8 @@ export async function GET(request: NextRequest) {
 			.order('due_at_utc', { ascending: true })
 			.limit(limit)
 			.eq('invoices.owner_id', user.id)
-		if (from) payQuery.gte('due_at_utc', from)
-		if (to) payQuery.lte('due_at_utc', to)
+			.gte('due_at_utc', from)
+			.lte('due_at_utc', to)
 		const payRes = await payQuery
 		const paymentSchedules = (payRes.data || []).map((row: any) => ({
 			id: row.id,
@@ -72,8 +95,8 @@ export async function GET(request: NextRequest) {
 			.order('billing_at_utc', { ascending: true })
 			.limit(limit)
 			.eq('invoices.owner_id', user.id)
-		if (from) recQuery.gte('billing_at_utc', from)
-		if (to) recQuery.lte('billing_at_utc', to)
+			.gte('billing_at_utc', from)
+			.lte('billing_at_utc', to)
 		const recRes = await recQuery
 		const recurringSchedules = (recRes.data || []).map((row: any) => ({
 			id: row.id,
@@ -88,6 +111,7 @@ export async function GET(request: NextRequest) {
 		const merged: CalendarEvent[] = [...apptEvents, ...payEvents, ...recEvents]
 		return NextResponse.json({ events: merged }, { headers: { 'Cache-Control': 'private, max-age=15, stale-while-revalidate=60' } })
 	} catch (e: any) {
-		return NextResponse.json({ error: e?.message || 'Internal server error' }, { status: 500 })
+		// Return empty events array on unexpected errors to avoid breaking UI
+		return NextResponse.json({ events: [], error: e?.message || 'Internal server error' }, { status: 200 })
 	}
 }

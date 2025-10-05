@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
 		// Build date filter for schedules
 		let dateFilter = ''
-		let params: any[] = []
+		const params: any[] = []
 		if (from) {
 			dateFilter = 'AND due_at_utc >= $1'
 			params.push(from)
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
 		])
 
 		if (paymentResult.error || recurringResult.error || oneTimeResult.error) {
-			console.error('Revenue aggregation errors:', { paymentResult.error, recurringResult.error, oneTimeResult.error })
+			console.error('Revenue aggregation errors:', { paymentError: paymentResult.error, recurringError: recurringResult.error, oneTimeError: oneTimeResult.error })
 			return NextResponse.json({ error: 'Failed to aggregate revenue' }, { status: 500 })
 		}
 

@@ -115,7 +115,7 @@ export function ProductPicker({ value, onValueChange, disabled }: ProductPickerP
       }
     })()
     return () => { cancelled = true }
-  }, [value, products])
+  }, [value, products, selected])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

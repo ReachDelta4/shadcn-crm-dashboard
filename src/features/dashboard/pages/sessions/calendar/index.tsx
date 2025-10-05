@@ -3,15 +3,17 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as React from "react";
 import { useAppointments } from "@/features/calendar/hooks/use-appointments";
-import { startOfMonth, endOfMonth, startOfDay, endOfDay, format, parseISO, isSameDay, startOfWeek, endOfWeek, addDays } from "date-fns";
+import { startOfMonth, endOfMonth, startOfDay, endOfDay, format, parseISO, isSameDay, startOfWeek, endOfWeek } from "date-fns";
 import type { CalendarEvent } from "@/features/calendar/lib/normalize";
 import { SpeedDialNewSession } from "./components/SpeedDialNewSession";
-import { Input } from "@/components/ui/input";
+import { EventDetailsDrawer } from "@/features/calendar/components/EventDetailsDrawer";
+import { toast } from "sonner";
 import { CalendarShell } from "@/features/calendar/components/CalendarShell";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import type { DateRange } from "react-day-picker";
 
 const ENABLE_EXPERIMENTAL_VIEWS = false;
 
@@ -19,15 +21,19 @@ export function SessionsCalendarPage() {
   const [view, setView] = React.useState<"month" | "week" | "day">("month");
   const [altView, setAltView] = React.useState<"calendar" | "kanban" | "gantt">("calendar");
   const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
-  const [customFrom, setCustomFrom] = React.useState<string>("");
-  const [customTo, setCustomTo] = React.useState<string>("");
   const [combinedEvents, setCombinedEvents] = React.useState<CalendarEvent[]>([]);
   const debounceRef = React.useRef<number | null>(null);
+  const [range, setRange] = React.useState<DateRange | undefined>(undefined);
+  const [visibleRange, setVisibleRange] = React.useState<{ start: string; end: string } | undefined>(undefined);
+  const calendarApiRef = React.useRef<any>(null);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [activeEvent, setActiveEvent] = React.useState<CalendarEvent | null>(null);
   
   // Calculate date range based on current view
   const dateRange = React.useMemo(() => {
-    if (customFrom && customTo) {
-      return { from: new Date(customFrom).toISOString(), to: new Date(customTo).toISOString() };
+    // Priority 1: explicit visibleRange chosen via DateRangePicker
+    if (visibleRange?.start && visibleRange?.end) {
+      return { from: visibleRange.start, to: visibleRange.end };
     }
     if (view === "week") {
       const fromWeek = startOfWeek(selectedDate);
@@ -42,14 +48,14 @@ export function SessionsCalendarPage() {
     const fromMonth = startOfMonth(selectedDate);
     const toMonth = endOfMonth(selectedDate);
     return { from: fromMonth.toISOString(), to: toMonth.toISOString() };
-  }, [selectedDate, view, customFrom, customTo]);
+  }, [selectedDate, view, visibleRange?.start, visibleRange?.end]);
 
   const { events: apptEvents, loading, error } = useAppointments({
     from: dateRange.from,
     to: dateRange.to,
   });
 
-  // Phase 2: consolidated events with fallback to appointments
+  // Consolidated events with fallback to appointments
   React.useEffect(() => {
     const controller = new AbortController();
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
@@ -64,20 +70,56 @@ export function SessionsCalendarPage() {
         const list = Array.isArray(data?.events) ? data.events : [];
         setCombinedEvents(list.length > 0 ? list : (apptEvents || []));
       } catch {
+        toast.error('Failed to refresh calendar events; showing appointments only');
         setCombinedEvents(apptEvents || []);
       }
     }, 200);
     return () => { controller.abort(); if (debounceRef.current) window.clearTimeout(debounceRef.current); };
   }, [dateRange.from, dateRange.to, apptEvents]);
 
-  // Get events for selected date
+  // Live refresh on calendar:changed
+  React.useEffect(() => {
+    const handler = () => {
+      const params = new URLSearchParams();
+      if (dateRange.from) params.set('from', dateRange.from);
+      if (dateRange.to) params.set('to', dateRange.to);
+      fetch(`/api/calendar/events?${params.toString()}`)
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(data => {
+          const list = Array.isArray(data?.events) ? data.events : [];
+          setCombinedEvents(list.length > 0 ? list : (apptEvents || []));
+        })
+        .catch(() => setCombinedEvents(apptEvents || []));
+    }
+    window.addEventListener('calendar:changed', handler);
+    return () => window.removeEventListener('calendar:changed', handler);
+  }, [dateRange.from, dateRange.to, apptEvents]);
+
+  // Get events for selected date (used in potential side panels)
   const eventsForDate = React.useMemo(() => {
     return combinedEvents.filter(event => 
       isSameDay(parseISO(event.start_at_utc), selectedDate)
     );
   }, [combinedEvents, selectedDate]);
 
-  // Helper to render event badge
+  // Toolbar handlers
+  function handleToday() {
+    const api = calendarApiRef.current;
+    if (api?.today) api.today();
+  }
+
+  function handleRangeChange(newRange: DateRange | undefined) {
+    setRange(newRange);
+    if (newRange?.from && newRange?.to) {
+      setVisibleRange({ start: newRange.from.toISOString(), end: newRange.to.toISOString() });
+      // Keep month label coherent with picked range
+      setSelectedDate(newRange.from);
+    } else {
+      setVisibleRange(undefined);
+    }
+  }
+
+  // Helper to render event badge (kept for future use)
   const renderEventBadge = (event: CalendarEvent) => (
     <Badge key={event.id} variant="secondary" className="text-xs truncate">
       {format(parseISO(event.start_at_utc), 'HH:mm')} {event.title}
@@ -97,45 +139,11 @@ export function SessionsCalendarPage() {
           <Button variant={view === "day" ? "default" : "outline"} onClick={() => setView("day")}>
             Day
           </Button>
+          <Button variant="outline" onClick={handleToday}>Today</Button>
         </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            size="sm" 
-            variant={altView === "calendar" ? "default" : "outline"} 
-            onClick={() => setAltView("calendar")}
-          >
-            Calendar
-          </Button>
-          {ENABLE_EXPERIMENTAL_VIEWS && (
-            <>
-              <Button 
-                size="sm" 
-                variant={altView === "kanban" ? "default" : "outline"} 
-                onClick={() => setAltView("kanban")}
-              >
-                Kanban
-              </Button>
-              <Button 
-                size="sm" 
-                variant={altView === "gantt" ? "default" : "outline"} 
-                onClick={() => setAltView("gantt")}
-              >
-                Gantt
-              </Button>
-            </>
-          )}
-        </div>
+        <DateRangePicker value={range} onChange={handleRangeChange} />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-        <div className="sm:col-span-2">
-          <label className="text-xs text-muted-foreground">Custom From</label>
-          <Input type="datetime-local" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-xs text-muted-foreground">Custom To</label>
-          <Input type="datetime-local" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
-        </div>
-      </div>
+      {/* Custom datetime inputs removed in favor of single DateRangePicker */}
 
       {error && (
         <Card className="border-destructive">
@@ -158,13 +166,19 @@ export function SessionsCalendarPage() {
               <Skeleton className="h-20 w-full" />
             </div>
           ) : (
-            <CalendarShell 
-              view={view} 
-              events={combinedEvents}
-              onRangeChange={(from, to) => {
-                // Optional: manually update dateRange if needed for controlled mode
-              }}
-            />
+            <>
+              <CalendarShell 
+                view={view}
+                events={combinedEvents}
+                visibleRange={visibleRange}
+                onReady={(api) => { calendarApiRef.current = api; }}
+                onRangeChange={(from, to) => {
+                  // range changes handled via datesSet; fetch effect already watches dateRange
+                }}
+                onEventClick={(ev) => { setActiveEvent(ev); setDrawerOpen(true); }}
+              />
+              <EventDetailsDrawer open={drawerOpen} onOpenChange={setDrawerOpen} event={activeEvent} />
+            </>
           )}
         </CardContent>
       </Card>

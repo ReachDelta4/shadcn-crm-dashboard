@@ -61,6 +61,8 @@ export function LeadStatusDropdown({ lead, onChanged }: Props) {
 			})
 			setOpenAppt(false)
 			toast.success('Appointment created')
+			window.dispatchEvent(new Event('calendar:changed'))
+			window.dispatchEvent(new Event('leads:changed'))
 		} catch {
 			toast.error('Failed to create appointment')
 		}

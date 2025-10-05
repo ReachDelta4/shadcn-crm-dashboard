@@ -145,10 +145,7 @@
   }
 }
 
-/* FullCalendar base styles */
-@import '@fullcalendar/core/main.css';
-@import '@fullcalendar/daygrid/main.css';
-@import '@fullcalendar/timegrid/main.css';
+/* FullCalendar base styles - moved to JS imports in app/layout.tsx to avoid export-map issues */
 
 /* Custom FullCalendar theme overrides */
 :root {
@@ -172,27 +169,26 @@
   --fc-page-bg-color: hsl(var(--background));
 }
 
-/* Event pill colors by source type */
-.fc-ev-appointment {
-  background-color: hsl(var(--primary)) !important;
-  border-color: hsl(var(--primary)) !important;
-  color: hsl(var(--primary-foreground)) !important;
-}
+/* Month/Week grid separators */
+.fc .fc-col-header { border-bottom: 1px solid hsl(var(--border)); background-color: hsl(var(--muted)); }
+.fc .fc-col-header-cell { border-right: 1px solid hsl(var(--border)); }
+.fc .fc-daygrid-day { border-right: 1px solid hsl(var(--border)); border-bottom: 1px solid hsl(var(--border)); }
+.fc .fc-scrollgrid-section > td { border-bottom: 0; }
 
-.fc-ev-payment {
-  background-color: hsl(45 93% 47%) !important;
-  border-color: hsl(45 93% 47%) !important;
-  color: hsl(26 83% 14%) !important;
-}
+/* Day header spacing */
+.fc .fc-col-header-cell-cushion { font-weight: 600; padding: 8px 0; }
+.fc .fc-daygrid-day-top { padding: 6px; }
 
-.fc-ev-recurring {
-  background-color: hsl(262 83% 58%) !important;
-  border-color: hsl(262 83% 58%) !important;
-  color: hsl(0 0% 100%) !important;
-}
+/* Subtle weekend shading (optional) */
+.fc .fc-day-sat .fc-daygrid-day-frame, .fc .fc-day-sun .fc-daygrid-day-frame { background-color: color-mix(in oklch, hsl(var(--accent)) 6%, transparent); }
 
-.fc-ev-default {
-  background-color: hsl(var(--secondary)) !important;
-  border-color: hsl(var(--secondary)) !important;
-  color: hsl(var(--secondary-foreground)) !important;
-}
+/* Event pill styling (month) */
+.fc .fc-daygrid-event { border-radius: 6px; padding: 2px 6px; line-height: 1.2; border-width: 1px; border-style: solid; }
+.fc .fc-daygrid-event .fc-event-time { font-weight: 600; }
+.fc .fc-daygrid-event:hover { filter: brightness(0.97); }
+
+/* Source-type colors (kept, enhanced borders) */
+.fc-ev-appointment { background-color: hsl(var(--primary)) !important; border-color: hsl(var(--primary)) !important; color: hsl(var(--primary-foreground)) !important; }
+.fc-ev-payment { background-color: hsl(45 93% 47%) !important; border-color: hsl(45 93% 47%) !important; color: hsl(26 83% 14%) !important; }
+.fc-ev-recurring { background-color: hsl(262 83% 58%) !important; border-color: hsl(262 83% 58%) !important; color: hsl(0 0% 100%) !important; }
+.fc-ev-default { background-color: hsl(var(--secondary)) !important; border-color: hsl(var(--secondary)) !important; color: hsl(var(--secondary-foreground)) !important; }

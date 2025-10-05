@@ -70,10 +70,17 @@ export function SpeedDialNewSession({ onCreated }: Props) {
         });
         if (!res.ok) throw new Error(await res.text());
         toast.success('Appointment scheduled');
+        window.dispatchEvent(new Event('calendar:changed'));
+        window.dispatchEvent(new Event('leads:changed'));
         onCreated?.();
         setOpen(false); reset();
       } catch (e) {
-        toast.error('Failed to schedule appointment');
+        const msg = typeof e === 'string' ? e : (e as any)?.message || '';
+        if (msg.includes('409') || msg.toLowerCase().includes('overlap')) {
+          toast.error('Selected time overlaps an existing appointment');
+        } else {
+          toast.error('Failed to schedule appointment');
+        }
       }
     });
   }
@@ -106,10 +113,17 @@ export function SpeedDialNewSession({ onCreated }: Props) {
         });
         if (!res.ok) throw new Error(await res.text());
         toast.success('Lead created and appointment scheduled');
+        window.dispatchEvent(new Event('calendar:changed'));
+        window.dispatchEvent(new Event('leads:changed'));
         onCreated?.();
         setOpen(false); reset();
       } catch (e) {
-        toast.error('Failed to create lead or schedule');
+        const msg = typeof e === 'string' ? e : (e as any)?.message || '';
+        if (msg.includes('409') || msg.toLowerCase().includes('overlap')) {
+          toast.error('Selected time overlaps an existing appointment');
+        } else {
+          toast.error('Failed to create lead or schedule');
+        }
       }
     });
   }
