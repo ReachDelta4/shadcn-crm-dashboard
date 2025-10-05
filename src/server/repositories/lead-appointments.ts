@@ -18,6 +18,8 @@ export interface LeadAppointment {
 	provider_event_id: string | null
 	meeting_link: string | null
 	notes: any | null
+	call_outcome?: 'taken' | 'missed' | null
+	call_verified_session_id?: string | null
 	created_at: string
 	updated_at: string
 }
@@ -41,6 +43,7 @@ export interface UpdateAppointmentInput {
 	meeting_link?: string | null
 	notes?: any | null
 	provider_event_id?: string | null
+	call_outcome?: 'taken' | 'missed'
 }
 
 export class LeadAppointmentsRepository {

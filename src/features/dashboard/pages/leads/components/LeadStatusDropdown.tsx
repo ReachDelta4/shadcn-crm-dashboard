@@ -7,6 +7,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { LeadTransitionDialog } from "./modals/lead-transition-dialog";
 import { toast } from "sonner";
 
 interface Props { lead: Lead; onChanged?: () => void }
@@ -16,7 +17,8 @@ type TargetStatus = 'new'|'contacted'|'qualified'|'demo_appointment'|'proposal_n
 export function LeadStatusDropdown({ lead, onChanged }: Props) {
 	const [target, setTarget] = useState<TargetStatus>(lead.status as any)
 	const [openAppt, setOpenAppt] = useState(false)
-	const [openInvoice, setOpenInvoice] = useState(false)
+    const [openInvoice, setOpenInvoice] = useState(false)
+    const [openTransition, setOpenTransition] = useState<null|'demo_appointment'|'invoice_sent'|'won'>(null)
 
 	// Appointment modal state
 	const [startAt, setStartAt] = useState("")
@@ -38,14 +40,9 @@ export function LeadStatusDropdown({ lead, onChanged }: Props) {
 	async function handleChange(next: TargetStatus) {
 		setTarget(next)
 		try {
-			if (next === 'demo_appointment') {
-				setOpenAppt(true)
-				return
-			}
-			if (next === 'invoice_sent') {
-				setOpenInvoice(true)
-				return
-			}
+            if (next === 'demo_appointment') { setOpenTransition('demo_appointment'); return }
+            if (next === 'invoice_sent') { setOpenTransition('invoice_sent'); return }
+            if (next === 'won') { setOpenTransition('won'); return }
 			await submitTransition({ target_status: next })
 			toast.success(`Lead moved to ${next}`)
 		} catch {
@@ -123,28 +120,14 @@ export function LeadStatusDropdown({ lead, onChanged }: Props) {
 				</DialogContent>
 			</Dialog>
 
-			{/* Invoice Modal (minimal) */}
-			<Dialog open={openInvoice} onOpenChange={setOpenInvoice}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Create Invoice for Lead</DialogTitle>
-					</DialogHeader>
-					<div className="grid gap-3">
-						<div className="grid gap-1">
-							<Label>Product ID</Label>
-							<Input value={productId} onChange={e=>setProductId(e.target.value)} placeholder="UUID" />
-						</div>
-						<div className="grid gap-1">
-							<Label>Quantity</Label>
-							<Input type="number" min={1} value={quantity} onChange={e=>setQuantity(e.target.value)} />
-						</div>
-					</div>
-					<DialogFooter>
-						<Button variant="outline" onClick={()=>setOpenInvoice(false)}>Cancel</Button>
-						<Button onClick={confirmInvoice}>Create</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+            <LeadTransitionDialog
+                leadId={lead.id}
+                leadName={lead.fullName}
+                mode={openTransition}
+                open={!!openTransition}
+                onOpenChange={(o) => setOpenTransition(o ? (openTransition||'invoice_sent') : null)}
+                onSuccess={() => { onChanged?.(); }}
+            />
 		</div>
 	)
 }

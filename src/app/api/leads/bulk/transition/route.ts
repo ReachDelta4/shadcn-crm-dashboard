@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getUserAndScope } from '@/server/auth/getUserAndScope'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { LeadsRepository } from '@/server/repositories/leads'
 import { LeadStatusTransitionsRepository } from '@/server/repositories/lead-status-transitions'
+import { isTransitionAllowed } from '@/server/services/lifecycle/transition-matrix'
+import { flags } from '@/server/config/flags'
 import { NotificationService } from '@/server/services/notifications/notification-service'
 
 const bulkTransitionSchema = z.object({
@@ -12,14 +16,29 @@ const bulkTransitionSchema = z.object({
 	override_reason: z.string().optional(),
 })
 
+async function getServerClient() {
+    const cookieStore = await cookies()
+    return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() { return cookieStore.getAll() },
+                setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+            },
+        }
+    )
+}
+
 export async function POST(request: NextRequest) {
 	try {
 		const scope = await getUserAndScope()
 		const body = await request.json()
 		const parsed = bulkTransitionSchema.parse(body)
 
-		const leadsRepo = new LeadsRepository()
-		const transitionsRepo = new LeadStatusTransitionsRepository()
+		const supabase = await getServerClient()
+		const leadsRepo = new LeadsRepository(supabase as any)
+		const transitionsRepo = new LeadStatusTransitionsRepository(supabase as any)
 		const notifService = new NotificationService()
 
 		// Fetch all leads with scope check
@@ -43,6 +62,13 @@ export async function POST(request: NextRequest) {
 				// Skip if already in target status (self-transition)
 				if ((lead as any).status === parsed.target_status) {
 					results.push({ lead_id: leadId, success: true, error: 'Already in target status (skipped)' })
+					continue
+				}
+
+				// Enforce lifecycle if configured
+				const allowed = isTransitionAllowed(((lead as any).status as any), parsed.target_status as any)
+				if (!allowed && !parsed.override && flags.lifecycleEnforcement === 'enforce') {
+					results.push({ lead_id: leadId, success: false, error: 'Transition not allowed by lifecycle rules' })
 					continue
 				}
 

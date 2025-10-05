@@ -14,12 +14,13 @@ const createSchema = z.object({
 })
 
 const updateSchema = z.object({
-	status: z.enum(['scheduled','cancelled','completed']).optional(),
-	start_at_utc: z.string().optional(),
-	end_at_utc: z.string().optional(),
-	timezone: z.string().optional(),
-	meeting_link: z.string().optional(),
-	notes: z.any().optional(),
+    status: z.enum(['scheduled','cancelled','completed']).optional(),
+    start_at_utc: z.string().optional(),
+    end_at_utc: z.string().optional(),
+    timezone: z.string().optional(),
+    meeting_link: z.string().optional(),
+    notes: z.any().optional(),
+    call_outcome: z.enum(['taken','missed']).optional(),
 })
 
 export async function GET(
@@ -58,6 +59,17 @@ export async function POST(
 		if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.errors }, { status: 400 })
 
 		const repo = new LeadAppointmentsRepository()
+		// Overlap guard: check scheduled overlapping windows for this lead
+		const existing = await repo.findByLeadId(leadId)
+		const sNew = new Date(parsed.data.start_at_utc).getTime()
+		const eNew = new Date(parsed.data.end_at_utc).getTime()
+		if (!(Number.isFinite(sNew) && Number.isFinite(eNew)) || eNew <= sNew) {
+			return NextResponse.json({ error: 'Invalid time range' }, { status: 400 })
+		}
+		const overlaps = (existing || []).some((a: any) => a.status === 'scheduled' && !(eNew <= new Date(a.start_at_utc).getTime() || sNew >= new Date(a.end_at_utc).getTime()))
+		if (overlaps) {
+			return NextResponse.json({ error: 'Overlapping appointment exists' }, { status: 409 })
+		}
 		const created = await repo.create({
 			lead_id: leadId,
 			subject_id: lead.subject_id || null,
@@ -90,11 +102,11 @@ export async function PATCH(
 		const parsed = updateSchema.safeParse(body)
 		if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.errors }, { status: 400 })
 
-		const { appointment_id, ...updates } = body
+        const { appointment_id, ...updates } = body
 		if (!appointment_id) return NextResponse.json({ error: 'appointment_id required' }, { status: 400 })
 
 		const repo = new LeadAppointmentsRepository()
-		const updated = await repo.update(appointment_id, updates)
+        const updated = await repo.update(appointment_id, updates)
 		return NextResponse.json({ appointment: updated })
 	} catch (error) {
 		console.error('[appointments] PATCH error:', error)

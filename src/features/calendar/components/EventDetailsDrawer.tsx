@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { format, parseISO } from "date-fns";
 import type { CalendarEvent } from "@/features/calendar/lib/normalize";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface EventDetailsDrawerProps {
   open: boolean;
@@ -19,6 +21,22 @@ export function EventDetailsDrawer({ open, onOpenChange, event }: EventDetailsDr
   const leadId = event?.links?.lead_id || null;
   const subjectId = event?.links?.subject_id || null;
   const { lead, transitions, recentSession, loading } = useEventDetails(leadId, subjectId);
+  const callOutcome = event?.meta?.call_outcome as ('taken'|'missed'|undefined);
+
+  async function markOutcome(outcome: 'taken'|'missed') {
+    try {
+      if (!leadId || !event?.id) return;
+      const res = await fetch(`/api/leads/${leadId}/appointments`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment_id: event.id, status: 'completed', call_outcome: outcome }) as any
+      } as any)
+      if (!res.ok) throw new Error(await res.text())
+      toast.success(`Marked ${outcome === 'taken' ? 'Call Taken' : 'Missed'}`)
+      window.dispatchEvent(new Event('calendar:changed'))
+    } catch {
+      toast.error('Failed to update appointment')
+    }
+  }
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right">
@@ -65,6 +83,23 @@ export function EventDetailsDrawer({ open, onOpenChange, event }: EventDetailsDr
               )}
 
               <Separator />
+
+              {/* Call outcome */}
+              {event.source_type === 'appointment' && (
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-medium">Outcome</div>
+                  {callOutcome ? (
+                    <Badge variant={callOutcome === 'taken' ? 'default' : 'secondary'}>
+                      {callOutcome === 'taken' ? 'Call Taken' : 'Missed'}
+                    </Badge>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={() => markOutcome('taken')}>Mark Taken</Button>
+                      <Button size="sm" variant="outline" onClick={() => markOutcome('missed')}>Mark Missed</Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Lead basics */}
               <div>

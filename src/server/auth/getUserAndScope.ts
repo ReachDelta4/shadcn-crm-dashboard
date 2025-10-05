@@ -29,7 +29,8 @@ export async function getUserAndScope(): Promise<UserScope> {
 
 	// God via env flag list
 	if (flags.godUserIds.includes(user.id)) {
-		return { userId: user.id, role: 'god', teamId: null, orgId: null, allowedOwnerIds: [] }
+		// For god users, use undefined allowedOwnerIds to signal no owner filter
+		return { userId: user.id, role: 'god', teamId: null, orgId: null, allowedOwnerIds: undefined as any }
 	}
 
 	// Fetch user role row if present
@@ -59,7 +60,8 @@ export async function getUserAndScope(): Promise<UserScope> {
 			allowedOwnerIds = [user.id]
 			break
 		case 'god':
-			allowedOwnerIds = []
+			// No owner filter
+			allowedOwnerIds = undefined as any
 			break
 	}
 

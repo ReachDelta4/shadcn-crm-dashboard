@@ -3,15 +3,12 @@ import { z } from 'zod'
 import { getUserAndScope } from '@/server/auth/getUserAndScope'
 import { LeadsRepository } from '@/server/repositories/leads'
 import { LeadAppointmentsRepository } from '@/server/repositories/lead-appointments'
-import { InvoicesRepository } from '@/server/repositories/invoices'
-import { InvoiceLinesRepository } from '@/server/repositories/invoice-lines'
-import { ProductsRepository } from '@/server/repositories/products'
-import { ProductPaymentPlansRepository } from '@/server/repositories/product-payment-plans'
-import { calculateInvoice, generatePaymentSchedule, generateRecurringSchedule, type LineItemInput } from '@/server/services/pricing-engine'
 import { LeadStatusTransitionsRepository } from '@/server/repositories/lead-status-transitions'
 import { NotificationService } from '@/server/services/notifications/notification-service'
 import { flags } from '@/server/config/flags'
 import { isTransitionAllowed, validateStatus } from '@/server/services/lifecycle/transition-matrix'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 const appointmentSchema = z.object({
 	provider: z.enum(['google','outlook','ics','none']).default('none'),
@@ -46,6 +43,20 @@ const transitionSchema = z.object({
 	override_reason: z.string().optional(),
 })
 
+async function getServerClient() {
+    const cookieStore = await cookies()
+    return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                getAll() { return cookieStore.getAll() },
+                setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+            },
+        }
+    )
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
 	try {
 		const scope = await getUserAndScope()
@@ -75,91 +86,63 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		const transitionsRepo = new LeadStatusTransitionsRepository()
 
-		// Demo appointment requires appointment payload
-		let appointmentId: string | undefined
+		// If demo appointment, delegate to transactional RPC
 		if (parsed.target_status === 'demo_appointment') {
 			if (!parsed.appointment) return NextResponse.json({ error: 'Appointment required' }, { status: 400 })
-			const apptRepo = new LeadAppointmentsRepository()
-			// Server-side overlap check to prevent race conditions
-			const existing = await apptRepo.findByLeadId(leadId)
-			const sNew = new Date(parsed.appointment.start_at_utc).getTime()
-			const eNew = new Date(parsed.appointment.end_at_utc).getTime()
-			const overlaps = (existing || []).some((a: any) => a.status === 'scheduled' && !(eNew <= new Date(a.start_at_utc).getTime() || sNew >= new Date(a.end_at_utc).getTime()))
-			if (overlaps) {
-				return NextResponse.json({ error: 'Overlapping appointment exists' }, { status: 409 })
-			}
-			const created = await apptRepo.create({
-				lead_id: leadId,
-				subject_id: (lead as any).subject_id || null,
-				provider: parsed.appointment.provider,
-				start_at_utc: parsed.appointment.start_at_utc,
-				end_at_utc: parsed.appointment.end_at_utc,
-				timezone: parsed.appointment.timezone,
-				notes: parsed.appointment.notes || null,
+			const supabase = await getServerClient()
+			const result = await (supabase as any).rpc('fn_transition_with_appointment', {
+				p_lead_id: leadId,
+				p_target_status: 'demo_appointment',
+				p_payload: parsed.appointment,
+				p_idempotency_key: parsed.idempotency_key || null
 			})
-			appointmentId = created.id
-			
-			// Schedule reminders
-			const notifService = new NotificationService()
-			await notifService.scheduleAppointmentReminders(created.id, scope.userId, parsed.appointment.start_at_utc)
+			if (result.error) {
+				return NextResponse.json({ error: result.error.message || 'Transition failed' }, { status: 409 })
+			}
+			// Send reminders best-effort
+			try {
+				const createdId = result.data?.appointment_id
+				if (createdId) {
+					const notifService = new NotificationService()
+					await notifService.scheduleAppointmentReminders(createdId, scope.userId, parsed.appointment.start_at_utc)
+				}
+			} catch {}
+			return NextResponse.json({ success: true })
 		}
 
-		// Invoice sent requires invoice payload
-		if ((parsed as any).target_status === 'invoice_sent') {
-			if (!parsed.invoice) return NextResponse.json({ error: 'Invoice payload required' }, { status: 400 })
-			const productsRepo = new ProductsRepository()
-			const invoiceRepo = new InvoicesRepository()
-			const linesRepo = new InvoiceLinesRepository()
-			const plansRepo = new ProductPaymentPlansRepository()
-			const productIds = parsed.invoice.line_items.map(li => li.product_id)
-			const products = await Promise.all(productIds.map(id => productsRepo.getById(id, scope.orgId || null, scope.userId, scope.role)))
-			const validProducts = products.filter(p => p !== null)
-			const calculation = calculateInvoice(validProducts as any, parsed.invoice.line_items as LineItemInput[])
-			const createdInvoice = await invoiceRepo.create({
-				customer_name: parsed.invoice.customer_name || (lead as any).full_name,
-				email: parsed.invoice.email || (lead as any).email,
-				amount: calculation.total_minor / 100,
-				status: 'pending',
-				date: parsed.invoice.date || new Date().toISOString(),
-				due_date: parsed.invoice.due_date || null,
-				items: parsed.invoice.line_items.length,
+		// Invoice-related transitions: delegate to transactional RPC
+		if ((parsed as any).target_status === 'invoice_sent' || (parsed as any).target_status === 'won') {
+			if (!parsed.invoice || !Array.isArray(parsed.invoice.line_items) || parsed.invoice.line_items.length === 0) {
+				return NextResponse.json({ error: 'Invoice payload required' }, { status: 400 })
+			}
+			const supabase = await getServerClient()
+			const result = await (supabase as any).rpc('fn_transition_with_invoice', {
+				p_lead_id: leadId,
+				p_target_status: parsed.target_status,
+				p_payload: parsed.invoice,
+				p_idempotency_key: parsed.idempotency_key || null
+			})
+			if (result.error) {
+				return NextResponse.json({ error: result.error.message || 'Transition failed' }, { status: 409 })
+			}
+		}
+
+		// For simple transitions without appointment/invoice, log + update locally
+		if (parsed.target_status !== 'demo_appointment' && parsed.target_status !== 'invoice_sent' && parsed.target_status !== 'won') {
+			await transitionsRepo.create({
 				lead_id: leadId,
 				subject_id: (lead as any).subject_id || null,
-			}, scope.userId)
-			const invoiceId = (createdInvoice as any).id
-			const lineInserts = calculation.lines.map(line => ({
-				invoice_id: invoiceId,
-				product_id: line.product_id,
-				description: validProducts.find(p => (p as any).id === line.product_id)?.name || 'Product',
-				quantity: line.quantity,
-				unit_price_minor: line.unit_price_minor,
-				subtotal_minor: line.subtotal_minor,
-				discount_minor: line.discount_minor,
-				tax_minor: line.tax_minor,
-				total_minor: line.total_minor,
-				cogs_minor: line.cogs_minor,
-				margin_minor: line.margin_minor,
-				payment_plan_id: line.payment_plan_id,
-			}))
-			await linesRepo.bulkCreate(lineInserts)
+				actor_id: scope.userId,
+				event_type: 'status_change',
+				status_from: (lead as any).status || null,
+				status_to: parsed.target_status as any,
+				override_flag: !!parsed.override,
+				override_reason: parsed.override_reason || null,
+				idempotency_key: parsed.idempotency_key || null,
+				metadata: parsed.metadata || null,
+			})
+			await (new LeadsRepository()).update(leadId, { status: parsed.target_status as any }, scope.userId)
 		}
-
-		// Log transition
-		await transitionsRepo.create({
-			lead_id: leadId,
-			subject_id: (lead as any).subject_id || null,
-			actor_id: scope.userId,
-			event_type: 'status_change',
-			status_from: (lead as any).status || null,
-			status_to: parsed.target_status as any,
-			override_flag: !!parsed.override,
-			override_reason: parsed.override_reason || null,
-			idempotency_key: parsed.idempotency_key || null,
-			metadata: parsed.metadata || null,
-		})
-
-		// Update lead status
-		await (new LeadsRepository()).update(leadId, { status: parsed.target_status as any }, scope.userId)
 
 		// Send notification (best-effort)
 		const notifService = new NotificationService()

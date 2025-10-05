@@ -92,6 +92,18 @@ export async function POST(request: NextRequest) {
 		}
 
 		const sessionResult = result[0]
+
+		// Optional: link to appointment and mark outcome taken when provided
+		try {
+			const appointmentId = body?.appointment_id as string | undefined
+			if (appointmentId) {
+				// Mark appointment as completed/taken if within a reasonable window
+				await supabase
+					.from('lead_appointments')
+					.update({ status: 'completed', call_outcome: 'taken', call_verified_session_id: sessionResult.session_id })
+					.eq('id', appointmentId)
+			}
+		} catch {}
 		
 		// Log activity (best-effort, matching existing /api/sessions behavior)
 		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {

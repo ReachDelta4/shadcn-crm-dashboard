@@ -1,0 +1,155 @@
+"use client";
+
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/shared/date-picker";
+import { toast } from "sonner";
+
+type Mode = 'demo_appointment' | 'invoice_sent' | 'won'
+
+interface Props {
+  leadId: string
+  leadName?: string
+  mode: Mode | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
+}
+
+function getTimeZoneOffsetMinutes(dateUtc: Date, tz: string): number {
+  const dtf = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const parts = dtf.formatToParts(dateUtc)
+  const map: Record<string,string> = {}
+  parts.forEach(p => { if (p.type !== 'literal') map[p.type] = p.value })
+  const asInTz = Date.UTC(Number(map.year), Number(map.month)-1, Number(map.day), Number(map.hour), Number(map.minute), Number(map.second))
+  const asUtc = Date.UTC(dateUtc.getUTCFullYear(), dateUtc.getUTCMonth(), dateUtc.getUTCDate(), dateUtc.getUTCHours(), dateUtc.getUTCMinutes(), dateUtc.getUTCSeconds())
+  return Math.round((asInTz - asUtc) / 60000)
+}
+
+function computeUtcRange(dateLocal: Date, timeHHMM: string, durationMinutes: number, tz: string): { startUtc: string; endUtc: string } {
+  const [hh, mm] = timeHHMM.split(':').map(n => Number(n || 0))
+  const naiveUtc = new Date(Date.UTC(dateLocal.getFullYear(), dateLocal.getMonth(), dateLocal.getDate(), hh, mm, 0, 0))
+  const offsetMin = getTimeZoneOffsetMinutes(naiveUtc, tz)
+  const startMs = naiveUtc.getTime() - offsetMin * 60000
+  const endMs = startMs + durationMinutes * 60000
+  return { startUtc: new Date(startMs).toISOString(), endUtc: new Date(endMs).toISOString() }
+}
+
+export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChange, onSuccess }: Props) {
+  const [schedDate, setSchedDate] = useState<Date | undefined>(undefined)
+  const [startTime, setStartTime] = useState<string>("")
+  const [durationMin, setDurationMin] = useState<string>("30")
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const [productId, setProductId] = useState("")
+  const [quantity, setQuantity] = useState("1")
+  const [discountType, setDiscountType] = useState<'percent'|'amount'|''>('')
+  const [discountValue, setDiscountValue] = useState<string>("")
+
+  const isAppointment = mode === 'demo_appointment'
+  const isInvoice = mode === 'invoice_sent' || mode === 'won'
+
+  async function submit() {
+    try {
+      if (!mode) return
+      if (isAppointment) {
+        if (!schedDate || !startTime || !durationMin) { toast.error('Select date/time'); return }
+        const durationNumber = Number(durationMin)
+        if (!Number.isFinite(durationNumber) || durationNumber <= 0) { toast.error('Invalid duration'); return }
+        const { startUtc, endUtc } = computeUtcRange(schedDate, startTime, durationNumber, timezone)
+        const res = await fetch(`/api/leads/${leadId}/transition`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_status: 'demo_appointment', appointment: { provider: 'none', start_at_utc: startUtc, end_at_utc: endUtc, timezone } })
+        })
+        if (!res.ok) throw new Error(await res.text())
+      } else if (isInvoice) {
+        if (!productId) { toast.error('Select a product'); return }
+        const payload: any = {
+          target_status: mode,
+          invoice: { line_items: [{ product_id: productId, quantity: Number(quantity), ...(discountType ? { discount_type: discountType, discount_value: Number(discountValue||0) } : {}) }] }
+        }
+        const res = await fetch(`/api/leads/${leadId}/transition`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        })
+        if (!res.ok) throw new Error(await res.text())
+      }
+      toast.success('Transition completed')
+      onOpenChange(false)
+      onSuccess?.()
+      window.dispatchEvent(new Event('leads:changed'))
+      window.dispatchEvent(new Event('calendar:changed'))
+    } catch (e) {
+      toast.error('Transition failed')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{mode === 'demo_appointment' ? 'Schedule Demo/Appointment' : mode === 'invoice_sent' ? 'Create & Send Invoice' : 'Mark as Won'}</DialogTitle>
+        </DialogHeader>
+        {isAppointment && (
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div>
+              <div className="text-sm">Date</div>
+              <DatePicker date={schedDate} setDate={setSchedDate} />
+            </div>
+            <div>
+              <div className="text-sm">Start Time</div>
+              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+            </div>
+            <div>
+              <div className="text-sm">Duration</div>
+              <Select value={durationMin} onValueChange={(v: any) => setDurationMin(v)}>
+                <SelectTrigger><SelectValue placeholder="Select duration" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15">15 minutes</SelectItem>
+                  <SelectItem value="30">30 minutes</SelectItem>
+                  <SelectItem value="45">45 minutes</SelectItem>
+                  <SelectItem value="60">1 hour</SelectItem>
+                  <SelectItem value="90">1.5 hours</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <div className="text-sm">Timezone</div>
+              <Input value={timezone} onChange={(e)=>setTimezone(e.target.value)} />
+            </div>
+          </div>
+        )}
+        {isInvoice && (
+          <div className="grid gap-3">
+            <div>
+              <div className="text-sm">Product ID (UUID)</div>
+              <Input value={productId} onChange={(e)=>setProductId(e.target.value)} placeholder="UUID" />
+            </div>
+            <div>
+              <div className="text-sm">Quantity</div>
+              <Input type="number" min={1} value={quantity} onChange={(e)=>setQuantity(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={discountType} onValueChange={(v:any)=>setDiscountType(v)}>
+                <SelectTrigger><SelectValue placeholder="Discount type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No discount</SelectItem>
+                  <SelectItem value="percent">Percent</SelectItem>
+                  <SelectItem value="amount">Amount</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input type="number" min={0} value={discountValue} onChange={(e)=>setDiscountValue(e.target.value)} placeholder="Value" />
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={()=>onOpenChange(false)}>Cancel</Button>
+          <Button onClick={submit}>Confirm</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+

@@ -30,6 +30,7 @@ export interface LeadAppointment {
 	timezone: string
 	meeting_link: string | null
 	notes?: any
+	call_outcome?: 'taken' | 'missed' | null
 }
 
 /**
@@ -79,6 +80,7 @@ export function normalizeAppointment(appointment: LeadAppointment): CalendarEven
 				provider: appointment.provider,
 				status: appointment.status,
 				notes: appointment.notes,
+				call_outcome: appointment.call_outcome || null,
 			},
 		}
 	} catch (error) {

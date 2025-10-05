@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { LeadTransitionDialog } from "./lead-transition-dialog";
 
 interface EditLeadDialogProps {
   lead: Lead;
@@ -35,6 +36,7 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
   const [status, setStatus] = useState<LeadStatus>((lead.status as LeadStatus) || "new");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [openTransition, setOpenTransition] = useState<null|'demo_appointment'>(null)
 
   function reset() {
     setFullName(lead.fullName || "");
@@ -59,6 +61,11 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
 
     startTransition(async () => {
       try {
+        // If moving to demo_appointment, open transition modal instead of PATCH
+        if (status === 'demo_appointment') {
+          setOpenTransition('demo_appointment');
+          return;
+        }
         const res = await fetch(`/api/leads/${lead.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -123,6 +130,14 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
           <Button onClick={handleSave} disabled={pending}>{pending ? "Saving…" : "Save Changes"}</Button>
         </DialogFooter>
       </DialogContent>
+      <LeadTransitionDialog
+        leadId={lead.id}
+        leadName={lead.fullName}
+        mode={openTransition}
+        open={!!openTransition}
+        onOpenChange={(o)=> setOpenTransition(o ? 'demo_appointment' : null)}
+        onSuccess={() => { onSaved?.(); onOpenChange(false); }}
+      />
     </Dialog>
   );
 }

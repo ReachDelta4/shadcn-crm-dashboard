@@ -20,8 +20,11 @@ const COLUMNS: { key: LeadStatus; title: string }[] = [
   { key: "new", title: "New" },
   { key: "contacted", title: "Contacted" },
   { key: "qualified", title: "Qualified" },
-  { key: "unqualified", title: "Unqualified" },
-  { key: "converted", title: "Converted" },
+  { key: "demo_appointment", title: "Demo/Appointment" },
+  { key: "proposal_negotiation", title: "Proposal/Negotiation" },
+  { key: "invoice_sent", title: "Invoice Sent" },
+  { key: "won", title: "Won" },
+  { key: "lost", title: "Lost" },
 ];
 
 function canonicalize(status: string): string {

@@ -28,7 +28,7 @@ export interface LeadListOptions {
 	page?: number
 	pageSize?: number
 	userId: string
-	ownerIds?: string[] // Optional scope-aware owner list (defaults to [userId])
+	ownerIds?: string[] // Optional scope-aware owner list (defaults to [userId]). If empty array, treat as no owner filter (god scope)
 }
 
 export class LeadsRepository {
@@ -45,13 +45,16 @@ export class LeadsRepository {
 	async list(options: LeadListOptions) {
 		const { filters = {}, sort = 'date', direction = 'desc', page = 0, pageSize = 10, userId, ownerIds } = options
 		
-		// Use ownerIds if provided, otherwise default to userId (backward compatible)
-		const effectiveOwnerIds = ownerIds || [userId]
+		// Determine effective owner scope: undefined -> [userId]; [] -> god (no filter); non-empty -> provided
+		const effectiveOwnerIds = ownerIds === undefined ? [userId] : ownerIds
 
 		let query = this.client
 			.from('leads')
 			.select('*', { count: 'exact' })
-			.in('owner_id', effectiveOwnerIds)
+			.is('deleted_at', null)
+			// Apply owner filter only if list non-empty
+			// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+			
 
 		if (filters.search) {
 			query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,company.ilike.%${filters.search}%,lead_number.ilike.%${filters.search}%`)
@@ -73,6 +76,11 @@ export class LeadsRepository {
 		const to = from + pageSize - 1
 		query = query.range(from, to)
 
+		// Apply owner filter conditionally at the end to avoid TypeScript confusion above
+		if (effectiveOwnerIds && effectiveOwnerIds.length > 0) {
+			query = query.in('owner_id', effectiveOwnerIds)
+		}
+
 		const { data, error, count } = await query
 		if (error) throw new Error(`Failed to fetch leads: ${error.message}`)
 
@@ -80,14 +88,19 @@ export class LeadsRepository {
 	}
 
 	async getById(id: string, userId: string, ownerIds?: string[]): Promise<Lead | null> {
-		const effectiveOwnerIds = ownerIds || [userId]
+		const effectiveOwnerIds = ownerIds === undefined ? [userId] : ownerIds
 		
-		const { data, error } = await this.client
+		let query = this.client
 			.from('leads')
 			.select('*')
 			.eq('id', id)
-			.in('owner_id', effectiveOwnerIds)
+			.is('deleted_at', null)
+			.limit(1)
 			.single()
+		if (effectiveOwnerIds && effectiveOwnerIds.length > 0) {
+			query = query.in('owner_id', effectiveOwnerIds)
+		}
+		const { data, error } = await query
 		if (error) {
 			if ((error as any).code === 'PGRST116') return null
 			throw new Error(`Failed to fetch lead: ${error.message}`)
@@ -116,6 +129,7 @@ export class LeadsRepository {
 			.update(updates)
 			.eq('id', id)
 			.eq('owner_id', userId)
+			.is('deleted_at', null)
 			.select()
 			.single()
 		if (error) throw new Error(`Failed to update lead: ${error.message}`)
@@ -125,9 +139,10 @@ export class LeadsRepository {
 	async delete(id: string, userId: string): Promise<void> {
 		const { error } = await this.client
 			.from('leads')
-			.delete()
+			.update({ deleted_at: new Date().toISOString() })
 			.eq('id', id)
 			.eq('owner_id', userId)
+			.is('deleted_at', null)
 		if (error) throw new Error(`Failed to delete lead: ${error.message}`)
 	}
 }
