@@ -169,26 +169,79 @@
   --fc-page-bg-color: hsl(var(--background));
 }
 
-/* Month/Week grid separators */
-.fc .fc-col-header { border-bottom: 1px solid hsl(var(--border)); background-color: hsl(var(--muted)); }
-.fc .fc-col-header-cell { border-right: 1px solid hsl(var(--border)); }
-.fc .fc-daygrid-day { border-right: 1px solid hsl(var(--border)); border-bottom: 1px solid hsl(var(--border)); }
+/* Event pill colors by source type */
+.fc-ev-appointment {
+  background-color: hsl(var(--primary)) !important;
+  border-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.fc-ev-payment {
+  background-color: hsl(45 93% 47%) !important;
+  border-color: hsl(45 93% 47%) !important;
+  color: hsl(26 83% 14%) !important;
+}
+
+.fc-ev-recurring {
+  background-color: hsl(262 83% 58%) !important;
+  border-color: hsl(262 83% 58%) !important;
+  color: hsl(0 0% 100%) !important;
+}
+
+.fc-ev-default {
+  background-color: hsl(var(--secondary)) !important;
+  border-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--secondary-foreground)) !important;
+}
+
+/* Notion-like calendar grid and pills */
+/* Grid color tuned for theme contrast */
+.fc { --fc-grid-color: color-mix(in oklch, var(--foreground) 16%, transparent); }
+.dark .fc { --fc-grid-color: color-mix(in oklch, var(--foreground) 20%, transparent); }
+
+/* Month/Week grid separators (robust) */
+.fc .fc-col-header { border-bottom: 1px solid var(--fc-grid-color); background-color: hsl(var(--muted)); }
+.fc .fc-col-header-cell { border-right: 1px solid var(--fc-grid-color); }
+/* Use inset box-shadows so lines don’t double or collapse */
+.fc .fc-daygrid-day { border: 0 !important; box-shadow: inset 1px 0 0 var(--fc-grid-color), inset 0 1px 0 var(--fc-grid-color); }
 .fc .fc-scrollgrid-section > td { border-bottom: 0; }
 
 /* Day header spacing */
 .fc .fc-col-header-cell-cushion { font-weight: 600; padding: 8px 0; }
 .fc .fc-daygrid-day-top { padding: 6px; }
 
-/* Subtle weekend shading (optional) */
-.fc .fc-day-sat .fc-daygrid-day-frame, .fc .fc-day-sun .fc-daygrid-day-frame { background-color: color-mix(in oklch, hsl(var(--accent)) 6%, transparent); }
+/* Subtle weekend shading */
+.fc .fc-day-sat .fc-daygrid-day-frame, .fc .fc-day-sun .fc-daygrid-day-frame { background-color: color-mix(in oklch, var(--accent) 6%, transparent); }
 
-/* Event pill styling (month) */
-.fc .fc-daygrid-event { border-radius: 6px; padding: 2px 6px; line-height: 1.2; border-width: 1px; border-style: solid; }
+/* Month pills */
+.fc .fc-daygrid-event { border-radius: 6px; padding: 2px 6px; line-height: 1.2; border-width: 1px; border-style: solid; margin-top: 2px; }
 .fc .fc-daygrid-event .fc-event-time { font-weight: 600; }
 .fc .fc-daygrid-event:hover { filter: brightness(0.97); }
 
-/* Source-type colors (kept, enhanced borders) */
-.fc-ev-appointment { background-color: hsl(var(--primary)) !important; border-color: hsl(var(--primary)) !important; color: hsl(var(--primary-foreground)) !important; }
-.fc-ev-payment { background-color: hsl(45 93% 47%) !important; border-color: hsl(45 93% 47%) !important; color: hsl(26 83% 14%) !important; }
-.fc-ev-recurring { background-color: hsl(262 83% 58%) !important; border-color: hsl(262 83% 58%) !important; color: hsl(0 0% 100%) !important; }
-.fc-ev-default { background-color: hsl(var(--secondary)) !important; border-color: hsl(var(--secondary)) !important; color: hsl(var(--secondary-foreground)) !important; }
+/* Timegrid horizontal lines (solid) */
+.fc .fc-timegrid-slot { border-top: 1px solid var(--fc-grid-color) !important; }
+.fc .fc-timegrid-slots { border-top: 1px solid var(--fc-grid-color) !important; }
+
+/* Timegrid vertical separators */
+.fc .fc-timegrid-axis { border-right: 1px solid var(--fc-grid-color) !important; }
+.fc .fc-timegrid-col { box-shadow: inset 1px 0 0 var(--fc-grid-color); }
+.fc .fc-timegrid-divider { border-left: 1px solid var(--fc-grid-color) !important; }
+
+/* Timegrid pills (week/day) */
+.fc .fc-timegrid-event { border-radius: 6px; border: 1px solid currentColor; padding: 2px 6px; line-height: 1.2; }
+.fc .fc-timegrid-event .fc-event-time { font-weight: 600; }
+.fc .fc-timegrid-event:hover { filter: brightness(0.97); }
+
+/* All-day lane tint */
+.fc .fc-timegrid-all-day, .fc .fc-timegrid-all-day .fc-timegrid-divider { background-color: color-mix(in oklch, var(--accent) 6%, transparent); }
+
+/* Now indicator polish */
+.fc .fc-timegrid-now-indicator-line { border-top: 2px solid hsl(var(--primary)); }
+.fc .fc-timegrid-now-indicator-arrow, .fc .fc-timegrid-now-indicator-dot { background-color: hsl(var(--primary)); }
+
+/* Month last column and last row closures */
+/* Right edge for last column */
+.fc .fc-daygrid-body-unbalanced .fc-daygrid-day:last-child .fc-daygrid-day-frame,
+.fc .fc-daygrid-body .fc-daygrid-day:last-child .fc-daygrid-day-frame { border-right: 1px solid var(--fc-grid-color) !important; }
+/* Bottom edge for last row */
+.fc .fc-daygrid-body tr:last-child .fc-daygrid-day-frame { border-bottom: 1px solid var(--fc-grid-color) !important; }

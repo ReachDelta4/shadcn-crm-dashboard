@@ -103,10 +103,6 @@ export function SessionsCalendarPage() {
   }, [combinedEvents, selectedDate]);
 
   // Toolbar handlers
-  function handleToday() {
-    const api = calendarApiRef.current;
-    if (api?.today) api.today();
-  }
 
   function handleRangeChange(newRange: DateRange | undefined) {
     setRange(newRange);
@@ -139,7 +135,6 @@ export function SessionsCalendarPage() {
           <Button variant={view === "day" ? "default" : "outline"} onClick={() => setView("day")}>
             Day
           </Button>
-          <Button variant="outline" onClick={handleToday}>Today</Button>
         </div>
         <DateRangePicker value={range} onChange={handleRangeChange} />
       </div>
