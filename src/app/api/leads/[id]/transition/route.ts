@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getUserAndScope } from '@/server/auth/getUserAndScope'
 import { LeadsRepository } from '@/server/repositories/leads'
-import { LeadAppointmentsRepository } from '@/server/repositories/lead-appointments'
 import { LeadStatusTransitionsRepository } from '@/server/repositories/lead-status-transitions'
 import { NotificationService } from '@/server/services/notifications/notification-service'
 import { flags } from '@/server/config/flags'
@@ -10,37 +9,16 @@ import { isTransitionAllowed, validateStatus } from '@/server/services/lifecycle
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-const appointmentSchema = z.object({
-	provider: z.enum(['google','outlook','ics','none']).default('none'),
-	start_at_utc: z.string(),
-	end_at_utc: z.string(),
-	timezone: z.string(),
-	notes: z.record(z.any()).optional(),
-})
+// No appointment/invoice payloads in lifecycle v2
 
-const lineItemSchema = z.object({
-	product_id: z.string().uuid(),
-	quantity: z.number().int().min(1),
-	unit_price_override_minor: z.number().int().min(0).optional(),
-	discount_type: z.enum(['percent', 'amount']).optional(),
-	discount_value: z.number().int().min(0).optional(),
-	payment_plan_id: z.string().uuid().optional(),
-})
+// Removed invoice payload schema
 
 const transitionSchema = z.object({
-	target_status: z.enum(['new','contacted','qualified','demo_appointment','proposal_negotiation','won','lost','invoice_sent']).transform(s => s as any),
-	appointment: appointmentSchema.optional(),
-	invoice: z.object({
-		customer_name: z.string().optional(),
-		email: z.string().email().optional(),
-		line_items: z.array(lineItemSchema).min(1),
-		date: z.string().optional(),
-		due_date: z.string().optional(),
-	}).optional(),
-	idempotency_key: z.string().optional(),
-	metadata: z.record(z.any()).optional(),
-	override: z.boolean().optional(),
-	override_reason: z.string().optional(),
+    target_status: z.enum(['new','contacted','qualified','disqualified','converted']).transform(s => s as any),
+    idempotency_key: z.string().optional(),
+    metadata: z.record(z.any()).optional(),
+    override: z.boolean().optional(),
+    override_reason: z.string().optional(),
 })
 
 async function getServerClient() {
@@ -86,89 +64,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		const transitionsRepo = new LeadStatusTransitionsRepository()
 
-		// If demo appointment, delegate to transactional RPC
-		if (parsed.target_status === 'demo_appointment') {
-			if (!parsed.appointment) return NextResponse.json({ error: 'Appointment required' }, { status: 400 })
-			const supabase = await getServerClient()
-			const result = await (supabase as any).rpc('fn_transition_with_appointment', {
-				p_lead_id: leadId,
-				p_target_status: 'demo_appointment',
-				p_payload: parsed.appointment,
-				p_idempotency_key: parsed.idempotency_key || null
-			})
-			if (result.error) {
-				return NextResponse.json({ error: result.error.message || 'Transition failed' }, { status: 409 })
-			}
-			// Send reminders best-effort
-			try {
-				const createdId = result.data?.appointment_id
-				if (createdId) {
-			const notifService = new NotificationService()
-					await notifService.scheduleAppointmentReminders(createdId, scope.userId, parsed.appointment.start_at_utc)
-				}
-			} catch {}
-			return NextResponse.json({ success: true })
-		}
-
-		// Invoice-related transitions: delegate to transactional RPC
-		if ((parsed as any).target_status === 'invoice_sent' || (parsed as any).target_status === 'won') {
-			if (!parsed.invoice || !Array.isArray(parsed.invoice.line_items) || parsed.invoice.line_items.length === 0) {
-				return NextResponse.json({ error: 'Invoice payload required' }, { status: 400 })
-			}
-			const supabase = await getServerClient()
-			const result = await (supabase as any).rpc('fn_transition_with_invoice', {
-				p_lead_id: leadId,
-				p_target_status: parsed.target_status,
-				p_payload: parsed.invoice,
-				p_idempotency_key: parsed.idempotency_key || null
-			})
-			if (result.error) {
-				return NextResponse.json({ error: result.error.message || 'Transition failed' }, { status: 409 })
-			}
-
-			// Also log a transition row with sale metadata for prefill/retention
-			try {
-				await transitionsRepo.create({
-					lead_id: leadId,
-					subject_id: (lead as any).subject_id || null,
-					actor_id: scope.userId,
-					event_type: 'status_change',
-					status_from: (lead as any).status || null,
-					status_to: parsed.target_status as any,
-					override_flag: !!parsed.override,
-					override_reason: parsed.override_reason || null,
-					idempotency_key: parsed.idempotency_key || null,
-					metadata: {
-						invoice: {
-							line_items: (parsed.invoice?.line_items || []).map((li) => ({
-								product_id: li.product_id,
-								quantity: li.quantity,
-								discount_type: li.discount_type || null,
-								discount_value: typeof li.discount_value === 'number' ? li.discount_value : null,
-								payment_plan_id: li.payment_plan_id || null,
-							})),
-						},
-					},
-				})
-			} catch {}
-		}
-
-		// For simple transitions without appointment/invoice, log + update locally
-		if (parsed.target_status !== 'demo_appointment' && parsed.target_status !== 'invoice_sent' && parsed.target_status !== 'won') {
-		await transitionsRepo.create({
-			lead_id: leadId,
-			subject_id: (lead as any).subject_id || null,
-			actor_id: scope.userId,
-			event_type: 'status_change',
-			status_from: (lead as any).status || null,
-			status_to: parsed.target_status as any,
-			override_flag: !!parsed.override,
-			override_reason: parsed.override_reason || null,
-			idempotency_key: parsed.idempotency_key || null,
-			metadata: parsed.metadata || null,
-		})
-		await (new LeadsRepository()).update(leadId, { status: parsed.target_status as any }, scope.userId)
-		}
+    // Log + update locally
+    await transitionsRepo.create({
+        lead_id: leadId,
+        subject_id: (lead as any).subject_id || null,
+        actor_id: scope.userId,
+        event_type: 'status_change',
+        status_from: (lead as any).status || null,
+        status_to: parsed.target_status as any,
+        override_flag: !!parsed.override,
+        override_reason: parsed.override_reason || null,
+        idempotency_key: parsed.idempotency_key || null,
+        metadata: parsed.metadata || null,
+    })
+    await (new LeadsRepository()).update(leadId, { status: parsed.target_status as any }, scope.userId)
 
 		// Send notification (best-effort)
 		const notifService = new NotificationService()

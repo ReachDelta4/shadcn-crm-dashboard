@@ -16,6 +16,7 @@ const formatCurrency = (amount: number) => {
 
 export const statusColors: Record<InvoiceStatus, string> = {
   draft: "bg-slate-100 text-slate-800",
+  sent: "bg-indigo-100 text-indigo-800",
   pending: "bg-yellow-100 text-yellow-800",
   paid: "bg-green-100 text-green-800",
   overdue: "bg-red-100 text-red-800",

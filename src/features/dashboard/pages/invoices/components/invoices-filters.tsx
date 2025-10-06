@@ -18,6 +18,7 @@ interface InvoicesFiltersProps {
 const STATUS_OPTIONS: { label: string; value: InvoiceStatus | "all" }[] = [
   { label: "All", value: "all" },
   { label: "Draft", value: "draft" },
+  { label: "Sent", value: "sent" },
   { label: "Pending", value: "pending" },
   { label: "Paid", value: "paid" },
   { label: "Overdue", value: "overdue" },

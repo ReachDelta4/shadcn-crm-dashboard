@@ -20,18 +20,11 @@ const COLUMNS: { key: LeadStatus; title: string }[] = [
   { key: "new", title: "New" },
   { key: "contacted", title: "Contacted" },
   { key: "qualified", title: "Qualified" },
-  { key: "demo_appointment", title: "Demo/Appointment" },
-  { key: "proposal_negotiation", title: "Proposal/Negotiation" },
-  { key: "invoice_sent", title: "Invoice Sent" },
-  { key: "won", title: "Won" },
-  { key: "lost", title: "Lost" },
+  { key: "disqualified", title: "Disqualified" },
+  { key: "converted", title: "Converted" },
 ];
 
-function canonicalize(status: string): string {
-  if (status === 'unqualified') return 'lost'
-  if (status === 'converted') return 'won'
-  return status
-}
+function canonicalize(status: string): string { return status }
 
 function StatusBadge({ status }: { status: string }) {
   const s = canonicalize(status) as keyof typeof map
@@ -39,11 +32,8 @@ function StatusBadge({ status }: { status: string }) {
     new: "bg-blue-100 text-blue-800",
     contacted: "bg-amber-100 text-amber-800",
     qualified: "bg-emerald-100 text-emerald-800",
-    demo_appointment: "bg-violet-100 text-violet-800",
-    proposal_negotiation: "bg-orange-100 text-orange-800",
-    invoice_sent: "bg-indigo-100 text-indigo-800",
-    won: "bg-green-100 text-green-800",
-    lost: "bg-gray-200 text-gray-800",
+    disqualified: "bg-gray-200 text-gray-800",
+    converted: "bg-green-100 text-green-800",
   };
   const cls = map[s] || "bg-gray-100 text-gray-700"
   return <Badge className={cls}>{s}</Badge>;

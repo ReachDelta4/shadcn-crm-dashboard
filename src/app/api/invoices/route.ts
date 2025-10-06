@@ -26,7 +26,7 @@ const invoiceCreateSchema = z.object({
 	customer_name: z.string().min(1, 'Customer name is required'),
 	email: z.string().email('Valid email is required'),
 	amount: z.coerce.number().min(0).optional(), // Now optional, calculated from line_items
-	status: z.enum(['draft','pending','paid','overdue','cancelled']).default('draft'),
+    status: z.enum(['draft','sent','pending','paid','overdue','cancelled']).default('draft'),
 	date: z.string().optional(),
 	due_date: z.string().optional(),
 	items: z.coerce.number().min(0).default(0).optional(),
@@ -38,7 +38,7 @@ const invoiceCreateSchema = z.object({
 
 const invoiceFiltersSchema = z.object({
 	search: z.string().nullable().optional().transform(v => v ?? ''),
-	status: z.enum(['all','draft','pending','paid','overdue','cancelled']).nullable().optional().transform(v => v ?? 'all'),
+    status: z.enum(['all','draft','sent','pending','paid','overdue','cancelled']).nullable().optional().transform(v => v ?? 'all'),
 	dateFrom: z.string().nullable().optional().transform(v => v ?? undefined),
 	dateTo: z.string().nullable().optional().transform(v => v ?? undefined),
 	sort: z.string().nullable().optional().transform(v => v ?? 'date'),
@@ -205,25 +205,26 @@ export async function POST(request: NextRequest) {
 			}
 		}
 
-		// If linked to a lead, update lifecycle to invoice_sent and log transition (best-effort)
-		if ((validated as any).lead_id) {
-			try {
-				const leadsRepo = new LeadsRepository()
-				const transitionsRepo = new LeadStatusTransitionsRepository()
-				const lead = await leadsRepo.getById((validated as any).lead_id, user.id)
-				if (lead) {
-					await leadsRepo.update((lead as any).id, { status: 'invoice_sent' as any }, user.id)
-					await transitionsRepo.create({
-						lead_id: (lead as any).id,
-						subject_id: (lead as any).subject_id || null,
-						actor_id: user.id,
-						event_type: 'status_change',
-						status_from: (lead as any).status || null,
-						status_to: 'invoice_sent',
-					})
-				}
-			} catch {}
-		}
+        // If linked to a lead, auto-convert lead to customer (pending) and attach invoice to that customer
+        if ((validated as any).lead_id) {
+            try {
+                const leadsRepo = new LeadsRepository()
+                const lead = await leadsRepo.getById((validated as any).lead_id, user.id)
+                if (lead) {
+                    // Convert (or fetch) customer for this lead
+                    const { data: customerId, error: rpcErr } = await (supabase as any)
+                        .rpc('convert_lead_to_customer_v2', { lead_id: (lead as any).id, initial_status: 'pending' })
+                    if (!rpcErr && customerId) {
+                        // Attach invoice to customer
+                        await (supabase as any)
+                            .from('invoices')
+                            .update({ customer_id: customerId })
+                            .eq('id', invoiceId)
+                            .eq('owner_id', user.id)
+                    }
+                }
+            } catch {}
+        }
  
 		// Log activity (best-effort)
 		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {

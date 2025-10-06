@@ -71,8 +71,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		const body = await request.json()
 		const validated = leadUpdateSchema.parse(body)
 		const repo = new LeadsRepository(supabase)
-		if ((validated as any).status === 'converted') {
-			const { customerId, lead } = await convertLeadToCustomerService(supabase as any, id, user.id)
+        if ((validated as any).status === 'converted') {
+            // Use v2 conversion with initial pending status
+            const { data: { user: authUser } } = await supabase.auth.getUser()
+            if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+            const { data: customerId, error: rpcErr } = await (supabase as any)
+                .rpc('convert_lead_to_customer_v2', { lead_id: id, initial_status: 'pending' })
+            if (rpcErr) return NextResponse.json({ error: rpcErr.message || 'Conversion failed' }, { status: 500 })
+            const repo = new LeadsRepository(supabase)
+            const lead = await repo.getById(id, user.id)
 			import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
 				await logActivity(supabase as any, user.id, {
 					type: 'lead',
@@ -81,7 +88,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 					details: { id, customer_id: customerId }
 				})
 			}).catch(() => {})
-			return NextResponse.json(lead)
+            return NextResponse.json(lead)
 		}
 		// Canonicalize status on update
 		const updates = { ...validated } as any

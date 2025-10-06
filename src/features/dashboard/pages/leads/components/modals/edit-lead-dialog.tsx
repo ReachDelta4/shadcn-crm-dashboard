@@ -20,11 +20,8 @@ const STATUS_OPTIONS: LeadStatus[] = [
   "new",
   "contacted",
   "qualified",
-  "demo_appointment",
-  "proposal_negotiation",
-  "invoice_sent",
-  "won",
-  "lost",
+  "disqualified",
+  "converted",
 ];
 
 export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDialogProps) {
@@ -34,9 +31,10 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
   const [company, setCompany] = useState(lead.company || "");
   const [value, setValue] = useState(String(lead.value ?? 0));
   const [status, setStatus] = useState<LeadStatus>((lead.status as LeadStatus) || "new");
+  const [source, setSource] = useState<string>((lead as any).source || "");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [openTransition, setOpenTransition] = useState<null|'demo_appointment'|'invoice_sent'|'won'>(null)
+  const [openTransition, setOpenTransition] = useState<null>(null)
 
   function reset() {
     setFullName(lead.fullName || "");
@@ -45,6 +43,7 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
     setCompany(lead.company || "");
     setValue(String(lead.value ?? 0));
     setStatus((lead.status as LeadStatus) || "new");
+    setSource((lead as any).source || "");
     setError(null);
   }
 
@@ -57,15 +56,11 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
       company: company.trim(),
       value: Number(value) || 0,
       status: status,
+      source: source || undefined,
     };
 
     startTransition(async () => {
       try {
-        // If moving to appointment/invoice/won, open transition modal instead of PATCH
-        if (status === 'demo_appointment' || status === 'invoice_sent' || status === 'won') {
-          setOpenTransition(status as any);
-          return;
-        }
         const res = await fetch(`/api/leads/${lead.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -121,6 +116,10 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
             <Label>Potential Value</Label>
             <Input type="number" min={0} value={value} onChange={(e) => setValue(e.target.value)} />
           </div>
+          <div className="sm:col-span-2">
+            <Label>Source</Label>
+            <Input value={source} onChange={(e) => setSource(e.target.value)} />
+          </div>
         </div>
 
         {error && <div className="text-sm text-destructive bg-destructive/10 p-2 rounded mt-2">{error}</div>}
@@ -130,14 +129,7 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
           <Button onClick={handleSave} disabled={pending}>{pending ? "Saving…" : "Save Changes"}</Button>
         </DialogFooter>
       </DialogContent>
-      <LeadTransitionDialog
-        leadId={lead.id}
-        leadName={lead.fullName}
-        mode={openTransition}
-        open={!!openTransition}
-        onOpenChange={(o)=> setOpenTransition(prev => (o ? prev : null))}
-        onSuccess={() => { onSaved?.(); onOpenChange(false); }}
-      />
+      {/* Transition dialog removed in lifecycle v2 */}
     </Dialog>
   );
 }

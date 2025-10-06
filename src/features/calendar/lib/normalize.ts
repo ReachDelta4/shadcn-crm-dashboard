@@ -13,6 +13,7 @@ export interface CalendarEvent {
 		subject_id?: string | null
 		lead_id?: string | null
 		meeting_link?: string | null
+		ics_url?: string | null
 		invoice_id?: string | null
 		invoice_line_id?: string | null
 	}

@@ -37,7 +37,8 @@ const schema = z.object({
 
 export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
+  const [potentialValue, setPotentialValue] = useState<string>("");
   const [status, setStatus] = useState<
     "new" | "contacted" | "qualified" | "demo_appointment" | 
     "proposal_negotiation" | "invoice_sent" | "won" | "lost"
@@ -94,9 +95,9 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
     const parsed = schema.safeParse({
       full_name: name,
       email,
-      phone: value,
+      phone,
       company,
-      value: Number(value || 0),
+      value: Number(potentialValue || 0),
       status,
       source,
     });
@@ -146,8 +147,10 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
         <form onSubmit={handleSubmit} className="grid gap-3">
           <Input placeholder="Full name" value={name} onChange={e=>setName(e.target.value)} required />
           <Input placeholder="Email" type="email" value={email} onChange={e=>setEmail(e.target.value)} required />
-          <Input placeholder="Phone" value={value} onChange={e=>setValue(e.target.value)} />
+          <Input placeholder="Phone" value={phone} onChange={e=>setPhone(e.target.value)} />
           <Input placeholder="Company" value={company} onChange={e=>setCompany(e.target.value)} />
+          <Input placeholder="Potential Value" type="number" min={0} value={potentialValue} onChange={e=>setPotentialValue(e.target.value)} />
+          <Input placeholder="Source" value={source} onChange={e=>setSource(e.target.value)} />
           <div className="grid gap-2">
             <label className="text-sm">Status</label>
             <Select value={status} onValueChange={(v: any) => setStatus(v)}>

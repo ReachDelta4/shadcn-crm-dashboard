@@ -17,6 +17,7 @@ const statusOptions = [
   { label: "Active", value: "active" },
   { label: "Inactive", value: "inactive" },
   { label: "Pending", value: "pending" },
+  { label: "Churned", value: "churned" },
 ];
 
 export function CustomersFilters({

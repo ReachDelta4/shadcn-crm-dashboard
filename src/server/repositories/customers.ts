@@ -14,7 +14,7 @@ type SupabaseClientAny = typeof defaultClient
 
 export interface CustomerFilters {
 	search?: string
-	status?: 'all' | 'active' | 'inactive' | 'pending'
+    status?: 'all' | 'active' | 'inactive' | 'pending' | 'churned'
 	dateFrom?: string
 	dateTo?: string
 }

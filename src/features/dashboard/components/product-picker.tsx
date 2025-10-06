@@ -81,7 +81,7 @@ export function ProductPicker({ value, onValueChange, disabled }: ProductPickerP
           }
         }
       } catch (error) {
-        console.error('Failed to fetch products:', error)
+        console.warn('Failed to fetch products')
       } finally {
         setLoading(false)
       }

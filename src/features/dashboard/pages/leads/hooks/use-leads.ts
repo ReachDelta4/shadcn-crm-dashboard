@@ -19,11 +19,7 @@ interface ApiResponse {
   totalPages: number;
 }
 
-function toCanonicalStatus(status: LeadStatus): LeadStatus {
-  if (status === 'unqualified') return 'lost'
-  if (status === 'converted') return 'won'
-  return status
-}
+// Legacy canonicalization removed – statuses are already canonical
 
 export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps = {}) {
   const [filters, setFilters] = useState<LeadFilters>({
@@ -62,7 +58,7 @@ export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps 
 
       if (filters.search) params.set('search', filters.search);
       if (filters.status && filters.status !== 'all') {
-        params.set('status', toCanonicalStatus(filters.status as LeadStatus) as string)
+        params.set('status', filters.status as string)
       }
       if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
       if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
@@ -89,7 +85,7 @@ export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps 
         phone: lead.phone || '',
         company: lead.company || '',
         value: typeof lead.value === 'number' ? lead.value : 0,
-        status: toCanonicalStatus((lead.status || 'new') as LeadStatus) as any,
+        status: (lead.status || 'new') as LeadStatus,
         date: lead.date || new Date().toISOString(),
         source: lead.source || 'unknown',
       }));

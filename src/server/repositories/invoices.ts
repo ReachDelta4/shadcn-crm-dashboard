@@ -14,7 +14,7 @@ type InvoiceUpdate = any
 
 export interface InvoiceFilters {
 	search?: string
-	status?: 'all' | 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+    status?: 'all' | 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
 	dateFrom?: string
 	dateTo?: string
 }

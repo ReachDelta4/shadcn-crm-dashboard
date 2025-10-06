@@ -47,6 +47,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 					<div className="text-sm">Phone: {(lead as any).phone || '—'}</div>
 					<div className="text-sm">Company: {(lead as any).company || '—'}</div>
 					<div className="text-sm">Potential Value: ${(lead as any).value?.toLocaleString?.() || 0}</div>
+					<div className="text-sm">Source: {(lead as any).source || '—'}</div>
 					<div className="text-sm">Status: <Badge>{(lead as any).status}</Badge></div>
 				</Card>
 				<Card className="p-4 space-y-2 lg:col-span-2">

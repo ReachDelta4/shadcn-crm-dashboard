@@ -8,8 +8,8 @@ export async function convertLeadToCustomerService(
 	const { data: { user } } = await supabase.auth.getUser()
 	if (!user || user.id !== ownerId) throw new Error('Unauthorized')
 
-	const { data: customerId, error: rpcErr } = await (supabase as any)
-		.rpc('convert_lead_to_customer', { lead_id: leadId })
+    const { data: customerId, error: rpcErr } = await (supabase as any)
+        .rpc('convert_lead_to_customer_v2', { lead_id: leadId, initial_status: 'pending' })
 	if (rpcErr) throw new Error(rpcErr.message || 'Conversion failed')
 
 	const { data: lead, error: leadErr } = await supabase

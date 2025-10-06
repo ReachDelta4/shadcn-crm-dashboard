@@ -96,11 +96,10 @@ export class LeadsRepository {
 			.eq('id', id)
 			.is('deleted_at', null)
 			.limit(1)
-			.single()
 		if (effectiveOwnerIds && effectiveOwnerIds.length > 0) {
 			query = query.in('owner_id', effectiveOwnerIds)
 		}
-		const { data, error } = await query
+		const { data, error } = await query.single()
 		if (error) {
 			if ((error as any).code === 'PGRST116') return null
 			throw new Error(`Failed to fetch lead: ${error.message}`)

@@ -12,7 +12,7 @@ const invoiceUpdateSchema = z.object({
 	customer_name: z.string().min(1).optional(),
 	email: z.string().email().optional(),
 	amount: z.coerce.number().min(0).optional(),
-	status: z.enum(['draft','pending','paid','overdue','cancelled']).optional(),
+    status: z.enum(['draft','sent','pending','paid','overdue','cancelled']).optional(),
 	date: z.string().optional(),
 	due_date: z.string().optional(),
 	items: z.coerce.number().min(0).optional(),
@@ -80,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 		const updated = await repo.update(id, validated, user.id)
 
-		// If invoice is paid now, best-effort: mark schedules paid and convert lead → customer, set lead won
+        // If invoice is paid now, best-effort: mark schedules paid and ensure customer becomes active
 		if ((validated as any).status === 'paid') {
 			try {
 				const linesRepo = new InvoiceLinesRepository(supabase)
@@ -93,13 +93,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 						.eq('invoice_id', id)
 						.eq('status', 'pending')
 				}
-				// Lead conversion and win marking
-				const leadId = (current as any).lead_id
-				if (leadId) {
-					await convertLeadToCustomerService(supabase as any, leadId, user.id).catch(() => {})
-					const leadsRepo = new LeadsRepository(supabase)
-					await leadsRepo.update(leadId, { status: 'won' as any }, user.id).catch(() => {})
-				}
+                // Customer activation
+                const customerId = (current as any).customer_id
+                if (customerId) {
+                    await (supabase as any)
+                        .from('customers')
+                        .update({ status: 'active' })
+                        .eq('id', customerId)
+                        .eq('owner_id', user.id)
+                        .in('status', ['pending'])
+                }
 			} catch {
 				// swallow errors for best-effort consistency
 			}

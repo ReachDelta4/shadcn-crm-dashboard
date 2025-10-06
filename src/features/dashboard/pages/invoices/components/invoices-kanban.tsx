@@ -18,6 +18,7 @@ import { toast } from "sonner";
 
 const COLUMNS: { key: InvoiceStatus; title: string }[] = [
   { key: "draft", title: "Draft" },
+  { key: "sent", title: "Sent" },
   { key: "pending", title: "Pending" },
   { key: "paid", title: "Paid" },
   { key: "overdue", title: "Overdue" },
@@ -27,6 +28,7 @@ const COLUMNS: { key: InvoiceStatus; title: string }[] = [
 function StatusBadge({ status }: { status: InvoiceStatus }) {
   const map: Record<InvoiceStatus, string> = {
     draft: "bg-gray-100 text-gray-800",
+    sent: "bg-indigo-100 text-indigo-800",
     pending: "bg-amber-100 text-amber-800",
     paid: "bg-emerald-100 text-emerald-800",
     overdue: "bg-red-100 text-red-800",

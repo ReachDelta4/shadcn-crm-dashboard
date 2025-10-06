@@ -69,19 +69,20 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
     }
   };
 
-  const handleMarkAsUnqualified = async () => {
+  const handleMarkAsDisqualified = async () => {
     try {
       const res = await fetch(`/api/leads/${lead.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "lost" })
+        body: JSON.stringify({ status: "disqualified" })
       });
       if (!res.ok) throw new Error(await res.text());
-      toast.success("Lead marked as unqualified");
+      toast.success("Lead marked as disqualified");
+      window.dispatchEvent(new CustomEvent('leads:optimistic', { detail: { op: 'update', id: lead.id, patch: { status: 'disqualified' }}}));
       window.dispatchEvent(new Event('leads:changed'));
       router.refresh();
     } catch (e) {
-      toast.error("Failed to mark as unqualified");
+      toast.error("Failed to mark as disqualified");
     }
   };
 
@@ -100,8 +101,8 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
 
   // Canonicalized checks for visibility
   const isQualified = lead.status === 'qualified'
-  const isLost = lead.status === 'lost' || lead.status === 'unqualified'
-  const isWon = lead.status === 'won' || lead.status === 'converted'
+  const isDisqualified = lead.status === 'disqualified'
+  const isConverted = lead.status === 'converted'
 
   return (
     <div className="text-right">
@@ -138,13 +139,13 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
               <span>Mark as Qualified</span>
             </DropdownMenuItem>
           )}
-          {!isLost && (
-            <DropdownMenuItem onClick={handleMarkAsUnqualified}>
+          {!isDisqualified && (
+            <DropdownMenuItem onClick={handleMarkAsDisqualified}>
               <UserX className="mr-2 h-4 w-4" />
-              <span>Mark as Unqualified</span>
+              <span>Mark as Disqualified</span>
             </DropdownMenuItem>
           )}
-          {!isWon && (
+          {!isConverted && (
             <DropdownMenuItem onClick={async () => {
               try {
                 const res = await fetch(`/api/leads/${lead.id}/convert`, { method: "POST" });

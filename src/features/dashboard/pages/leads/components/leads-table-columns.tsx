@@ -7,21 +7,16 @@ import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
 import { LeadActionsDropdown } from "./leads-actions-dropdown";
 
-function canonicalize(status: LeadStatus): Exclude<LeadStatus, 'unqualified' | 'converted'> {
-  if (status === 'unqualified') return 'lost'
-  if (status === 'converted') return 'won'
-  return status as any
+function canonicalize(status: LeadStatus): LeadStatus {
+  return status
 }
 
 export const statusColors: Record<string, string> = {
   new: "bg-blue-100 text-blue-800",
   contacted: "bg-yellow-100 text-yellow-800",
   qualified: "bg-green-100 text-green-800",
-  demo_appointment: "bg-indigo-100 text-indigo-800",
-  proposal_negotiation: "bg-amber-100 text-amber-800",
-  invoice_sent: "bg-cyan-100 text-cyan-800",
-  won: "bg-emerald-100 text-emerald-800",
-  lost: "bg-gray-200 text-gray-700",
+  disqualified: "bg-gray-200 text-gray-700",
+  converted: "bg-emerald-100 text-emerald-800",
 };
 
 export const formatCurrency = (amount: number) => {

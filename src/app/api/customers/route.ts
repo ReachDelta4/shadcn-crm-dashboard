@@ -11,12 +11,12 @@ const customerCreateSchema = z.object({
 	email: z.string().email('Valid email is required'),
 	company: z.string().optional(),
 	location: z.string().optional(),
-	status: z.enum(['active', 'inactive', 'pending']).default('active'),
+    status: z.enum(['active', 'inactive', 'pending', 'churned']).default('active'),
 })
 
 const customerFiltersSchema = z.object({
 	search: z.string().nullable().optional().transform(v => v ?? ''),
-	status: z.enum(['all', 'active', 'inactive', 'pending']).nullable().optional().transform(v => v ?? 'all'),
+    status: z.enum(['all', 'active', 'inactive', 'pending', 'churned']).nullable().optional().transform(v => v ?? 'all'),
 	dateFrom: z.string().nullable().optional().transform(v => v ?? undefined),
 	dateTo: z.string().nullable().optional().transform(v => v ?? undefined),
 	sort: z.string().nullable().optional().transform(v => v ?? 'date_joined'),

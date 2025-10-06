@@ -2,32 +2,20 @@
 
 import { useState } from "react";
 import { Lead } from "@/features/dashboard/pages/leads/types/lead";
-import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { LeadTransitionDialog } from "./modals/lead-transition-dialog";
 import { toast } from "sonner";
 
 interface Props { lead: Lead; onChanged?: () => void }
 
-type TargetStatus = 'new'|'contacted'|'qualified'|'demo_appointment'|'proposal_negotiation'|'invoice_sent'|'won'|'lost'
+type TargetStatus = 'new'|'contacted'|'qualified'|'disqualified'|'converted'
 
 export function LeadStatusDropdown({ lead, onChanged }: Props) {
 	const [target, setTarget] = useState<TargetStatus>(lead.status as any)
-	const [openAppt, setOpenAppt] = useState(false)
-	const [openInvoice, setOpenInvoice] = useState(false)
-    const [openTransition, setOpenTransition] = useState<null|'demo_appointment'|'invoice_sent'|'won'>(null)
+    
 
-	// Appointment modal state
-	const [startAt, setStartAt] = useState("")
-	const [endAt, setEndAt] = useState("")
-	const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
+    
 
-	// Invoice modal state (minimal for v1)
-	const [productId, setProductId] = useState("")
-	const [quantity, setQuantity] = useState("1")
+    
 
 	async function submitTransition(payload: any) {
 		const res = await fetch(`/api/leads/${lead.id}/transition`, {
@@ -39,49 +27,19 @@ export function LeadStatusDropdown({ lead, onChanged }: Props) {
 
 	async function handleChange(next: TargetStatus) {
 		setTarget(next)
-		try {
-            if (next === 'demo_appointment') { setOpenTransition('demo_appointment'); return }
-            if (next === 'invoice_sent') { setOpenTransition('invoice_sent'); return }
-            if (next === 'won') { setOpenTransition('won'); return }
-			await submitTransition({ target_status: next })
+        try {
+            await submitTransition({ target_status: next })
 			toast.success(`Lead moved to ${next}`)
 		} catch {
 			toast.error('Failed to update status')
 		}
 	}
 
-	async function confirmAppointment() {
-		try {
-			await submitTransition({
-				target_status: 'demo_appointment',
-				appointment: { provider: 'none', start_at_utc: new Date(startAt).toISOString(), end_at_utc: new Date(endAt).toISOString(), timezone }
-			})
-			setOpenAppt(false)
-			toast.success('Appointment created')
-			window.dispatchEvent(new Event('calendar:changed'))
-			window.dispatchEvent(new Event('leads:changed'))
-		} catch {
-			toast.error('Failed to create appointment')
-		}
-	}
-
-	async function confirmInvoice() {
-		try {
-			if (!productId) { toast.error('Select a product'); return }
-			await submitTransition({
-				target_status: 'invoice_sent',
-				invoice: { line_items: [{ product_id: productId, quantity: Number(quantity) }] }
-			})
-			setOpenInvoice(false)
-			toast.success('Invoice created and marked sent')
-		} catch {
-			toast.error('Failed to create invoice')
-		}
-	}
+    
 
 	return (
 		<div className="flex items-center gap-2">
-			<Select value={target} onValueChange={(v:any) => handleChange(v)}>
+            <Select value={target} onValueChange={(v:any) => handleChange(v)}>
 				<SelectTrigger className="w-[220px]">
 					<SelectValue placeholder="Change status" />
 				</SelectTrigger>
@@ -89,45 +47,11 @@ export function LeadStatusDropdown({ lead, onChanged }: Props) {
 					<SelectItem value="new">New</SelectItem>
 					<SelectItem value="contacted">Contacted</SelectItem>
 					<SelectItem value="qualified">Qualified</SelectItem>
-					<SelectItem value="demo_appointment">Demo/Appointment</SelectItem>
-					<SelectItem value="proposal_negotiation">Proposal/Negotiation</SelectItem>
-					<SelectItem value="invoice_sent">Invoice Sent</SelectItem>
-					<SelectItem value="won">Won</SelectItem>
-					<SelectItem value="lost">Lost</SelectItem>
+                    <SelectItem value="disqualified">Disqualified</SelectItem>
+                    <SelectItem value="converted">Converted</SelectItem>
 				</SelectContent>
 			</Select>
-
-			{/* Appointment Modal */}
-			<Dialog open={openAppt} onOpenChange={setOpenAppt}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Schedule Demo/Appointment</DialogTitle>
-					</DialogHeader>
-					<div className="grid gap-3">
-						<div className="grid gap-1">
-							<Label>Start</Label>
-							<Input type="datetime-local" value={startAt} onChange={e=>setStartAt(e.target.value)} />
-						</div>
-						<div className="grid gap-1">
-							<Label>End</Label>
-							<Input type="datetime-local" value={endAt} onChange={e=>setEndAt(e.target.value)} />
-						</div>
-					</div>
-					<DialogFooter>
-						<Button variant="outline" onClick={()=>setOpenAppt(false)}>Cancel</Button>
-						<Button onClick={confirmAppointment}>Confirm</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-
-            <LeadTransitionDialog
-                leadId={lead.id}
-                leadName={lead.fullName}
-                mode={openTransition}
-                open={!!openTransition}
-                onOpenChange={(o) => setOpenTransition(o ? (openTransition||'invoice_sent') : null)}
-                onSuccess={() => { onChanged?.(); }}
-            />
+            
 		</div>
 	)
 }

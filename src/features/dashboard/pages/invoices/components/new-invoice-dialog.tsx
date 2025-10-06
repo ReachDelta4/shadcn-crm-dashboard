@@ -43,12 +43,24 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
 
   useEffect(() => { loadLeads() }, [])
 
+  useEffect(() => {
+    const refresh = () => { loadLeads() }
+    window.addEventListener('leads:changed', refresh)
+    window.addEventListener('leads:optimistic', refresh as any)
+    return () => {
+      window.removeEventListener('leads:changed', refresh)
+      window.removeEventListener('leads:optimistic', refresh as any)
+    }
+  }, [])
+
   async function loadLeads() {
     try {
       const res = await fetch('/api/leads?pageSize=50')
       if (!res.ok) return
       const data = await res.json()
-      const list = (data?.data || []).map((l:any) => ({ id: l.id, full_name: l.full_name, email: l.email }))
+      const list = (data?.data || [])
+        .filter((l:any) => (l.status || 'new') !== 'converted')
+        .map((l:any) => ({ id: l.id, full_name: l.full_name, email: l.email }))
       setLeads(list)
     } catch {}
   }
