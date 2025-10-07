@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Lead, LeadStatus } from "../types/lead";
+import { formatINRMajor } from "@/utils/currency";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -105,7 +106,7 @@ export function LeadsKanban({ leads, onStatusChanged }: { leads: Lead[]; onStatu
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <StatusBadge status={lead.status} />
-                      <span className="tabular-nums">${lead.value.toLocaleString()}</span>
+                      <span className="tabular-nums">{formatINRMajor(lead.value)}</span>
                     </div>
                   </div>
                 ))

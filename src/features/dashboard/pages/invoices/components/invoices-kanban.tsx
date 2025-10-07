@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Invoice, InvoiceStatus } from "../types/invoice";
+import { formatINRMajor } from "@/utils/currency";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -102,7 +103,7 @@ export function InvoicesKanban({ invoices, onStatusChanged }: { invoices: Invoic
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <StatusBadge status={invoice.status} />
-                      <span className="tabular-nums">${invoice.amount.toLocaleString()}</span>
+                      <span className="tabular-nums">{formatINRMajor(invoice.amount)}</span>
                     </div>
                   </div>
                 ))

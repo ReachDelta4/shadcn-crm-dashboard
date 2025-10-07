@@ -38,6 +38,29 @@ export const sidebarMenus = {
       ],
     },
     {
+      title: "Sales Performance",
+      url: "/dashboard/sales-performance",
+      icon: BarChart,
+      items: [
+        {
+          title: "Overview",
+          url: "/dashboard/sales-performance",
+        },
+        {
+          title: "Revenue",
+          url: "/dashboard/reports/revenue",
+        },
+        {
+          title: "Pipeline",
+          url: "/dashboard/sales-performance/pipeline",
+        },
+        {
+          title: "Funnel",
+          url: "/dashboard/sales-performance/funnel",
+        },
+      ],
+    },
+    {
       title: "Leads",
       url: "/dashboard/leads",
       icon: HandCoins,
@@ -106,7 +129,6 @@ export const sidebarMenus = {
         { title: "Bulk Reports", url: "/dashboard/sessions/bulk-reports" },
         { title: "Sales Report", url: "/dashboard/reports/sales" },
         { title: "Customer Insights", url: "/dashboard/reports/customer-insights" },
-        { title: "Revenue", url: "/dashboard/reports/revenue" },
       ],
     },
     {

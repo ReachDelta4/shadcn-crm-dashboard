@@ -2,17 +2,13 @@
 
 import { useMemo } from "react";
 import { Invoice, InvoiceStatus } from "@/features/dashboard/pages/invoices/types/invoice";
+import { formatINRMajor } from "@/utils/currency";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
 import { InvoiceActionsDropdown } from "./invoices-actions-dropdown";
 
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-};
+const formatCurrency = (amount: number) => formatINRMajor(amount);
 
 export const statusColors: Record<InvoiceStatus, string> = {
   draft: "bg-slate-100 text-slate-800",

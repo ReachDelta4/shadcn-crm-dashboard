@@ -33,7 +33,7 @@ type Product = {
 const DEFAULT_FORM: Partial<Product> & { price_major?: string; tax_rate_percent?: string; cogs_value_display?: string; discount_value_display?: string } = {
   name: "",
   sku: "",
-  currency: "USD",
+  currency: "INR",
   price_major: "",
   tax_rate_percent: "0",
   cogs_type: null,
@@ -139,7 +139,7 @@ export function ProductsSettingsPage() {
       const payload: any = {
         name: form.name,
         sku: (form.sku || "").trim() || undefined,
-        currency: form.currency || "USD",
+        currency: form.currency || "INR",
         price_minor: toMinor(form.price_major),
         tax_rate_bp: percentToBp(form.tax_rate_percent),
         cogs_type: form.cogs_type ?? null,
@@ -201,7 +201,7 @@ export function ProductsSettingsPage() {
   }
 
   const pricingPreview = useMemo(() => {
-    const currency = form.currency || "USD";
+    const currency = form.currency || "INR";
     const priceMinor = toMinor(form.price_major);
     const taxBp = percentToBp(form.tax_rate_percent);
 
@@ -232,7 +232,7 @@ export function ProductsSettingsPage() {
     const profitMinor = totalMinor - cogsMinor;
     const marginPct = totalMinor > 0 ? (profitMinor * 100) / totalMinor : 0;
 
-    const fmt = (minor: number) => (minor / 100).toLocaleString(undefined, { style: "currency", currency });
+    const fmt = (minor: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format((minor || 0) / 100);
 
     return {
       productPrice: fmt(priceMinor),
@@ -293,7 +293,7 @@ export function ProductsSettingsPage() {
           ) : (
             <div className="divide-y">
               {products.map((p) => {
-                const price = (p.price_minor / 100).toLocaleString(undefined, { style: "currency", currency: p.currency || "USD" });
+                const price = new Intl.NumberFormat('en-IN', { style: 'currency', currency: p.currency || 'INR' }).format((p.price_minor || 0) / 100);
                 const taxPct = (p.tax_rate_bp / 100).toFixed(2) + "%";
                 const cogs = p.cogs_type ? `${p.cogs_value}${p.cogs_type === "percent" ? "%" : ""}` : "—";
                 const discount = p.discount_type ? `${p.discount_value}${p.discount_type === "percent" ? "%" : ""}` : "—";
@@ -357,7 +357,7 @@ export function ProductsSettingsPage() {
             </div>
             <div>
               <Label>Currency</Label>
-              <Input value={form.currency || "USD"} onChange={(e) => update("currency", e.target.value)} placeholder="USD" />
+              <Input value={form.currency || "INR"} onChange={(e) => update("currency", e.target.value)} placeholder="INR" disabled />
             </div>
             <div>
               <Label>Price</Label>

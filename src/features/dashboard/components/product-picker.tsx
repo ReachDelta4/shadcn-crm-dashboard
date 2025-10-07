@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatINRMinor } from "@/utils/currency"
 import { Button } from "@/components/ui/button"
 import {
   Command,
@@ -129,10 +130,7 @@ export function ProductPicker({ value, onValueChange, disabled }: ProductPickerP
         >
           {selected ? (
             <span className="truncate">
-              {selected.name} - {(selected.price_minor / 100).toLocaleString(undefined, {
-                style: 'currency',
-                currency: selected.currency
-              })}
+              {selected.name} - {formatINRMinor(selected.price_minor)}
             </span>
           ) : (
             "Select product..."
@@ -172,12 +170,7 @@ export function ProductPicker({ value, onValueChange, disabled }: ProductPickerP
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate font-medium">{product.name}</span>
-                          <span className="text-sm text-muted-foreground shrink-0">
-                            {(product.price_minor / 100).toLocaleString(undefined, {
-                              style: 'currency',
-                              currency: product.currency
-                            })}
-                          </span>
+                          <span className="text-sm text-muted-foreground shrink-0">{formatINRMinor(product.price_minor)}</span>
                         </div>
                         {product.sku && (
                           <div className="text-xs text-muted-foreground">

@@ -111,7 +111,7 @@ export class ProductsRepository {
 			...input,
 			owner_id: ownerId,
 			org_id: isElevated ? (input.org_id ?? orgId ?? null) : null,
-			currency: input.currency || 'USD',
+            currency: input.currency || 'INR',
 			tax_rate_bp: input.tax_rate_bp ?? 0,
 			active: input.active ?? true,
 		}

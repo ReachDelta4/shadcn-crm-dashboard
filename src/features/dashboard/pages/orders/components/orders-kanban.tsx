@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Order, OrderStatus } from "../types/order";
+import { formatINRMajor } from "@/utils/currency";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -98,7 +99,7 @@ export function OrdersKanban({ orders, onStatusChanged }: { orders: Order[]; onS
                     </div>
                     <div className="mt-2 flex items-center justify-between text-xs">
                       <StatusBadge status={order.status} />
-                      <span className="tabular-nums">${order.amount.toLocaleString()}</span>
+                      <span className="tabular-nums">{formatINRMajor(order.amount)}</span>
                     </div>
                   </div>
                 ))

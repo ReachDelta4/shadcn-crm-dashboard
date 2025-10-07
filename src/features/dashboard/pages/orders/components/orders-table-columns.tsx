@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Order, OrderStatus } from "@/features/dashboard/pages/orders/types/order";
+import { formatINRMajor } from "@/utils/currency";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
@@ -14,12 +15,7 @@ export const statusColors: Record<OrderStatus, string> = {
   cancelled: "bg-red-100 text-red-800",
 };
 
-export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-};
+export const formatCurrency = (amount: number) => formatINRMajor(amount);
 
 export const useOrderColumns = () => {
   return useMemo<ColumnDef<Order>[]>(

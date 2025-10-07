@@ -13,12 +13,13 @@ import { LeadsRepository } from '@/server/repositories/leads'
 import { LeadStatusTransitionsRepository } from '@/server/repositories/lead-status-transitions'
 
 const lineItemSchema = z.object({
-	product_id: z.string().uuid(),
-	quantity: z.number().int().min(1),
-	unit_price_override_minor: z.number().int().min(0).optional(),
-	discount_type: z.enum(['percent', 'amount']).optional(),
-	discount_value: z.number().int().min(0).optional(),
-	payment_plan_id: z.string().uuid().optional(),
+    product_id: z.string().uuid(),
+    quantity: z.number().int().min(1),
+    unit_price_override_minor: z.number().int().min(0).optional(),
+    discount_type: z.enum(['percent', 'amount']).optional(),
+    discount_value: z.number().int().min(0).optional(),
+    // Accept null/undefined gracefully and coerce to undefined
+    payment_plan_id: z.string().uuid().nullish().transform(v => v ?? undefined),
 })
 
 const invoiceCreateSchema = z.object({
@@ -31,8 +32,9 @@ const invoiceCreateSchema = z.object({
 	due_date: z.string().optional(),
 	items: z.coerce.number().min(0).default(0).optional(),
 	payment_method: z.string().optional(),
-	line_items: z.array(lineItemSchema).optional(), // New: line items
-	lead_id: z.string().uuid().optional(), // New: link to lead
+    line_items: z.array(lineItemSchema).optional(), // New: line items
+    // Accept null/undefined gracefully and coerce to undefined
+    lead_id: z.string().uuid().nullish().transform(v => v ?? undefined), // New: link to lead
 	subject_id: z.string().uuid().optional(), // New: link to subject
 })
 
@@ -230,7 +232,7 @@ export async function POST(request: NextRequest) {
 		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
 			await logActivity(supabase as any, user.id, {
 				type: 'deal',
-				description: `Invoice created: $${(invoice as any).amount}`,
+                description: `Invoice created: ₹${(invoice as any).amount}`,
 				entity: (invoice as any).customer_name || (invoice as any).email,
 				details: { id: (invoice as any).id }
 			})

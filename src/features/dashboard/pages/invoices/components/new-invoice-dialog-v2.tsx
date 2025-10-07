@@ -12,6 +12,7 @@ import { ProductPicker, type Product } from "@/features/dashboard/components/pro
 import { PaymentPlanPicker, type PaymentPlan } from "@/features/dashboard/components/payment-plan-picker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { formatINRMinor } from "@/utils/currency";
 
 interface LineItem {
   product_id: string;
@@ -155,10 +156,20 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
 
     startTransition(async () => {
       try {
+        // Sanitize payload: strip null/empty optional fields
+        const payload = {
+          ...parsed.data,
+          lead_id: parsed.data.lead_id ?? undefined,
+          line_items: (parsed.data.line_items || []).map(li => ({
+            ...li,
+            payment_plan_id: li.payment_plan_id ?? undefined,
+          })),
+        } as any
+
         const res = await fetch("/api/invoices", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(parsed.data),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -319,9 +330,15 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                             type="number"
                             min={0}
                             value={item.discount_value || ""}
-                            onChange={(e) => updateLine(idx, { 
-                              discount_value: e.target.value ? parseInt(e.target.value) : undefined 
-                            })}
+                            onChange={(e) => {
+                              const raw = e.target.value ? parseInt(e.target.value) : undefined
+                              if (raw == null) return updateLine(idx, { discount_value: undefined })
+                              if (item.discount_type === 'percent') {
+                                // Convert percent to basis points expected by server calculations
+                                return updateLine(idx, { discount_value: Math.max(0, raw * 100) })
+                              }
+                              return updateLine(idx, { discount_value: Math.max(0, raw) })
+                            }}
                             placeholder="0"
                           />
                         </div>
@@ -359,19 +376,19 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                             const taxBp = (item.product as any).tax_rate_bp || 0;
                             const taxMinor = Math.floor((afterDiscountMinor * taxBp) / 10000);
                             const totalMinor = afterDiscountMinor + taxMinor;
-                            const currency = item.product.currency || 'USD';
+                            const currency = 'INR';
                             return (
                               <>
                                 <div className="text-muted-foreground">Unit price</div>
-                                <div className="text-right">{(unitPriceMinor/100).toLocaleString(undefined, { style: 'currency', currency })}</div>
+                                <div className="text-right">{formatINRMinor(unitPriceMinor)}</div>
                                 <div className="text-muted-foreground">Subtotal</div>
-                                <div className="text-right">{(subtotalMinor/100).toLocaleString(undefined, { style: 'currency', currency })}</div>
+                                <div className="text-right">{formatINRMinor(subtotalMinor)}</div>
                                 <div className="text-muted-foreground">Discount</div>
-                                <div className="text-right">-{(discountMinor/100).toLocaleString(undefined, { style: 'currency', currency })}</div>
+                                <div className="text-right">-{formatINRMinor(discountMinor)}</div>
                                 <div className="text-muted-foreground">Tax</div>
-                                <div className="text-right">{(taxMinor/100).toLocaleString(undefined, { style: 'currency', currency })}</div>
+                                <div className="text-right">{formatINRMinor(taxMinor)}</div>
                                 <div className="text-muted-foreground font-medium">Line total</div>
-                                <div className="text-right font-medium">{(totalMinor/100).toLocaleString(undefined, { style: 'currency', currency })}</div>
+                                <div className="text-right font-medium">{formatINRMinor(totalMinor)}</div>
                               </>
                             )
                           })()}
@@ -393,44 +410,24 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal:</span>
-                  <span className="font-medium">
-                    {(previewTotals.subtotal / 100).toLocaleString(undefined, { 
-                      style: 'currency', 
-                      currency: lineItems[0]?.product?.currency || 'USD' 
-                    })}
-                  </span>
+                  <span className="font-medium">{formatINRMinor(previewTotals.subtotal)}</span>
                 </div>
                 {previewTotals.discount > 0 && (
                   <div className="flex justify-between text-destructive">
                     <span>Discount:</span>
-                    <span>
-                      -{(previewTotals.discount / 100).toLocaleString(undefined, { 
-                        style: 'currency', 
-                        currency: lineItems[0]?.product?.currency || 'USD' 
-                      })}
-                    </span>
+                    <span>-{formatINRMinor(previewTotals.discount)}</span>
                   </div>
                 )}
                 {previewTotals.tax > 0 && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tax:</span>
-                    <span>
-                      {(previewTotals.tax / 100).toLocaleString(undefined, { 
-                        style: 'currency', 
-                        currency: lineItems[0]?.product?.currency || 'USD' 
-                      })}
-                    </span>
+                    <span>{formatINRMinor(previewTotals.tax)}</span>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between text-base font-bold">
                   <span>Total:</span>
-                  <span>
-                    {(previewTotals.total / 100).toLocaleString(undefined, { 
-                      style: 'currency', 
-                      currency: lineItems[0]?.product?.currency || 'USD' 
-                    })}
-                  </span>
+                  <span>{formatINRMinor(previewTotals.total)}</span>
                 </div>
                 <p className="text-xs text-muted-foreground pt-2">
                   * Final total will be calculated by the server

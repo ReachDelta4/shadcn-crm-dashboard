@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Lead, LeadStatus } from "@/features/dashboard/pages/leads/types/lead";
+import { formatINRMajor } from "@/utils/currency";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
@@ -19,12 +20,7 @@ export const statusColors: Record<string, string> = {
   converted: "bg-emerald-100 text-emerald-800",
 };
 
-export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(amount);
-};
+export const formatCurrency = (amount: number) => formatINRMajor(amount);
 
 export const useLeadColumns = () => {
   return useMemo<ColumnDef<Lead>[]>(
