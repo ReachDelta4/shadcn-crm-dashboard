@@ -145,7 +145,7 @@ export function RevenueReportPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(kpis.lead_potential_minor)}</div>
-            <p className="text-xs text-muted-foreground">Open leads' value</p>
+            <p className="text-xs text-muted-foreground">Open leads&#39; value</p>
           </CardContent>
         </Card>
       </div>

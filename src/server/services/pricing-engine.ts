@@ -159,19 +159,20 @@ export function generatePaymentSchedule(
 	lineTotal: number,
 	invoiceDate: Date
 ): PaymentScheduleEntry[] {
-	const downPayment = plan.down_payment_minor || 0
-	const remaining = lineTotal - downPayment
+	const safeDownPayment = Math.max(0, Math.min(plan.down_payment_minor || 0, lineTotal))
+	const remainingRaw = lineTotal - safeDownPayment
+	const remaining = Math.max(0, remainingRaw)
 	const installmentAmount = Math.floor(remaining / plan.num_installments)
 	const lastInstallmentAmount = remaining - (installmentAmount * (plan.num_installments - 1))
 
 	const schedule: PaymentScheduleEntry[] = []
 
 	// Down payment (if any)
-	if (downPayment > 0) {
+	if (safeDownPayment > 0) {
 		schedule.push({
 			installment_num: 0,
 			due_at_utc: invoiceDate.toISOString(),
-			amount_minor: downPayment,
+			amount_minor: safeDownPayment,
 			description: 'Down payment',
 		})
 	}
@@ -199,12 +200,13 @@ export function generateRecurringSchedule(
 	product: Product,
 	lineTotal: number,
 	startDate: Date,
-	horizonMonths = 12
+	horizonMonths = 12,
+	cyclesCount?: number
 ): RecurringScheduleEntry[] {
 	if (!product.recurring_interval) return []
 
 	const schedule: RecurringScheduleEntry[] = []
-	const maxCycles = calculateMaxCycles(product.recurring_interval, horizonMonths)
+	const maxCycles = cyclesCount ?? calculateMaxCycles(product.recurring_interval, horizonMonths)
 
 	for (let cycle = 1; cycle <= maxCycles; cycle++) {
 		const billingDate = calculateNextDueDate(

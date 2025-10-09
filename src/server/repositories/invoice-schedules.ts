@@ -15,6 +15,7 @@ export interface InvoicePaymentSchedule {
 	amount_minor: number
 	description: string
 	status: 'pending' | 'paid' | 'overdue'
+	paid_at?: string | null
 	created_at: string
 }
 
@@ -36,6 +37,7 @@ export interface RecurringRevenueSchedule {
 	amount_minor: number
 	description: string
 	status: 'scheduled' | 'billed' | 'cancelled'
+	billed_at?: string | null
 	created_at: string
 }
 
@@ -69,6 +71,40 @@ export class InvoicePaymentSchedulesRepository {
 		if (error) throw new Error(`Failed to fetch payment schedules: ${error.message}`)
 		return (data || []) as InvoicePaymentSchedule[]
 	}
+
+	async getById(id: string): Promise<InvoicePaymentSchedule | null> {
+		const { data, error } = await this.client
+			.from('invoice_payment_schedules')
+			.select('*')
+			.eq('id', id)
+			.single()
+		if (error) {
+			if ((error as any).code === 'PGRST116') return null
+			throw new Error(`Failed to fetch payment schedule: ${error.message}`)
+		}
+		return data as InvoicePaymentSchedule
+	}
+
+	async markPaid(id: string, whenIso: string): Promise<InvoicePaymentSchedule> {
+		const { data, error } = await this.client
+			.from('invoice_payment_schedules')
+			.update({ status: 'paid', paid_at: whenIso })
+			.eq('id', id)
+			.select()
+			.single()
+		if (error) throw new Error(`Failed to mark schedule paid: ${error.message}`)
+		return data as InvoicePaymentSchedule
+	}
+
+	async countUnpaidByInvoiceId(invoiceId: string): Promise<number> {
+		const { count, error } = await this.client
+			.from('invoice_payment_schedules')
+			.select('*', { count: 'exact', head: true })
+			.eq('invoice_id', invoiceId)
+			.neq('status', 'paid')
+		if (error) throw new Error(`Failed to count unpaid schedules: ${error.message}`)
+		return count || 0
+	}
 }
 
 export class RecurringRevenueSchedulesRepository {
@@ -91,6 +127,30 @@ export class RecurringRevenueSchedulesRepository {
 			.order('billing_at_utc', { ascending: true })
 		if (error) throw new Error(`Failed to fetch recurring schedules: ${error.message}`)
 		return (data || []) as RecurringRevenueSchedule[]
+	}
+
+	async getById(id: string): Promise<RecurringRevenueSchedule | null> {
+		const { data, error } = await this.client
+			.from('recurring_revenue_schedules')
+			.select('*')
+			.eq('id', id)
+			.single()
+		if (error) {
+			if ((error as any).code === 'PGRST116') return null
+			throw new Error(`Failed to fetch recurring schedule: ${error.message}`)
+		}
+		return data as RecurringRevenueSchedule
+	}
+
+	async markBilled(id: string, whenIso: string): Promise<RecurringRevenueSchedule> {
+		const { data, error } = await this.client
+			.from('recurring_revenue_schedules')
+			.update({ status: 'billed', billed_at: whenIso })
+			.eq('id', id)
+			.select()
+			.single()
+		if (error) throw new Error(`Failed to mark recurring billed: ${error.message}`)
+		return data as RecurringRevenueSchedule
 	}
 }
 

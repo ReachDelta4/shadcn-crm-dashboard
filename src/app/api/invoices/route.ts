@@ -20,6 +20,8 @@ const lineItemSchema = z.object({
     discount_value: z.number().int().min(0).optional(),
     // Accept null/undefined gracefully and coerce to undefined
     payment_plan_id: z.string().uuid().nullish().transform(v => v ?? undefined),
+    recurring_cycles_count: z.number().int().min(1).optional(),
+    recurring_infinite: z.boolean().optional(),
 })
 
 const invoiceCreateSchema = z.object({
@@ -124,6 +126,15 @@ export async function POST(request: NextRequest) {
 				productIds.map(id => productsRepo.getById(id, scope.orgId || null, scope.userId, scope.role))
 			)
 			validProducts = products.filter(p => p !== null) as any[]
+
+			// Guard: no payment plans for recurring products
+			for (let i = 0; i < validated.line_items.length; i++) {
+				const li = validated.line_items[i]
+				const prod = validProducts.find(p => p.id === li.product_id)
+				if (prod && prod.recurring_interval && li.payment_plan_id) {
+					return NextResponse.json({ error: 'Payment plans are only allowed for one-time products' }, { status: 400 })
+				}
+			}
 			
 			// Calculate invoice totals
 			calculation = calculateInvoice(validProducts, validated.line_items as LineItemInput[])
@@ -193,7 +204,8 @@ export async function POST(request: NextRequest) {
 				
 				// Recurring revenue schedules
 				if (product && product.recurring_interval) {
-					const schedules = generateRecurringSchedule(product, line.total_minor, invoiceDate, 12)
+					const cyclesCount = input.recurring_infinite ? undefined : (input.recurring_cycles_count || undefined)
+					const schedules = generateRecurringSchedule(product, line.total_minor, invoiceDate, 12, cyclesCount)
 					const scheduleInserts = schedules.map(s => ({
 						invoice_line_id: line.id,
 						cycle_num: s.cycle_num,
@@ -203,6 +215,21 @@ export async function POST(request: NextRequest) {
 						status: 'scheduled' as const,
 					}))
 					await recurringSchedulesRepo.bulkCreate(scheduleInserts)
+				}
+
+				// One-time without payment plan → create a single payment schedule
+				if ((!product || !product.recurring_interval) && !input.payment_plan_id) {
+					const dueAt = validated.due_date ? new Date(validated.due_date) : invoiceDate
+					const schedule = {
+						invoice_id: invoiceId as string,
+						invoice_line_id: line.id as string,
+						installment_num: 1,
+						due_at_utc: dueAt.toISOString(),
+						amount_minor: line.total_minor as number,
+						description: 'Payment due',
+						status: 'pending' as const,
+					}
+					await paymentSchedulesRepo.bulkCreate([schedule as any])
 				}
 			}
 		}

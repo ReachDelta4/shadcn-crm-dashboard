@@ -151,6 +151,14 @@ export const sidebarMenus = {
       ],
     },
     {
+      title: "Financials",
+      url: "/dashboard/financials",
+      icon: PieChart,
+      items: [
+        { title: "All", url: "/dashboard/financials" },
+      ],
+    },
+    {
       title: "Settings",
       url: "/dashboard/settings/general",
       icon: Settings2,

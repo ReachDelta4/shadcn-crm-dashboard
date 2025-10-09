@@ -22,6 +22,8 @@ interface LineItem {
   discount_value?: number;
   payment_plan_id?: string | null;
   payment_plan?: PaymentPlan | null;
+  recurring_cycles_count?: number;
+  recurring_infinite?: boolean;
 }
 
 const schema = z.object({
@@ -35,6 +37,8 @@ const schema = z.object({
     discount_type: z.enum(["percent", "amount"]).optional(),
     discount_value: z.number().int().min(0).optional(),
     payment_plan_id: z.string().uuid().optional(),
+    recurring_cycles_count: z.number().int().min(1).optional(),
+    recurring_infinite: z.boolean().optional(),
   })).min(1),
 });
 
@@ -47,6 +51,7 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
   const [customerName, setCustomerName] = useState("");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"draft" | "pending" | "paid" | "overdue" | "cancelled">("draft");
+  const [dueDate, setDueDate] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -85,6 +90,7 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
     setCustomerName("");
     setEmail("");
     setStatus("draft");
+    setDueDate(undefined);
     setLeadId(undefined);
     setLineItems([{ product_id: "", quantity: 1 }]);
     setError(null);
@@ -139,6 +145,10 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
       customer_name: customerName.trim(),
       email: email.trim(),
       status,
+      // include due_date if provided
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      due_date: dueDate,
       lead_id: leadId,
       line_items: lineItems.map(li => ({
         product_id: li.product_id,
@@ -146,6 +156,8 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
         discount_type: li.discount_type,
         discount_value: li.discount_value,
         payment_plan_id: li.payment_plan_id,
+        recurring_cycles_count: li.recurring_cycles_count,
+        recurring_infinite: li.recurring_infinite,
       })),
     });
 
@@ -182,6 +194,20 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
         setError(typeof err?.message === "string" ? err.message : "Failed to create invoice");
       }
     });
+  }
+
+  function addInterval(base: Date, type: string, days?: number | null, step = 1): Date {
+    const d = new Date(base);
+    switch (type) {
+      case 'weekly': d.setDate(d.getDate() + 7 * step); break;
+      case 'monthly': d.setMonth(d.getMonth() + step); break;
+      case 'quarterly': d.setMonth(d.getMonth() + 3 * step); break;
+      case 'semiannual': d.setMonth(d.getMonth() + 6 * step); break;
+      case 'annual': d.setFullYear(d.getFullYear() + step); break;
+      case 'custom_days': d.setDate(d.getDate() + Math.max(1, days || 1) * step); break;
+      default: break;
+    }
+    return d;
   }
 
   return (
@@ -221,6 +247,13 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                   onChange={(e) => setEmail(e.target.value)} 
                   required 
                 />
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="due_date">Due Date (optional)</Label>
+                <Input id="due_date" type="datetime-local" value={dueDate || ""} onChange={(e)=>setDueDate(e.target.value || undefined)} />
               </div>
             </div>
 
@@ -307,6 +340,39 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                         )}
                       </div>
 
+                      {/* Recurring cycle controls (only for recurring products) */}
+                      {item.product && item.product.recurring_interval && (
+                        <div className="grid gap-4 sm:grid-cols-2 border rounded-md p-3 bg-muted/20">
+                          <div className="grid gap-2">
+                            <Label>Billing Cycles</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              placeholder="e.g., 12"
+                              value={item.recurring_cycles_count || ""}
+                              onChange={(e) => {
+                                const val = e.target.value ? parseInt(e.target.value) : undefined;
+                                updateLine(idx, { recurring_cycles_count: val, recurring_infinite: false });
+                              }}
+                              disabled={item.recurring_infinite}
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={item.recurring_infinite || false}
+                                onChange={(e) => {
+                                  updateLine(idx, { recurring_infinite: e.target.checked, recurring_cycles_count: undefined });
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <span className="text-sm">Infinite (no end date)</span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="grid gap-4 sm:grid-cols-3">
                         <div className="grid gap-2">
                           <Label>Discount Type</Label>
@@ -391,6 +457,76 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                                 <div className="text-right font-medium">{formatINRMinor(totalMinor)}</div>
                               </>
                             )
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Schedule/Cycles Preview */}
+                      {item.product && (
+                        <div className="text-xs rounded-md border p-2 bg-muted/20">
+                          {(() => {
+                            const unitPriceMinor = item.product ? item.product.price_minor : 0;
+                            const subtotalMinor = unitPriceMinor * (item.quantity || 1);
+                            let discountMinor = 0;
+                            if (item.discount_value && item.discount_value > 0) {
+                              if (item.discount_type === "percent") discountMinor = Math.floor((subtotalMinor * item.discount_value) / 10000);
+                              else discountMinor = item.discount_value;
+                            }
+                            const afterDiscountMinor = Math.max(0, subtotalMinor - discountMinor);
+                            const taxBp = (item.product as any).tax_rate_bp || 0;
+                            const taxMinor = Math.floor((afterDiscountMinor * taxBp) / 10000);
+                            const totalMinor = afterDiscountMinor + taxMinor;
+                            const baseDate = dueDate ? new Date(dueDate) : new Date();
+
+                            if (!item.product.recurring_interval && item.payment_plan) {
+                              // Payment plan preview: down payment + installments
+                              const dp = Math.max(0, item.payment_plan.down_payment_minor || 0);
+                              const remaining = Math.max(0, totalMinor - dp);
+                              const n = Math.max(1, item.payment_plan.num_installments);
+                              const per = Math.floor(remaining / n);
+                              const last = remaining - per * (n - 1);
+                              return (
+                                <div className="space-y-1">
+                                  <div className="font-medium">Payment Plan Preview</div>
+                                  {dp > 0 && (
+                                    <div className="flex justify-between"><span>Down payment</span><span>{formatINRMinor(dp)}</span></div>
+                                  )}
+                                  {Array.from({ length: n }).map((_, i) => {
+                                    const amt = i === n - 1 ? last : per;
+                                    const due = addInterval(baseDate, item.payment_plan!.interval_type, item.payment_plan!.interval_days, i + 1);
+                                    return <div key={i} className="flex justify-between"><span>Installment {i+1} • {due.toLocaleDateString()}</span><span>{formatINRMinor(amt)}</span></div>
+                                  })}
+                                </div>
+                              );
+                            }
+
+                            if (!item.product.recurring_interval && !item.payment_plan_id) {
+                              // Single schedule
+                              return (
+                                <div className="flex justify-between">
+                                  <span>One-time payment • {(dueDate ? new Date(dueDate) : new Date()).toLocaleDateString()}</span>
+                                  <span>{formatINRMinor(totalMinor)}</span>
+                                </div>
+                              );
+                            }
+
+                            if (item.product.recurring_interval) {
+                              // Recurring cycles preview (first 3 cycles)
+                              const cycles = [1,2,3].map(c => {
+                                const bill = addInterval(baseDate, item.product!.recurring_interval as any, (item.product as any).recurring_interval_days || null, c);
+                                return { c, bill };
+                              });
+                              return (
+                                <div className="space-y-1">
+                                  <div className="font-medium">Recurring Preview ({item.product.recurring_interval})</div>
+                                  {cycles.map(x => (
+                                    <div key={x.c} className="flex justify-between"><span>Cycle {x.c} • {x.bill.toLocaleDateString()}</span><span>{formatINRMinor(totalMinor)}</span></div>
+                                  ))}
+                                  <div className="text-muted-foreground">(Only first 3 cycles shown)</div>
+                                </div>
+                              );
+                            }
+                            return null;
                           })()}
                         </div>
                       )}

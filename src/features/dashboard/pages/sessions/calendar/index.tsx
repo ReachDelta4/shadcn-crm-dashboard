@@ -28,6 +28,8 @@ export function SessionsCalendarPage() {
   const calendarApiRef = React.useRef<any>(null);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [activeEvent, setActiveEvent] = React.useState<CalendarEvent | null>(null);
+  const [showAppointments, setShowAppointments] = React.useState(true);
+  const [showFinancials, setShowFinancials] = React.useState(true);
   
   // Calculate date range based on current view
   const dateRange = React.useMemo(() => {
@@ -97,10 +99,11 @@ export function SessionsCalendarPage() {
 
   // Get events for selected date (used in potential side panels)
   const eventsForDate = React.useMemo(() => {
-    return combinedEvents.filter(event => 
-      isSameDay(parseISO(event.start_at_utc), selectedDate)
-    );
-  }, [combinedEvents, selectedDate]);
+    return combinedEvents
+      .filter(ev => (showAppointments ? true : ev.source_type !== 'appointment'))
+      .filter(ev => (showFinancials ? true : (ev.source_type !== 'payment_schedule' && ev.source_type !== 'recurring_revenue')))
+      .filter(event => isSameDay(parseISO(event.start_at_utc), selectedDate));
+  }, [combinedEvents, selectedDate, showAppointments, showFinancials]);
 
   // Toolbar handlers
 
@@ -135,6 +138,10 @@ export function SessionsCalendarPage() {
           <Button variant={view === "day" ? "default" : "outline"} onClick={() => setView("day")}>
             Day
           </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant={showAppointments?"default":"outline"} onClick={()=>setShowAppointments(s=>!s)}>Meetings</Button>
+          <Button variant={showFinancials?"default":"outline"} onClick={()=>setShowFinancials(s=>!s)}>Financials</Button>
         </div>
         <DateRangePicker value={range} onChange={handleRangeChange} />
       </div>

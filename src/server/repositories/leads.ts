@@ -52,9 +52,7 @@ export class LeadsRepository {
 			.from('leads')
 			.select('*', { count: 'exact' })
 			.is('deleted_at', null)
-			// Apply owner filter only if list non-empty
-			// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-			
+		// owner filter applied later based on effectiveOwnerIds
 
 		if (filters.search) {
 			query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,company.ilike.%${filters.search}%,lead_number.ilike.%${filters.search}%`)

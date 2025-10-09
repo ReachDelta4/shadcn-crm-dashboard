@@ -1,33 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 import { z } from 'zod'
-import { getUserAndScope } from '@/server/auth/getUserAndScope'
-import { ProductsRepository } from '@/server/repositories/products'
 import { ProductPaymentPlansRepository } from '@/server/repositories/product-payment-plans'
+import { getUserAndScope } from '@/server/auth/getUserAndScope'
 
-const createPlanSchema = z.object({
+const planCreateSchema = z.object({
 	name: z.string().min(1),
 	num_installments: z.number().int().min(1),
-	interval_type: z.enum(['weekly','monthly','quarterly','semiannual','annual','custom_days']),
+	interval_type: z.enum(['weekly', 'monthly', 'quarterly', 'semiannual', 'annual', 'custom_days']),
 	interval_days: z.number().int().min(1).optional(),
-	down_payment_minor: z.number().int().min(0).optional(),
-	active: z.boolean().optional(),
+	down_payment_minor: z.number().int().min(0).default(0),
+	active: z.boolean().default(true),
 })
 
+async function getServerClient() {
+	const cookieStore = await cookies()
+	return createServerClient(
+		process.env.NEXT_PUBLIC_SUPABASE_URL!,
+		process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+		{
+			cookies: {
+				getAll() { return cookieStore.getAll() },
+				setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+			},
+		}
+	)
+}
+
 export async function GET(
-	_request: NextRequest,
+	request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const scope = await getUserAndScope()
-		const { id: productId } = await params
-		const productsRepo = new ProductsRepository()
-		const product = await productsRepo.getById(productId, scope.orgId || null, scope.userId, scope.role)
-		if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
-		const plansRepo = new ProductPaymentPlansRepository()
-		const plans = await plansRepo.listByProduct(productId, true)
+		const supabase = await getServerClient()
+		const { data: { user } } = await supabase.auth.getUser()
+		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+		const { id } = await params
+		const repo = new ProductPaymentPlansRepository()
+		const plans = await repo.listByProduct(id)
+
 		return NextResponse.json({ plans })
 	} catch (error) {
-		console.error('[product plans] GET error:', error)
+		console.error('[plans] GET error:', error)
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }
@@ -37,26 +53,24 @@ export async function POST(
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
-		const scope = await getUserAndScope()
-		if (!['manager','executive','god'].includes(scope.role)) {
-			return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-		}
+		const supabase = await getServerClient()
+		const { data: { user } } = await supabase.auth.getUser()
+		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
 		const { id: productId } = await params
-		const productsRepo = new ProductsRepository()
-		const product = await productsRepo.getById(productId, scope.orgId || null, scope.userId, scope.role)
-		if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 		const body = await request.json()
-		const parsed = createPlanSchema.safeParse(body)
-		if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.errors }, { status: 400 })
-		const plansRepo = new ProductPaymentPlansRepository()
-		const created = await plansRepo.create({
+		const validated = planCreateSchema.parse(body)
+
+		const repo = new ProductPaymentPlansRepository()
+		const plan = await repo.create({
 			product_id: productId,
-			org_id: scope.orgId || null,
-			...parsed.data,
+			...validated,
 		})
-		return NextResponse.json({ plan: created }, { status: 201 })
+
+		return NextResponse.json({ plan }, { status: 201 })
 	} catch (error) {
-		console.error('[product plans] POST error:', error)
+		console.error('[plans] POST error:', error)
+		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }

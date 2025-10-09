@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Card } from "@/components/ui/card";
 import { Plus, Pencil, Search, Trash2, Settings } from "lucide-react";
 import { toast } from "sonner";
+import { ManagePlansModal } from "@/features/dashboard/components/manage-plans-modal";
 
 type Product = {
   id: string;
@@ -310,6 +311,9 @@ export function ProductsSettingsPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {!p.recurring_interval && (
+                        <ManagePlansModal productId={p.id} productName={p.name} />
+                      )}
                       <Button size="icon" variant="outline" onClick={() => openEdit(p)} aria-label={`Edit ${p.name}`}>
                         <Pencil className="size-4" />
                       </Button>
