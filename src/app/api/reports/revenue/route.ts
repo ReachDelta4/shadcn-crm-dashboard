@@ -65,23 +65,42 @@ export async function GET(request: NextRequest) {
 			params.push(to)
 		}
 
-        // Realized via schedules/cycles:
-        // payment schedules paid_at; recurring billed_at
+        // Basic engine: realized revenue from paid invoices (one-time)
+        // Pending snapshot: sent/pending/overdue; Draft snapshot: draft; Lead potential from open leads.
+        // Use invoice.date for grouping (no paid_at yet).
+
         const payRealizedQuery = supabase
             .from('invoice_payment_schedules')
-            .select('amount_minor, paid_at, invoices!inner(owner_id)')
+            .select('amount_minor, paid_at, invoice_id, invoices!inner(owner_id)')
             .eq('invoices.owner_id', user.id)
             .not('paid_at', 'is', null)
         if (from) (payRealizedQuery as any).gte('paid_at', from)
         if (to) (payRealizedQuery as any).lte('paid_at', to)
 
-        const recRealizedQuery = supabase
-            .from('recurring_revenue_schedules')
-            .select('amount_minor, billed_at, invoice_lines!inner(invoice_id), invoices!invoice_lines_invoice_id_fkey!inner(owner_id)')
-            .eq('invoices.owner_id', user.id)
-            .not('billed_at', 'is', null)
-        if (from) (recRealizedQuery as any).gte('billed_at', from)
-        if (to) (recRealizedQuery as any).lte('billed_at', to)
+        // Two-step owner-scoped recurring fetch: invoices -> invoice_lines -> recurring schedules
+        const invIdsRes = await supabase
+            .from('invoices')
+            .select('id')
+            .eq('owner_id', user.id)
+        let recRealizedRes: any = { data: [], error: null }
+        if (!invIdsRes.error && (invIdsRes.data || []).length > 0) {
+            const invIds = (invIdsRes.data || []).map((r: any) => r.id).filter(Boolean)
+            const lineIdsRes = await (supabase as any)
+                .from('invoice_lines')
+                .select('id')
+                .in('invoice_id', invIds)
+            if (!lineIdsRes.error && (lineIdsRes.data || []).length > 0) {
+                const lineIds = (lineIdsRes.data || []).map((r: any) => r.id).filter(Boolean)
+                let recQuery: any = (supabase as any)
+                    .from('recurring_revenue_schedules')
+                    .select('amount_minor, billing_at_utc, status, invoice_line_id')
+                    .in('invoice_line_id', lineIds)
+                    .eq('status', 'billed')
+                if (from) recQuery = recQuery.gte('billing_at_utc', from)
+                if (to) recQuery = recQuery.lte('billing_at_utc', to)
+                recRealizedRes = await recQuery
+            }
+        }
 
         const pendingQuery = supabase
             .from('invoices')
@@ -107,8 +126,8 @@ export async function GET(request: NextRequest) {
         if (from) (leadsQuery as any).gte('date', from)
         if (to) (leadsQuery as any).lte('date', to)
 
-        const [payRealizedRes, recRealizedRes, pendingRes, draftRes, leadsRes] = await Promise.all([
-            payRealizedQuery, recRealizedQuery, pendingQuery, draftQuery, leadsQuery
+        const [payRealizedRes, pendingRes, draftRes, leadsRes] = await Promise.all([
+            payRealizedQuery, pendingQuery, draftQuery, leadsQuery
         ])
 
         if (payRealizedRes.error || recRealizedRes.error || pendingRes.error || draftRes.error || leadsRes.error) {
@@ -139,8 +158,8 @@ export async function GET(request: NextRequest) {
             revenueMap.set(key, (revenueMap.get(key) || 0) + minor)
         })
         recRows.forEach(r => {
-            if (!r.billed_at) return
-            const key = groupDate(r.billed_at)
+            if (!r.billing_at_utc) return
+            const key = groupDate(r.billing_at_utc)
             const minor = Number(r.amount_minor) || 0
             revenueMap.set(key, (revenueMap.get(key) || 0) + minor)
         })
@@ -148,43 +167,38 @@ export async function GET(request: NextRequest) {
         const revenue = Array.from(revenueMap.entries()).map(([period, total]) => ({ period, total_revenue_minor: total, sources: {} }))
             .sort((a, b) => a.period.localeCompare(b.period))
 
-        // Compute COGS for gross profit/margin (best-effort from paid invoices' line snapshots)
+        // Compute COGS for gross profit/margin
+        const paidInvoiceIds = payRows.map(r => (r as any).invoice_id).filter(Boolean)
         let total_cogs_minor = 0
-        {
-            const { data: paidInvoices, error: paidErr } = await supabase
-                .from('invoices')
-                .select('id')
-                .eq('owner_id', user.id)
-                .eq('status', 'paid')
-            if (!paidErr) {
-                const paidIds = (paidInvoices || []).map((r: any) => r.id).filter(Boolean)
-                if (paidIds.length > 0) {
-                    const linesRes = await (supabase as any)
-                        .from('invoice_lines')
-                        .select('quantity, unit_price_minor, discount_type, discount_value, cogs_type, cogs_value, invoice_id')
-                        .in('invoice_id', paidIds)
-                    if (!linesRes.error) {
-                        ;(linesRes.data || []).forEach((line: any) => {
-                            const quantity = Number(line.quantity) || 0
-                            const unitMinor = Number(line.unit_price_minor) || 0
-                            let subtotalMinor = quantity * unitMinor
-                            if (line.discount_type === 'percent' && line.discount_value) {
-                                const discountBp = Number(line.discount_value) || 0
-                                subtotalMinor = Math.round(subtotalMinor * (1 - discountBp / 10000))
-                            } else if (line.discount_type === 'amount' && line.discount_value) {
-                                const discountMinor = Number(line.discount_value) || 0
-                                subtotalMinor = Math.max(0, subtotalMinor - discountMinor)
-                            }
-                            if (line.cogs_type === 'percent' && line.cogs_value) {
-                                const cogsBp = Number(line.cogs_value) || 0
-                                total_cogs_minor += Math.round(subtotalMinor * cogsBp / 10000)
-                            } else if (line.cogs_type === 'amount' && line.cogs_value) {
-                                const cogsPerUnit = Number(line.cogs_value) || 0
-                                total_cogs_minor += quantity * cogsPerUnit
-                            }
-                        })
+        if (paidInvoiceIds.length > 0) {
+            const linesRes = await supabase
+                .from('invoice_lines')
+                .select('quantity, unit_price_minor, discount_type, discount_value, cogs_type, cogs_value')
+                .in('invoice_id', paidInvoiceIds)
+            if (linesRes.error) {
+                console.error('Failed to fetch invoice_lines for COGS:', linesRes.error)
+            } else {
+                (linesRes.data || []).forEach((line: any) => {
+                    const quantity = Number(line.quantity) || 0
+                    const unitMinor = Number(line.unit_price_minor) || 0
+                    let subtotalMinor = quantity * unitMinor
+                    // Apply discount
+                    if (line.discount_type === 'percent' && line.discount_value) {
+                        const discountBp = Number(line.discount_value) || 0
+                        subtotalMinor = Math.round(subtotalMinor * (1 - discountBp / 10000))
+                    } else if (line.discount_type === 'amount' && line.discount_value) {
+                        const discountMinor = Number(line.discount_value) || 0
+                        subtotalMinor = Math.max(0, subtotalMinor - discountMinor)
                     }
-                }
+                    // Compute COGS
+                    if (line.cogs_type === 'percent' && line.cogs_value) {
+                        const cogsBp = Number(line.cogs_value) || 0
+                        total_cogs_minor += Math.round(subtotalMinor * cogsBp / 10000)
+                    } else if (line.cogs_type === 'amount' && line.cogs_value) {
+                        const cogsPerUnit = Number(line.cogs_value) || 0
+                        total_cogs_minor += quantity * cogsPerUnit
+                    }
+                })
             }
         }
 

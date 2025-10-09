@@ -5,6 +5,7 @@ export interface Customer {
   customerNumber: string;
   fullName: string;
   email: string;
+  phone?: string;
   company: string;
   location: string;
   status: CustomerStatus;

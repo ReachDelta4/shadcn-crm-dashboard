@@ -42,6 +42,11 @@ export const useCustomerColumns = () => {
         cell: ({ row }) => <div>{row.getValue("company") || "—"}</div>,
       },
       {
+        accessorKey: "phone",
+        header: "Phone",
+        cell: ({ row }) => <div>{row.getValue("phone") || "—"}</div>,
+      },
+      {
         accessorKey: "location",
         header: "Location",
         cell: ({ row }) => <div>{row.getValue("location") || "—"}</div>,

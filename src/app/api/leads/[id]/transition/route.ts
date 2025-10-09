@@ -6,6 +6,7 @@ import { LeadStatusTransitionsRepository } from '@/server/repositories/lead-stat
 import { NotificationService } from '@/server/services/notifications/notification-service'
 import { flags } from '@/server/config/flags'
 import { isTransitionAllowed, validateStatus } from '@/server/services/lifecycle/transition-matrix'
+import { withIdempotency } from '@/server/utils/idempotency'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -42,7 +43,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const body = await request.json()
 		const parsed = transitionSchema.parse(body)
 
-		const leadsRepo = new LeadsRepository()
+		const cookieStore = await cookies()
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+			{ cookies: { getAll() { return cookieStore.getAll() }, setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } } }
+		)
+		const leadsRepo = new LeadsRepository(supabase as any)
 		const lead = await leadsRepo.getById(leadId, scope.userId)
 		if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
@@ -62,22 +69,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			}
 		}
 
-		const transitionsRepo = new LeadStatusTransitionsRepository()
+		const transitionsRepo = new LeadStatusTransitionsRepository(supabase as any)
 
-    // Log + update locally
-    await transitionsRepo.create({
-        lead_id: leadId,
-        subject_id: (lead as any).subject_id || null,
-        actor_id: scope.userId,
-        event_type: 'status_change',
-        status_from: (lead as any).status || null,
-        status_to: parsed.target_status as any,
-        override_flag: !!parsed.override,
-        override_reason: parsed.override_reason || null,
-        idempotency_key: parsed.idempotency_key || null,
-        metadata: parsed.metadata || null,
+    // Log + update locally (idempotent)
+    await withIdempotency(parsed.idempotency_key, async () => {
+      await transitionsRepo.create({
+          lead_id: leadId,
+          subject_id: (lead as any).subject_id || null,
+          actor_id: scope.userId,
+          event_type: 'status_change',
+          status_from: (lead as any).status || null,
+          status_to: parsed.target_status as any,
+          override_flag: !!parsed.override,
+          override_reason: parsed.override_reason || null,
+          idempotency_key: parsed.idempotency_key || null,
+          metadata: parsed.metadata || null,
+      })
+      await (new LeadsRepository(supabase as any)).update(leadId, { status: parsed.target_status as any }, scope.userId)
     })
-    await (new LeadsRepository()).update(leadId, { status: parsed.target_status as any }, scope.userId)
 
 		// Send notification (best-effort)
 		const notifService = new NotificationService()

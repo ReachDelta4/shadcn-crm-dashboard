@@ -30,11 +30,11 @@ export async function GET(
 	try {
 		const scope = await getUserAndScope()
 		const { id: leadId } = await params
-		const leadsRepo = new LeadsRepository()
+		const leadsRepo = new LeadsRepository(supabase as any)
 		const lead = await leadsRepo.getById(leadId, scope.userId, scope.allowedOwnerIds)
 		if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
-		const repo = new LeadAppointmentsRepository()
+		const repo = new LeadAppointmentsRepository(supabase as any)
 		const appointments = await repo.findByLeadId(leadId)
 		return NextResponse.json({ appointments })
 	} catch (error) {
@@ -50,7 +50,7 @@ export async function POST(
 	try {
 		const scope = await getUserAndScope()
 		const { id: leadId } = await params
-		const leadsRepo = new LeadsRepository()
+		const leadsRepo = new LeadsRepository(supabase as any)
 		const lead = await leadsRepo.getById(leadId, scope.userId, scope.allowedOwnerIds)
 		if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
@@ -58,7 +58,7 @@ export async function POST(
 		const parsed = createSchema.safeParse(body)
 		if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.errors }, { status: 400 })
 
-		const repo = new LeadAppointmentsRepository()
+		const repo = new LeadAppointmentsRepository(supabase as any)
 		// Overlap guard: check scheduled overlapping windows for this lead
 		const existing = await repo.findByLeadId(leadId)
 		const sNew = new Date(parsed.data.start_at_utc).getTime()
@@ -94,7 +94,7 @@ export async function PATCH(
 	try {
 		const scope = await getUserAndScope()
 		const { id: leadId } = await params
-		const leadsRepo = new LeadsRepository()
+		const leadsRepo = new LeadsRepository(supabase as any)
 		const lead = await leadsRepo.getById(leadId, scope.userId, scope.allowedOwnerIds)
 		if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 

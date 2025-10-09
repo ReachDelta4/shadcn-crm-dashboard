@@ -259,8 +259,8 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
 
             <div className="grid gap-2">
               <Label>Link to Lead (Optional)</Label>
-              <Select value={leadId} onValueChange={(v: any) => {
-                setLeadId(v)
+              <Select value={leadId || 'none'} onValueChange={(v: any) => {
+                setLeadId(v === 'none' ? undefined : v)
                 const selected = leads.find(l => l.id === v)
                 if (selected) {
                   setCustomerName(selected.full_name || "")
@@ -271,6 +271,7 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                   <SelectValue placeholder="Select lead to link" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">No lead</SelectItem>
                   {leads.map(l => (
                     <SelectItem key={l.id} value={l.id}>
                       {l.full_name} ({l.email})
@@ -307,8 +308,8 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                               product_id: productId, 
                               product,
                               // Reset payment plan when product changes
-                              payment_plan_id: null,
-                              payment_plan: null,
+                              payment_plan_id: undefined,
+                              payment_plan: undefined,
                             });
                           }}
                         />
@@ -377,13 +378,14 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                         <div className="grid gap-2">
                           <Label>Discount Type</Label>
                           <Select 
-                            value={item.discount_type} 
-                            onValueChange={(v: any) => updateLine(idx, { discount_type: v })}
+                            value={item.discount_type || 'none'} 
+                            onValueChange={(v: any) => updateLine(idx, { discount_type: v === 'none' ? undefined : v })}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="No discount" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="none">No discount</SelectItem>
                               <SelectItem value="percent">Percent</SelectItem>
                               <SelectItem value="amount">Amount</SelectItem>
                             </SelectContent>

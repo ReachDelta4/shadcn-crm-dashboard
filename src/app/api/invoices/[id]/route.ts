@@ -43,6 +43,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 	const { data: { user } } = await supabase.auth.getUser()
 	if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 	const { id } = await params
+	// UUID guard to avoid DB cast errors
+	if (!/^[0-9a-fA-F-]{36}$/.test(id)) {
+		return NextResponse.json({ error: 'Not found' }, { status: 404 })
+	}
 	const repo = new InvoicesRepository(supabase)
 	const invoice = await repo.getById(id, user.id)
 	if (!invoice) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -55,6 +59,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		const { data: { user } } = await supabase.auth.getUser()
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 		const { id } = await params
+		// UUID guard
+		if (!/^[0-9a-fA-F-]{36}$/.test(id)) {
+			return NextResponse.json({ error: 'Not found' }, { status: 404 })
+		}
 		const body = await request.json()
 		const validated = invoiceUpdateSchema.parse(body)
 		const repo = new InvoicesRepository(supabase)
@@ -80,7 +88,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 		const updated = await repo.update(id, validated, user.id)
 
-        // If invoice is paid now, best-effort: mark schedules paid and ensure customer becomes active
+		// If invoice is paid now, best-effort: mark schedules paid and ensure customer becomes active
 		if ((validated as any).status === 'paid') {
 			try {
 				const linesRepo = new InvoiceLinesRepository(supabase)
@@ -93,16 +101,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 						.eq('invoice_id', id)
 						.eq('status', 'pending')
 				}
-                // Customer activation
-                const customerId = (current as any).customer_id
-                if (customerId) {
-                    await (supabase as any)
-                        .from('customers')
-                        .update({ status: 'active' })
-                        .eq('id', customerId)
-                        .eq('owner_id', user.id)
-                        .in('status', ['pending'])
-                }
+				// Customer activation
+				const customerId = (current as any).customer_id
+				if (customerId) {
+					await (supabase as any)
+						.from('customers')
+						.update({ status: 'active' })
+						.eq('id', customerId)
+						.eq('owner_id', user.id)
+						.in('status', ['pending'])
+				}
 			} catch {
 				// swallow errors for best-effort consistency
 			}
@@ -120,6 +128,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 	const { data: { user } } = await supabase.auth.getUser()
 	if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 	const { id } = await params
+	// UUID guard
+	if (!/^[0-9a-fA-F-]{36}$/.test(id)) {
+		return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
+	}
 	const repo = new InvoicesRepository(supabase)
 	await repo.delete(id, user.id)
 	return NextResponse.json({ success: true })

@@ -50,10 +50,10 @@ export function LeadsKanban({ leads, onStatusChanged }: { leads: Lead[]; onStatu
     // optimistic
     setItems((arr) => arr.map((l) => (l.id === lead.id ? { ...l, status: next } : l)));
     try {
-      const res = await fetch(`/api/leads/${lead.id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/leads/${lead.id}/transition`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: next }),
+        body: JSON.stringify({ target_status: next, idempotency_key: crypto.randomUUID() }),
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead updated");

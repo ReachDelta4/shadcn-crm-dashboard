@@ -11,6 +11,7 @@ import { getUserAndScope } from '@/server/auth/getUserAndScope'
 import { calculateInvoice, generatePaymentSchedule, generateRecurringSchedule, type LineItemInput } from '@/server/services/pricing-engine'
 import { LeadsRepository } from '@/server/repositories/leads'
 import { LeadStatusTransitionsRepository } from '@/server/repositories/lead-status-transitions'
+import { memoryRateLimit, rateLimitHeaders } from '@/server/utils/rate-limit'
 
 const lineItemSchema = z.object({
     product_id: z.string().uuid(),
@@ -28,6 +29,7 @@ const invoiceCreateSchema = z.object({
 	invoice_number: z.string().optional(),
 	customer_name: z.string().min(1, 'Customer name is required'),
 	email: z.string().email('Valid email is required'),
+	phone: z.string().optional(),
 	amount: z.coerce.number().min(0).optional(), // Now optional, calculated from line_items
     status: z.enum(['draft','sent','pending','paid','overdue','cancelled']).default('draft'),
 	date: z.string().optional(),
@@ -71,6 +73,9 @@ async function getServerClient() {
 
 export async function GET(request: NextRequest) {
 	try {
+		const ip = request.headers.get('x-forwarded-for') || 'unknown'
+		const rl = memoryRateLimit(`invoices:GET:${ip}`, 60, 60_000)
+		if (rl.limited) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429, headers: rateLimitHeaders(rl) })
 		const supabase = await getServerClient()
 		const { data: { user } } = await supabase.auth.getUser()
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -94,7 +99,7 @@ export async function GET(request: NextRequest) {
 			pageSize: filters.pageSize,
 			userId: user.id,
 		})
-		return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120' } })
+		return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120', ...rateLimitHeaders(rl) } })
 	} catch (error) {
 		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -103,6 +108,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
+		const ip = request.headers.get('x-forwarded-for') || 'unknown'
+		const rl = memoryRateLimit(`invoices:POST:${ip}`, 60, 60_000)
+		if (rl.limited) return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429, headers: rateLimitHeaders(rl) })
 		const supabase = await getServerClient()
 		const { data: { user } } = await supabase.auth.getUser()
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -265,7 +273,7 @@ export async function POST(request: NextRequest) {
 			})
 		}).catch(() => {})
 		
-		return NextResponse.json(invoice, { status: 201 })
+		return NextResponse.json(invoice, { status: 201, headers: rateLimitHeaders(rl) })
 	} catch (error) {
 		console.error('[invoices] POST error:', error)
 		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })

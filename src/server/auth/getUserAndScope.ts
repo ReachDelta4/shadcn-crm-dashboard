@@ -5,11 +5,12 @@ import { flags } from '@/server/config/flags'
 export type UserRole = 'rep' | 'lead' | 'manager' | 'executive' | 'god'
 
 export type UserScope = {
-	userId: string
-	role: UserRole
-	teamId: string | null
-	orgId: string | null
-	allowedOwnerIds: string[]
+    userId: string
+    role: UserRole
+    teamId: string | null
+    orgId: string | null
+    // Empty array => no owner filter (god scope). Non-empty => restrict to these owners.
+    allowedOwnerIds: string[]
 }
 
 export async function getUserAndScope(): Promise<UserScope> {
@@ -27,11 +28,11 @@ export async function getUserAndScope(): Promise<UserScope> {
 	const { data: { user } } = await supabase.auth.getUser()
 	if (!user) throw new Error('Unauthorized')
 
-	// God via env flag list
-	if (flags.godUserIds.includes(user.id)) {
-		// For god users, use undefined allowedOwnerIds to signal no owner filter
-		return { userId: user.id, role: 'god', teamId: null, orgId: null, allowedOwnerIds: undefined as any }
-	}
+    // God via env flag list
+    if (flags.godUserIds.includes(user.id)) {
+        // For god users, use empty array to signal no owner filter (repos interpret [] as no filter)
+        return { userId: user.id, role: 'god', teamId: null, orgId: null, allowedOwnerIds: [] }
+    }
 
 	// Fetch user role row if present
 	const { data: roleRow } = await supabase
@@ -45,7 +46,7 @@ export async function getUserAndScope(): Promise<UserScope> {
 	const orgId = roleRow?.org_id || null
 
 	// Determine scope (KISS default)
-	let allowedOwnerIds: string[]
+    let allowedOwnerIds: string[]
 	switch (role) {
 		case 'rep':
 			allowedOwnerIds = [user.id]
@@ -59,10 +60,10 @@ export async function getUserAndScope(): Promise<UserScope> {
 			// Until org membership is modeled, default to own only; widen later in Phase 1 extensions
 			allowedOwnerIds = [user.id]
 			break
-		case 'god':
-			// No owner filter
-			allowedOwnerIds = undefined as any
-			break
+        case 'god':
+            // No owner filter
+            allowedOwnerIds = []
+            break
 	}
 
 	return { userId: user.id, role, teamId, orgId, allowedOwnerIds }

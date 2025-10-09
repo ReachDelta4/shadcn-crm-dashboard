@@ -24,6 +24,15 @@ export async function PATCH(_req: NextRequest, { params }: { params: Promise<{ i
 		const schedule = await schedulesRepo.getById(id)
 		if (!schedule) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+		// Owner check: ensure schedule belongs to an invoice owned by the user
+		const { data: ownedCheck, error: ownedErr } = await (supabase as any)
+			.from('invoice_payment_schedules')
+			.select('id, invoices!inner(owner_id)')
+			.eq('id', id)
+			.eq('invoices.owner_id', user.id)
+			.single()
+		if (ownedErr || !ownedCheck) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
 		// mark paid
 		const when = new Date().toISOString()
 		await schedulesRepo.markPaid(id, when)
@@ -40,5 +49,6 @@ export async function PATCH(_req: NextRequest, { params }: { params: Promise<{ i
 		return NextResponse.json({ error: e?.message || 'Internal server error' }, { status: 500 })
 	}
 }
+
 
 

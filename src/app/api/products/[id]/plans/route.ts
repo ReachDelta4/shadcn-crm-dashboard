@@ -38,7 +38,7 @@ export async function GET(
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
 		const { id } = await params
-		const repo = new ProductPaymentPlansRepository()
+		const repo = new ProductPaymentPlansRepository(supabase as any)
 		const plans = await repo.listByProduct(id)
 
 		return NextResponse.json({ plans })
@@ -61,7 +61,7 @@ export async function POST(
 		const body = await request.json()
 		const validated = planCreateSchema.parse(body)
 
-		const repo = new ProductPaymentPlansRepository()
+		const repo = new ProductPaymentPlansRepository(supabase as any)
 		const plan = await repo.create({
 			product_id: productId,
 			...validated,

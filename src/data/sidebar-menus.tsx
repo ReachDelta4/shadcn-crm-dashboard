@@ -150,14 +150,7 @@ export const sidebarMenus = {
         },
       ],
     },
-    {
-      title: "Financials",
-      url: "/dashboard/financials",
-      icon: PieChart,
-      items: [
-        { title: "All", url: "/dashboard/financials" },
-      ],
-    },
+    // Financials section removed; Pending moved under Invoices
     {
       title: "Settings",
       url: "/dashboard/settings/general",

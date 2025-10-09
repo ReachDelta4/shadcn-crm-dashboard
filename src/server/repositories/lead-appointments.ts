@@ -83,15 +83,19 @@ export class LeadAppointmentsRepository {
 		return (data || []) as LeadAppointment[]
 	}
 
-	async findUpcomingBySubjectId(subjectId: string, nowIso: string, limit = 5): Promise<LeadAppointment[]> {
-		const { data, error } = await this.client
+	async findUpcomingBySubjectId(subjectId: string, nowIso: string, limit = 5, ownerId?: string): Promise<LeadAppointment[]> {
+		let query = this.client
 			.from('lead_appointments')
-			.select('*')
+			.select('*, leads!inner(owner_id)')
 			.eq('subject_id', subjectId)
 			.eq('status', 'scheduled')
 			.gte('start_at_utc', nowIso)
 			.order('start_at_utc', { ascending: true })
 			.limit(limit)
+		if (ownerId) {
+			query = (query as any).eq('leads.owner_id', ownerId)
+		}
+		const { data, error } = await query
 		if (error) throw new Error(`Failed to fetch appointments: ${error.message}`)
 		return (data || []) as LeadAppointment[]
 	}
@@ -116,9 +120,10 @@ export class LeadAppointmentsRepository {
 	}
 
 	async listUpcomingBetween(userId: string, fromIso?: string | null, toIso?: string | null, limit = 500): Promise<LeadAppointment[]> {
-		let query = this.client
+		let query: any = this.client
 			.from('lead_appointments')
-			.select('*')
+			.select('*, leads!inner(owner_id)')
+			.eq('leads.owner_id', userId)
 			.eq('status', 'scheduled')
 			.order('start_at_utc', { ascending: true })
 			.limit(limit)

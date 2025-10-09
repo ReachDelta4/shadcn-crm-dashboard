@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { MoreHorizontal, Edit, Trash, UserCheck, Ban, Eye } from "lucide-react";
 import { Customer } from "@/features/dashboard/pages/customers/types/customer";
 import { Button } from "@/components/ui/button";
@@ -48,9 +49,21 @@ export function CustomerActionsDropdown({
     setShowDeleteAlert(false);
   };
 
-  const handleActivateCustomer = () => {
-    console.log("Activate customer:", customer.id);
-    // TODO: Implement activate functionality
+  const [pending, setPending] = useState(false);
+  const handleActivateCustomer = async () => {
+    try {
+      setPending(true);
+      const res = await fetch(`/api/customers/${customer.id}/activate`, { method: 'POST' });
+      if (!res.ok) throw new Error(await res.text());
+      // Emit refresh events
+      window.dispatchEvent(new Event('customers:changed'));
+      window.dispatchEvent(new Event('invoices:changed'));
+      toast.success('Customer activated');
+    } catch {
+      toast.error('Failed to activate customer');
+    } finally {
+      setPending(false);
+    }
   };
 
   const handleDeactivateCustomer = () => {
@@ -79,7 +92,7 @@ export function CustomerActionsDropdown({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {customer.status === "inactive" && (
-            <DropdownMenuItem onClick={handleActivateCustomer}>
+            <DropdownMenuItem onClick={handleActivateCustomer} disabled={pending}>
               <UserCheck className="mr-2 h-4 w-4" />
               <span>Activate Customer</span>
             </DropdownMenuItem>

@@ -12,14 +12,14 @@ const leadCreateSchema = z.object({
 	company: z.string().optional(),
 	location: z.string().optional(),
 	value: z.coerce.number().min(0).default(0).optional(),
-	status: z.enum(['new','contacted','qualified','demo_appointment','proposal_negotiation','invoice_sent','won','lost']).default('new').optional(),
+	status: z.enum(['new','contacted','qualified','disqualified','won','lost']).default('new').optional(),
 	source: z.string().optional(),
 	date: z.string().optional(),
 })
 
 const leadFiltersSchema = z.object({
 	search: z.string().nullable().optional().transform(v => v ?? ''),
-	status: z.enum(['all','new','contacted','qualified','unqualified','converted','demo_appointment','proposal_negotiation','invoice_sent','won','lost']).nullable().optional().transform(v => v ?? 'all'),
+	status: z.enum(['all','new','contacted','qualified','disqualified','won','lost']).nullable().optional().transform(v => v ?? 'all'),
 	dateFrom: z.string().nullable().optional().transform(v => v ?? undefined),
 	dateTo: z.string().nullable().optional().transform(v => v ?? undefined),
 	sort: z.string().nullable().optional().transform(v => v ?? 'date'),

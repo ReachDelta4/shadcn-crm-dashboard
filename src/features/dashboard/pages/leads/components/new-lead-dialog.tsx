@@ -26,11 +26,8 @@ const schema = z.object({
     "new",
     "contacted",
     "qualified",
-    "demo_appointment",
-    "proposal_negotiation",
-    "invoice_sent",
-    "won",
-    "lost",
+    "disqualified",
+    "converted",
   ]).default("new"),
   source: z.string().optional(),
 });
@@ -40,8 +37,7 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
   const [phone, setPhone] = useState<string>("");
   const [potentialValue, setPotentialValue] = useState<string>("");
   const [status, setStatus] = useState<
-    "new" | "contacted" | "qualified" | "demo_appointment" | 
-    "proposal_negotiation" | "invoice_sent" | "won" | "lost"
+    "new" | "contacted" | "qualified" | "disqualified" | "converted"
   >("new");
   const [source, setSource] = useState("");
   const [email, setEmail] = useState("");
@@ -161,55 +157,11 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
                 <SelectItem value="new">New</SelectItem>
                 <SelectItem value="contacted">Contacted</SelectItem>
                 <SelectItem value="qualified">Qualified</SelectItem>
-                <SelectItem value="demo_appointment">Demo Appointment</SelectItem>
-                <SelectItem value="proposal_negotiation">Proposal/Negotiation</SelectItem>
-                <SelectItem value="invoice_sent">Invoice Sent</SelectItem>
-                <SelectItem value="won">Won</SelectItem>
-                <SelectItem value="lost">Lost</SelectItem>
+                <SelectItem value="disqualified">Disqualified</SelectItem>
+                <SelectItem value="converted">Won</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {status === 'demo_appointment' && (
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="text-sm">Date</label>
-                <DatePicker date={schedDate} setDate={setSchedDate} />
-              </div>
-              <div>
-                <label className="text-sm">Start Time</label>
-                <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-sm">Duration</label>
-                <Select value={durationMin} onValueChange={(v: any) => setDurationMin(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select duration" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10 minutes</SelectItem>
-                    <SelectItem value="15">15 minutes</SelectItem>
-                    <SelectItem value="30">30 minutes</SelectItem>
-                    <SelectItem value="60">1 hour</SelectItem>
-                    <SelectItem value="120">2 hours</SelectItem>
-                    <SelectItem value="180">3 hours</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm">Timezone</label>
-                <Select value={timezone} onValueChange={(v: any) => setTimezone(v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timezones.map(tz => (
-                      <SelectItem key={tz} value={tz}>{tz}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
           <DialogFooter>
             <Button type="submit">Create</Button>
           </DialogFooter>

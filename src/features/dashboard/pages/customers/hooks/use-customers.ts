@@ -85,6 +85,7 @@ export function useCustomers({ initialCustomers = [] }: UseCustomersProps = {}) 
         customerNumber: customer.customer_number || customer.customerNumber || '',
         fullName: customer.full_name || customer.fullName || '',
         email: customer.email || '',
+        phone: customer.phone || '',
         company: customer.company || '',
         location: customer.location || '',
         status: (customer.status || 'active') as 'active' | 'inactive' | 'pending',

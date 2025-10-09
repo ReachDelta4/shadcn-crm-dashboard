@@ -22,6 +22,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { EditInvoiceDialog } from "./edit-invoice-dialog";
 
 interface InvoiceActionsProps {
   invoice: Invoice;
@@ -29,18 +31,18 @@ interface InvoiceActionsProps {
 
 export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
   const router = useRouter();
+  const [openEdit, setOpenEdit] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
   const handleViewDetails = () => {
     // Implement view details functionality
     console.log("View invoice details", invoice.invoiceNumber);
   };
 
-  const handleEditInvoice = () => {
-    // Implement edit invoice functionality
-    console.log("Edit invoice", invoice.invoiceNumber);
-  };
+  const handleEditInvoice = () => setOpenEdit(true);
 
   const handleMarkAsPaid = async () => {
     try {
+      setPending('paid');
       const res = await fetch(`/api/invoices/${invoice.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -48,15 +50,19 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Invoice marked as paid");
+      window.dispatchEvent(new Event('invoices:changed'));
       router.refresh();
     } catch (e) {
       toast.error("Failed to mark as paid");
+    } finally {
+      setPending(null);
     }
   };
 
   const handleSendInvoice = () => {
-    // Implement send invoice functionality
-    console.log("Send invoice", invoice.invoiceNumber);
+    const subject = encodeURIComponent(`Invoice ${invoice.invoiceNumber}`);
+    const body = encodeURIComponent(`Hello ${invoice.customerName},\n\nPlease find your invoice ${invoice.invoiceNumber}.\n\nThanks,`);
+    window.location.href = `mailto:${invoice.email}?subject=${subject}&body=${body}`;
   };
 
   const handleDownload = () => {
@@ -66,6 +72,7 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
 
   const handleCancelInvoice = async () => {
     try {
+      setPending('cancel');
       const res = await fetch(`/api/invoices/${invoice.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -73,9 +80,12 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Invoice cancelled");
+      window.dispatchEvent(new Event('invoices:changed'));
       router.refresh();
     } catch (e) {
       toast.error("Failed to cancel invoice");
+    } finally {
+      setPending(null);
     }
   };
 
@@ -112,13 +122,13 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {invoice.status !== "paid" && (
-            <DropdownMenuItem onClick={handleMarkAsPaid}>
+            <DropdownMenuItem onClick={handleMarkAsPaid} disabled={!!pending}>
               <CheckCircle2 className="mr-2 h-4 w-4" />
               <span>Mark as Paid</span>
             </DropdownMenuItem>
           )}
           {(invoice.status === "draft" || invoice.status === "pending") && (
-            <DropdownMenuItem onClick={handleSendInvoice}>
+            <DropdownMenuItem onClick={handleSendInvoice} disabled={!!pending}>
               <Send className="mr-2 h-4 w-4" />
               <span>Send Invoice</span>
             </DropdownMenuItem>
@@ -131,6 +141,7 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
           {invoice.status !== "cancelled" ? (
             <DropdownMenuItem 
               onClick={handleCancelInvoice}
+              disabled={!!pending}
               className="text-red-600"
             >
               <Ban className="mr-2 h-4 w-4" />
@@ -147,6 +158,7 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <EditInvoiceDialog invoice={invoice} open={openEdit} onOpenChange={setOpenEdit} onSaved={() => router.refresh()} />
     </div>
   );
 } 

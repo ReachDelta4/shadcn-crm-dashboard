@@ -156,11 +156,12 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
 
           <div className="grid gap-2">
             <Label>Lead (optional)</Label>
-            <Select value={leadId} onValueChange={(v:any) => setLeadId(v)}>
+            <Select value={leadId || 'none'} onValueChange={(v:any) => setLeadId(v === 'none' ? undefined : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select lead to link" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">No lead</SelectItem>
                 {leads.map(l => (
                   <SelectItem key={l.id} value={l.id}>{l.full_name} ({l.email})</SelectItem>
                 ))}
@@ -177,11 +178,12 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
               <div key={idx} className="grid gap-2 sm:grid-cols-5 sm:gap-4">
                 <Input placeholder="Product ID (UUID)" value={li.product_id} onChange={e => updateLine(idx, { product_id: e.target.value })} />
                 <Input placeholder="Qty" type="number" min={1} value={li.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} />
-                <Select value={li.discount_type} onValueChange={(v:any) => updateLine(idx, { discount_type: v })}>
+                <Select value={li.discount_type || 'none'} onValueChange={(v:any) => updateLine(idx, { discount_type: v === 'none' ? undefined : v })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Discount type" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">No discount</SelectItem>
                     <SelectItem value="percent">Percent</SelectItem>
                     <SelectItem value="amount">Amount</SelectItem>
                   </SelectContent>

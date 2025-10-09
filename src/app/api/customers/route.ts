@@ -9,6 +9,7 @@ const customerCreateSchema = z.object({
 	customer_number: z.string().optional(),
 	full_name: z.string().min(1, 'Full name is required'),
 	email: z.string().email('Valid email is required'),
+	phone: z.string().optional(),
 	company: z.string().optional(),
 	location: z.string().optional(),
     status: z.enum(['active', 'inactive', 'pending', 'churned']).default('active'),

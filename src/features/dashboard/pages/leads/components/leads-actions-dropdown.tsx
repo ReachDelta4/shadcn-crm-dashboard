@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useState } from "react";
 import { EditLeadDialog } from "./modals/edit-lead-dialog";
+import { ConvertLeadDialog } from "./convert-lead-dialog";
 
 interface LeadActionsProps {
   lead: Lead;
@@ -34,6 +35,7 @@ interface LeadActionsProps {
 export function LeadActionsDropdown({ lead }: LeadActionsProps) {
   const router = useRouter();
   const [openEdit, setOpenEdit] = useState(false);
+  const [openConvert, setOpenConvert] = useState(false);
 
   const handleViewDetails = () => {
     router.push(`/dashboard/leads/${lead.id}`);
@@ -55,10 +57,10 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
 
   const handleMarkAsQualified = async () => {
     try {
-      const res = await fetch(`/api/leads/${lead.id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/leads/${lead.id}/transition`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "qualified" })
+        body: JSON.stringify({ target_status: "qualified", idempotency_key: crypto.randomUUID() })
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead marked as qualified");
@@ -71,10 +73,10 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
 
   const handleMarkAsDisqualified = async () => {
     try {
-      const res = await fetch(`/api/leads/${lead.id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/leads/${lead.id}/transition`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "disqualified" })
+        body: JSON.stringify({ target_status: "disqualified", idempotency_key: crypto.randomUUID() })
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead marked as disqualified");
@@ -146,17 +148,7 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
             </DropdownMenuItem>
           )}
           {!isConverted && (
-            <DropdownMenuItem onClick={async () => {
-              try {
-                const res = await fetch(`/api/leads/${lead.id}/convert`, { method: "POST" });
-                if (!res.ok) throw new Error(await res.text());
-                toast.success("Lead converted to customer");
-                window.dispatchEvent(new Event('leads:changed'));
-                router.refresh();
-              } catch (e) {
-                toast.error("Failed to convert lead");
-              }
-            }}>
+            <DropdownMenuItem onClick={() => setOpenConvert(true)}>
               <UserCog className="mr-2 h-4 w-4" />
               <span>Convert to Customer</span>
             </DropdownMenuItem>
@@ -172,6 +164,14 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
       <EditLeadDialog open={openEdit} onOpenChange={setOpenEdit} lead={lead} />
+      <ConvertLeadDialog
+        open={openConvert}
+        onOpenChange={setOpenConvert}
+        leadId={lead.id}
+        leadName={lead.fullName}
+        leadEmail={lead.email}
+        onCompleted={() => { router.refresh(); }}
+      />
     </div>
   );
 } 

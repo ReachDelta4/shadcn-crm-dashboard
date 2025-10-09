@@ -5,6 +5,7 @@ export interface Invoice {
   invoiceNumber: string;
   customerName: string;
   email: string;
+  phone?: string;
   amount: number;
   status: InvoiceStatus;
   date: string;

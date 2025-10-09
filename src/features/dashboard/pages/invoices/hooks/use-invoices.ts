@@ -86,6 +86,7 @@ export function useInvoices({ initialInvoices = [], initialCount = 0 }: UseInvoi
         invoiceNumber: invoice.invoice_number || invoice.invoiceNumber || '',
         customerName: invoice.customer_name || invoice.customerName || '',
         email: invoice.email || '',
+        phone: invoice.phone || '',
         amount: typeof invoice.amount === 'number' ? invoice.amount : 0,
         status: (invoice.status || 'draft') as any,
         date: invoice.date || new Date().toISOString(),
