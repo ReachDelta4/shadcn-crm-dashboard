@@ -43,48 +43,11 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
-  // Scheduling state for demo/appointment
-  const [schedDate, setSchedDate] = useState<Date | undefined>(undefined);
-  const [startTime, setStartTime] = useState<string>("");
-  const [durationMin, setDurationMin] = useState<string>("30");
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  // Removed legacy demo/appointment scheduling state
 
-  const timezones = (() => {
-    const anyIntl: any = Intl as any;
-    if (typeof anyIntl.supportedValuesOf === 'function') {
-      try { return (anyIntl.supportedValuesOf('timeZone') as string[]) || []; } catch {}
-    }
-    return [
-      'UTC','Etc/UTC','Europe/London','Europe/Berlin','Europe/Paris','Europe/Madrid','Europe/Rome','Europe/Amsterdam','Europe/Prague','Europe/Warsaw',
-      'Africa/Johannesburg','Africa/Cairo','Asia/Dubai','Asia/Kolkata','Asia/Colombo','Asia/Dhaka','Asia/Bangkok','Asia/Singapore','Asia/Shanghai','Asia/Tokyo',
-      'Australia/Sydney','Australia/Melbourne','Pacific/Auckland','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Toronto',
-      'America/Mexico_City','America/Sao_Paulo'
-    ];
-  })();
+  // Removed legacy time zone support for demo appointments
 
-  function getTimeZoneOffsetMinutes(dateUtc: Date, tz: string): number {
-    const dtf = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      hour12: false,
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
-    const parts = dtf.formatToParts(dateUtc);
-    const map: Record<string,string> = {};
-    parts.forEach(p => { if (p.type !== 'literal') map[p.type] = p.value; });
-    const asInTz = Date.UTC(Number(map.year), Number(map.month)-1, Number(map.day), Number(map.hour), Number(map.minute), Number(map.second));
-    const asUtc = Date.UTC(dateUtc.getUTCFullYear(), dateUtc.getUTCMonth(), dateUtc.getUTCDate(), dateUtc.getUTCHours(), dateUtc.getUTCMinutes(), dateUtc.getUTCSeconds());
-    return Math.round((asInTz - asUtc) / 60000);
-  }
-
-  function computeUtcRange(dateLocal: Date, timeHHMM: string, durationMinutes: number, tz: string): { startUtc: string; endUtc: string } {
-    const [hh, mm] = timeHHMM.split(':').map(n => Number(n || 0));
-    const naiveUtc = new Date(Date.UTC(dateLocal.getFullYear(), dateLocal.getMonth(), dateLocal.getDate(), hh, mm, 0, 0));
-    const offsetMin = getTimeZoneOffsetMinutes(naiveUtc, tz);
-    const startMs = naiveUtc.getTime() - offsetMin * 60000;
-    const endMs = startMs + durationMinutes * 60000;
-    return { startUtc: new Date(startMs).toISOString(), endUtc: new Date(endMs).toISOString() };
-  }
+  // Removed legacy time calculations for demo appointments
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -99,33 +62,11 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
     });
     if (!parsed.success) return;
 
-    // Validate scheduling if demo_appointment
-    let appointmentPayload: { start_at_utc: string; end_at_utc: string; timezone: string } | null = null;
-    if (status === 'demo_appointment') {
-      if (!schedDate || !startTime || !durationMin || !timezone) return; // required
-      const durationNumber = Number(durationMin);
-      if (!Number.isFinite(durationNumber) || durationNumber <= 0) return;
-      const { startUtc, endUtc } = computeUtcRange(schedDate, startTime, durationNumber, timezone);
-      // Ensure same local day in tz
-      const dtf = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' });
-      const startLocal = dtf.format(new Date(startUtc));
-      const endLocal = dtf.format(new Date(endUtc));
-      if (startLocal !== endLocal) return;
-      appointmentPayload = { start_at_utc: startUtc, end_at_utc: endUtc, timezone };
-    }
+    // Removed legacy demo appointment scheduling
 
     const res = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(parsed.data) });
     if (res.ok) {
-      const lead = await res.json().catch(() => null);
-      const leadId = lead?.id || lead?.data?.id || lead?.lead?.id;
-      if (status === 'demo_appointment' && leadId && appointmentPayload) {
-        await fetch(`/api/leads/${leadId}/transition`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-            target_status: 'demo_appointment',
-            appointment: { provider: 'none', ...appointmentPayload }
-          })
-        }).catch(() => {})
-      }
+      // Legacy demo appointment flow removed
       onCreated?.(); setOpen(false);
     }
   }

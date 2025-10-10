@@ -35,6 +35,7 @@ export const useOrderColumns = () => {
             <span>{row.getValue("customerName")}</span>
             <span className="text-sm text-muted-foreground">
               {row.original.email}
+              {row.original.phone && ` • ${row.original.phone}`}
             </span>
           </div>
         ),

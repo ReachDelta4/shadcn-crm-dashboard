@@ -39,7 +39,11 @@ export async function GET(
 
 		const { id } = await params
 		const repo = new ProductPaymentPlansRepository(supabase as any)
-		const plans = await repo.listByProduct(id)
+        // Support filtering active plans via query param: active=true|false|all
+        const { searchParams } = new URL(request.url)
+        const activeParam = (searchParams.get('active') || 'true').toLowerCase()
+        let plans = await repo.listByProduct(id, activeParam !== 'all')
+        if (activeParam === 'false') plans = (plans || []).filter((p: any) => p.active === false)
 
 		return NextResponse.json({ plans })
 	} catch (error) {

@@ -7,7 +7,7 @@ import { InvoicesTable } from "../components/invoices-table";
 import { Button } from "@/components/ui/button";
 
 export function PendingInvoicesPage() {
-  const { invoices, filters, updateFilters, refetch, loading, pageCount, pagination, handlePaginationChange } = useInvoices({});
+  const { invoices, filters, updateFilters, refetch, loading, pageCount, pagination, handlePaginationChange, sorting, handleSortingChange } = useInvoices({});
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -39,7 +39,15 @@ export function PendingInvoicesPage() {
 
       <InvoicesFilters filters={filters as any} onFiltersChange={updateFilters} />
 
-      <InvoicesTable invoices={scoped as any} totalRows={scoped.length} pageCount={pageCount} onPaginationChange={handlePaginationChange} />
+      <InvoicesTable 
+        invoices={scoped as any}
+        totalRows={scoped.length}
+        sorting={sorting as any}
+        onSort={handleSortingChange as any}
+        pagination={pagination as any}
+        onPaginationChange={handlePaginationChange}
+        pageCount={pageCount}
+      />
     </div>
   );
 } 

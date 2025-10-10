@@ -54,8 +54,9 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
   const [dueDate, setDueDate] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [phone, setPhone] = useState("");
 
-  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string }>>([]);
+  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string; phone?: string }>>([]);
   const [leadId, setLeadId] = useState<string | undefined>(undefined);
 
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -81,7 +82,7 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
       const data = await res.json();
       const list = (data?.data || [])
         .filter((l: any) => (l.status || 'new') !== 'converted')
-        .map((l: any) => ({ id: l.id, full_name: l.full_name, email: l.email }));
+        .map((l: any) => ({ id: l.id, full_name: l.full_name, email: l.email, phone: l.phone }));
       setLeads(list);
     } catch { }
   }
@@ -94,6 +95,7 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
     setLeadId(undefined);
     setLineItems([{ product_id: "", quantity: 1 }]);
     setError(null);
+    setPhone("");
   }
 
   function updateLine(idx: number, patch: Partial<LineItem>) {
@@ -137,6 +139,22 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
     };
   }, { subtotal: 0, discount: 0, tax: 0, total: 0 });
 
+  async function ensureLeadIdIfNeeded(): Promise<string | undefined> {
+    if (leadId) return leadId;
+    const payload = {
+      full_name: customerName.trim(),
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+    };
+    const create = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!create.ok) {
+      const body = await create.json().catch(() => ({}));
+      throw new Error(body?.error || 'Failed to create lead');
+    }
+    const lead = await create.json().catch(() => null) as any;
+    return lead?.id as string | undefined;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -144,6 +162,7 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
     const parsed = schema.safeParse({
       customer_name: customerName.trim(),
       email: email.trim(),
+      phone: phone.trim() || undefined,
       status,
       // include due_date if provided
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -166,17 +185,27 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
       return;
     }
 
+    if (leadId && !email.trim()) {
+      setError('Linked lead is missing an email. Please edit the lead or unlink and create a new lead.');
+      return;
+    }
+
     startTransition(async () => {
       try {
         // Sanitize payload: strip null/empty optional fields
         const payload = {
           ...parsed.data,
+          phone: (phone || "").trim() || undefined,
           lead_id: parsed.data.lead_id ?? undefined,
           line_items: (parsed.data.line_items || []).map(li => ({
             ...li,
             payment_plan_id: li.payment_plan_id ?? undefined,
           })),
         } as any
+
+        // Ensure we have a lead id when user selected "No lead"
+        const finalLeadId = await ensureLeadIdIfNeeded();
+        payload.lead_id = finalLeadId;
 
         const res = await fetch("/api/invoices", {
           method: "POST",
@@ -210,6 +239,8 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
     return d;
   }
 
+  const isLinked = !!leadId;
+
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
       <DialogTrigger asChild>
@@ -236,6 +267,7 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                   value={customerName} 
                   onChange={(e) => setCustomerName(e.target.value)} 
                   required 
+                  readOnly={isLinked}
                 />
               </div>
               <div className="grid gap-2">
@@ -246,7 +278,15 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   required 
+                  readOnly={isLinked}
                 />
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Phone (optional)</Label>
+                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} readOnly={isLinked} />
               </div>
             </div>
 
@@ -260,11 +300,13 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
             <div className="grid gap-2">
               <Label>Link to Lead (Optional)</Label>
               <Select value={leadId || 'none'} onValueChange={(v: any) => {
-                setLeadId(v === 'none' ? undefined : v)
-                const selected = leads.find(l => l.id === v)
+                const newLeadId = v === 'none' ? undefined : v
+                setLeadId(newLeadId)
+                const selected = leads.find(l => l.id === newLeadId)
                 if (selected) {
                   setCustomerName(selected.full_name || "")
                   setEmail(selected.email || "")
+                  setPhone(selected.phone || "")
                 }
               }}>
                 <SelectTrigger>

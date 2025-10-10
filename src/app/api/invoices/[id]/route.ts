@@ -18,6 +18,9 @@ const invoiceUpdateSchema = z.object({
 	items: z.coerce.number().min(0).optional(),
 	payment_method: z.string().optional(),
 	complete_draft: z.boolean().optional(),
+	// Enable updating phone and lead linkage
+	phone: z.string().optional(),
+	lead_id: z.string().uuid().nullish().transform(v => v ?? undefined).optional(),
 })
 
 async function getServerClient() {
@@ -72,23 +75,44 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
 		// Draft completion guard
-		if (validated.complete_draft) {
+		if ((validated as any).complete_draft) {
 			// Minimal required fields to complete draft
-			if (!current.customer_name && !validated.customer_name) {
+			if (!current.customer_name && !(validated as any).customer_name) {
 				return NextResponse.json({ error: 'Customer name required to complete draft' }, { status: 400 })
 			}
-			if (!current.email && !validated.email) {
+			if (!current.email && !(validated as any).email) {
 				return NextResponse.json({ error: 'Email required to complete draft' }, { status: 400 })
 			}
-			if (!current.amount && !validated.amount) {
+			if (!current.amount && !(validated as any).amount) {
 				return NextResponse.json({ error: 'Amount required to complete draft' }, { status: 400 })
 			}
-			validated.status = validated.status || 'pending'
+			(validated as any).status = (validated as any).status || 'pending'
 		}
 
-		const updated = await repo.update(id, validated, user.id)
+		// Apply base updates (including phone/lead_id if provided)
+		const updated = await repo.update(id, validated as any, user.id)
+
+		// If linked to a lead now (or changed), auto-convert lead and attach invoice to that customer
+		if ((validated as any).lead_id) {
+			try {
+				const leadsRepo = new LeadsRepository()
+				const lead = await leadsRepo.getById((validated as any).lead_id, user.id)
+				if (lead) {
+					const { data: customerId, error: rpcErr } = await (supabase as any)
+						.rpc('convert_lead_to_customer_v2', { lead_id: (lead as any).id, initial_status: 'pending' })
+					if (!rpcErr && customerId) {
+						await (supabase as any)
+							.from('invoices')
+							.update({ customer_id: customerId })
+							.eq('id', id)
+							.eq('owner_id', user.id)
+					}
+				}
+			} catch {}
+		}
 
 		// If invoice is paid now, best-effort: mark schedules paid and ensure customer becomes active
+		const latest = await repo.getById(id, user.id)
 		if ((validated as any).status === 'paid') {
 			try {
 				const linesRepo = new InvoiceLinesRepository(supabase)
@@ -102,7 +126,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 						.eq('status', 'pending')
 				}
 				// Customer activation
-				const customerId = (current as any).customer_id
+				const customerId = (latest as any)?.customer_id
 				if (customerId) {
 					await (supabase as any)
 						.from('customers')
@@ -116,7 +140,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 			}
 		}
 
-		return NextResponse.json(updated)
+		return NextResponse.json(latest)
 	} catch (error) {
 		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

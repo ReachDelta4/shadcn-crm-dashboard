@@ -5,6 +5,7 @@ export interface Order {
   orderNumber: string;
   customerName: string;
   email: string;
+  phone?: string;
   amount: number;
   status: OrderStatus;
   date: string;

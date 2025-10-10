@@ -12,6 +12,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 const schema = z.object({
   customer_name: z.string().min(1, "Customer name is required"),
   email: z.string().email("Valid email is required"),
+  phone: z.string().optional(),
   amount: z.coerce.number().min(0),
   status: z.enum(["pending","processing","completed","cancelled"]).default("pending"),
   lead_id: z.string().uuid().optional(),
@@ -25,11 +26,12 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
   const [open, setOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState<string>("");
   const [status, setStatus] = useState<"pending"|"processing"|"completed"|"cancelled">("pending");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string }>>([]);
+  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string; phone?: string }>>([]);
   const [leadId, setLeadId] = useState<string | undefined>(undefined);
 
   async function loadLeads() {
@@ -37,7 +39,7 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
       const res = await fetch('/api/leads?pageSize=50');
       if (!res.ok) return;
       const data = await res.json();
-      const list = (data?.data || []).map((l: any) => ({ id: l.id, full_name: l.full_name, email: l.email }));
+      const list = (data?.data || []).map((l: any) => ({ id: l.id, full_name: l.full_name, email: l.email, phone: l.phone }));
       setLeads(list);
     } catch {}
   }
@@ -45,20 +47,41 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
   function resetForm() {
     setCustomerName("");
     setEmail("");
+    setPhone("");
     setAmount("");
     setStatus("pending");
     setError(null);
     setLeadId(undefined);
   }
 
+  async function ensureLeadIdIfNeeded(): Promise<string | undefined> {
+    // If a lead is selected, use it. Otherwise, create a new lead so order is always associated when "No lead" is chosen.
+    if (leadId) return leadId;
+    // Create a new lead based on entered fields
+    const payload = {
+      full_name: customerName.trim(),
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+    };
+    const create = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!create.ok) {
+      const body = await create.json().catch(() => ({}));
+      throw new Error(body?.error || 'Failed to create lead');
+    }
+    const lead = await create.json().catch(() => null) as any;
+    return lead?.id as string | undefined;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
+    // Validate base inputs first
     const parsed = schema.safeParse({
       customer_name: customerName.trim(),
       email: email.trim(),
       amount: amount === "" ? 0 : Number(amount),
+      phone: phone.trim() || undefined,
       status,
       lead_id: leadId,
     });
@@ -68,12 +91,23 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
       return;
     }
 
+    // Guard: when linked to a lead, required fields must exist (e.g., email)
+    if (leadId && !email.trim()) {
+      setError('Linked lead is missing an email. Please edit the lead or unlink and create a new lead.');
+      return;
+    }
+
     startTransition(async () => {
       try {
+        // Ensure we have a lead id when user selected "No lead"
+        const finalLeadId = await ensureLeadIdIfNeeded();
         const res = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(parsed.data),
+          body: JSON.stringify({
+            ...parsed.data,
+            lead_id: finalLeadId,
+          }),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -87,6 +121,8 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
       }
     });
   }
+
+  const isLinked = !!leadId;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) loadLeads(); else resetForm(); }}>
@@ -104,18 +140,23 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
         <form onSubmit={handleSubmit} className="grid gap-4">
           <div className="grid gap-2">
             <Label>Link to Lead (Optional)</Label>
-            <Select value={leadId} onValueChange={(v: any) => {
-              setLeadId(v);
-              const selected = leads.find(l => l.id === v);
+            <Select value={leadId || 'none'} onValueChange={(v: any) => {
+              const newLeadId = v === 'none' ? undefined : v;
+              setLeadId(newLeadId);
+              const selected = leads.find(l => l.id === newLeadId);
               if (selected) {
                 setCustomerName(selected.full_name || "");
                 setEmail(selected.email || "");
+                setPhone(selected.phone || "");
+              } else {
+                // Unlinked: keep current values editable
               }
             }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select lead to link" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none">No lead</SelectItem>
                 {leads.map(l => (
                   <SelectItem key={l.id} value={l.id}>{l.full_name} ({l.email})</SelectItem>
                 ))}
@@ -124,11 +165,15 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="customer_name">Customer name</Label>
-            <Input id="customer_name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
+            <Input id="customer_name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required readOnly={isLinked} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required readOnly={isLinked} />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="phone">Phone</Label>
+            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} readOnly={isLinked} />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
             <div className="grid gap-2">

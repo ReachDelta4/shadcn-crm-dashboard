@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -125,13 +125,45 @@ export function ManagePlansModal({ productId, productName }: ManagePlansModalPro
               <CardContent className="space-y-2">
                 {plans.map((plan: any) => (
                   <div key={plan.id} className="flex items-center justify-between border rounded p-3">
-                    <div>
-                      <div className="text-sm font-medium">{plan.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {plan.num_installments} installments • {plan.interval_type} • Down: ₹{((plan.down_payment_minor || 0) / 100).toFixed(2)}
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{plan.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {plan.num_installments} installments • {plan.interval_type}
+                        {plan.interval_type === 'custom_days' && plan.interval_days ? ` (${plan.interval_days} days)` : ''}
+                        {` • Down: ₹${((plan.down_payment_minor || 0) / 100).toFixed(2)}`}
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">{plan.active ? "Active" : "Inactive"}</div>
+                    <div className="flex items-center gap-1">
+                      <Button size="icon" variant="ghost" aria-label="Toggle Active" onClick={async () => {
+                        await fetch(`/api/products/${productId}/plans/${plan.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !plan.active }) })
+                        await loadPlans()
+                      }}>
+                        {plan.active ? <ToggleRight className="size-4" /> : <ToggleLeft className="size-4" />}
+                      </Button>
+                      <Button size="icon" variant="outline" aria-label="Edit Plan" onClick={async () => {
+                        const newName = prompt('Plan name', plan.name)
+                        if (newName == null) return
+                        const num = prompt('Number of installments', String(plan.num_installments))
+                        if (num == null) return
+                        const interval = prompt('Interval (weekly|monthly|quarterly|semiannual|annual|custom_days)', String(plan.interval_type))
+                        if (interval == null) return
+                        const days = interval === 'custom_days' ? prompt('Interval days', String(plan.interval_days || 30)) : null
+                        const down = prompt('Down payment (₹)', String(((plan.down_payment_minor || 0)/100).toFixed(2)))
+                        const payload: any = { name: newName.trim(), num_installments: Number(num) || plan.num_installments, interval_type: interval as any, down_payment_minor: Math.round((Number(down) || 0) * 100) }
+                        if (interval === 'custom_days') payload.interval_days = Number(days) || plan.interval_days || 30
+                        await fetch(`/api/products/${productId}/plans/${plan.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+                        await loadPlans()
+                      }}>
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button size="icon" variant="destructive" aria-label="Delete Plan" onClick={async () => {
+                        if (!confirm(`Delete plan "${plan.name}"?`)) return
+                        await fetch(`/api/products/${productId}/plans/${plan.id}`, { method: 'DELETE' })
+                        await loadPlans()
+                      }}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </CardContent>

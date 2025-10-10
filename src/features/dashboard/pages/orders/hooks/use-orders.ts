@@ -78,6 +78,7 @@ export function useOrders({ initialOrders = [], initialCount = 0 }: UseOrdersPro
         orderNumber: order.order_number || order.orderNumber || '',
         customerName: order.customer_name || order.customerName || '',
         email: order.email || '',
+        phone: order.phone || '',
         amount: typeof order.amount === 'number' ? order.amount : 0,
         status: (order.status || 'pending') as any,
         date: order.date || new Date().toISOString(),

@@ -21,9 +21,10 @@ interface Subject {
 }
 
 interface CreateLeadData {
-	full_name: string;
-	company: string;
-	email?: string;
+    full_name: string;
+    company: string;
+    email?: string;
+    phone?: string;
 }
 
 export function NewSessionPage() {
@@ -33,7 +34,7 @@ export function NewSessionPage() {
 	const [subjects, setSubjects] = useState<Subject[]>([]);
 	const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 	const [showCreateLead, setShowCreateLead] = useState(false);
-	const [createLeadData, setCreateLeadData] = useState<CreateLeadData>({ full_name: '', company: '', email: '' });
+    const [createLeadData, setCreateLeadData] = useState<CreateLeadData>({ full_name: '', company: '', email: '', phone: '' });
 	const [loading, setLoading] = useState(false);
 	const [searchLoading, setSearchLoading] = useState(false);
 	const [error, setError] = useState<string>('');
@@ -202,7 +203,7 @@ export function NewSessionPage() {
 											placeholder="Enter full name"
 										/>
 									</div>
-									<div>
+                                    <div>
 										<Label htmlFor="email">Email (optional)</Label>
 										<Input
 											id="email"
@@ -211,6 +212,15 @@ export function NewSessionPage() {
 											placeholder="Enter email (optional)"
 										/>
 									</div>
+                                    <div>
+                                        <Label htmlFor="phone">Phone (optional)</Label>
+                                        <Input
+                                            id="phone"
+                                            value={createLeadData.phone || ''}
+                                            onChange={(e) => handleCreateLeadChange('phone', e.target.value)}
+                                            placeholder="Enter phone (optional)"
+                                        />
+                                    </div>
 									<div>
 										<Label htmlFor="company">Company *</Label>
 										<Input

@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { getUserAndScope } from '@/server/auth/getUserAndScope'
 import { LeadsRepository } from '@/server/repositories/leads'
 import { LeadAppointmentsRepository } from '@/server/repositories/lead-appointments'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 const createSchema = z.object({
 	start_at_utc: z.string(),
@@ -28,6 +30,17 @@ export async function GET(
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const cookieStore = await cookies()
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+			{
+				cookies: {
+					getAll() { return cookieStore.getAll() },
+					setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+				},
+			}
+		)
 		const scope = await getUserAndScope()
 		const { id: leadId } = await params
 		const leadsRepo = new LeadsRepository(supabase as any)
@@ -48,6 +61,17 @@ export async function POST(
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const cookieStore = await cookies()
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+			{
+				cookies: {
+					getAll() { return cookieStore.getAll() },
+					setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+				},
+			}
+		)
 		const scope = await getUserAndScope()
 		const { id: leadId } = await params
 		const leadsRepo = new LeadsRepository(supabase as any)
@@ -92,6 +116,17 @@ export async function PATCH(
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const cookieStore = await cookies()
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+			{
+				cookies: {
+					getAll() { return cookieStore.getAll() },
+					setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+				},
+			}
+		)
 		const scope = await getUserAndScope()
 		const { id: leadId } = await params
 		const leadsRepo = new LeadsRepository(supabase as any)
@@ -105,7 +140,7 @@ export async function PATCH(
 		const { appointment_id, ...updates } = body
 		if (!appointment_id) return NextResponse.json({ error: 'appointment_id required' }, { status: 400 })
 
-		const repo = new LeadAppointmentsRepository()
+		const repo = new LeadAppointmentsRepository(supabase as any)
 		const updated = await repo.update(appointment_id, updates)
 		return NextResponse.json({ appointment: updated })
 	} catch (error) {
@@ -119,9 +154,20 @@ export async function DELETE(
 	{ params }: { params: Promise<{ id: string }> }
 ) {
 	try {
+		const cookieStore = await cookies()
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+			{
+				cookies: {
+					getAll() { return cookieStore.getAll() },
+					setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
+				},
+			}
+		)
 		const scope = await getUserAndScope()
 		const { id: leadId } = await params
-		const leadsRepo = new LeadsRepository()
+		const leadsRepo = new LeadsRepository(supabase as any)
 		const lead = await leadsRepo.getById(leadId, scope.userId, scope.allowedOwnerIds)
 		if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
@@ -129,7 +175,7 @@ export async function DELETE(
 		const appointmentId = body?.appointment_id
 		if (!appointmentId) return NextResponse.json({ error: 'appointment_id required' }, { status: 400 })
 
-		const repo = new LeadAppointmentsRepository()
+		const repo = new LeadAppointmentsRepository(supabase as any)
 		await repo.delete(appointmentId)
 		return NextResponse.json({ success: true })
 	} catch (error) {

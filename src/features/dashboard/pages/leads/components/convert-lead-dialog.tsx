@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ProductPicker, type Product } from "@/features/dashboard/components/product-picker";
@@ -110,6 +110,7 @@ export function ConvertLeadDialog({ leadId, leadName, leadEmail, open, onOpenCha
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Convert Lead</DialogTitle>
+          <DialogDescription>Confirm customer details, optionally create an invoice, and mark paid.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <Card>
@@ -182,5 +183,7 @@ export function ConvertLeadDialog({ leadId, leadName, leadEmail, open, onOpenCha
     </Dialog>
   );
 }
+
+
 
 

@@ -14,6 +14,7 @@ const schema = z.object({
   email: z.string().email("Valid email is required"),
   status: z.enum(["draft","pending","paid","overdue","cancelled"]).default("draft"),
   lead_id: z.string().uuid().optional(),
+  phone: z.string().optional(),
   line_items: z.array(z.object({
     product_id: z.string().uuid(),
     quantity: z.coerce.number().int().min(1),
@@ -31,10 +32,11 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
   const [customerName, setCustomerName] = useState("");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"draft"|"pending"|"paid"|"overdue"|"cancelled">("draft");
+  const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string }>>([])
+  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string; phone?: string }>>([])
   const [leadId, setLeadId] = useState<string | undefined>(undefined)
 
   const [lineItems, setLineItems] = useState<Array<{ product_id: string; quantity: string; discount_type?: "percent"|"amount"; discount_value?: string }>>([
@@ -60,7 +62,7 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
       const data = await res.json()
       const list = (data?.data || [])
         .filter((l:any) => (l.status || 'new') !== 'converted')
-        .map((l:any) => ({ id: l.id, full_name: l.full_name, email: l.email }))
+        .map((l:any) => ({ id: l.id, full_name: l.full_name, email: l.email, phone: l.phone }))
       setLeads(list)
     } catch {}
   }
@@ -72,6 +74,7 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
     setLeadId(undefined)
     setLineItems([{ product_id: "", quantity: "1" }])
     setError(null);
+    setPhone("")
   }
 
   function updateLine(idx: number, patch: Partial<{ product_id: string; quantity: string; discount_type?: "percent"|"amount"; discount_value?: string }>) {
@@ -81,6 +84,22 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
   function addLine() { setLineItems(prev => [...prev, { product_id: "", quantity: "1" }]) }
   function removeLine(idx: number) { setLineItems(prev => prev.filter((_, i) => i !== idx)) }
 
+  async function ensureLeadIdIfNeeded(): Promise<string | undefined> {
+    if (leadId) return leadId;
+    const payload = {
+      full_name: customerName.trim(),
+      email: email.trim(),
+      phone: phone.trim() || undefined,
+    };
+    const create = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!create.ok) {
+      const body = await create.json().catch(() => ({}));
+      throw new Error(body?.error || 'Failed to create lead');
+    }
+    const lead = await create.json().catch(() => null) as any;
+    return lead?.id as string | undefined;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -88,6 +107,7 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
     const parsed = schema.safeParse({
       customer_name: customerName.trim(),
       email: email.trim(),
+      phone: phone.trim() || undefined,
       status,
       lead_id: leadId,
       line_items: lineItems.map(li => ({
@@ -103,6 +123,11 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
       return;
     }
 
+    if (leadId && !email.trim()) {
+      setError('Linked lead is missing an email. Please edit the lead or unlink and create a new lead.');
+      return;
+    }
+
     startTransition(async () => {
       try {
         const res = await fetch("/api/invoices", {
@@ -111,8 +136,9 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
           body: JSON.stringify({
             customer_name: parsed.data.customer_name,
             email: parsed.data.email,
+            phone: parsed.data.phone,
             status: parsed.data.status,
-            lead_id: parsed.data.lead_id,
+            lead_id: await ensureLeadIdIfNeeded(),
             line_items: parsed.data.line_items,
           }),
         });
@@ -128,6 +154,8 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
       }
     });
   }
+
+  const isLinked = !!leadId;
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) resetForm(); }}>
@@ -146,17 +174,30 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
           <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
             <div className="grid gap-2">
               <Label htmlFor="customer_name">Customer name</Label>
-              <Input id="customer_name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required />
+              <Input id="customer_name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} required readOnly={isLinked} />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required readOnly={isLinked} />
             </div>
+          <div className="grid gap-2">
+            <Label htmlFor="phone">Phone</Label>
+            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} readOnly={isLinked} />
+          </div>
           </div>
 
           <div className="grid gap-2">
             <Label>Lead (optional)</Label>
-            <Select value={leadId || 'none'} onValueChange={(v:any) => setLeadId(v === 'none' ? undefined : v)}>
+            <Select value={leadId || 'none'} onValueChange={(v:any) => {
+              const newLeadId = v === 'none' ? undefined : v
+              setLeadId(newLeadId)
+              const selected = leads.find(l => l.id === newLeadId)
+              if (selected) {
+                setCustomerName(selected.full_name || "")
+                setEmail(selected.email || "")
+                setPhone(selected.phone || "")
+              }
+            }}>
               <SelectTrigger>
                 <SelectValue placeholder="Select lead to link" />
               </SelectTrigger>

@@ -14,6 +14,7 @@ const orderCreateSchema = z.object({
 	items: z.coerce.number().min(0).default(0),
 	payment_method: z.string().optional(),
 	lead_id: z.string().uuid().optional(),
+	phone: z.string().optional(),
 })
 
 const orderFiltersSchema = z.object({

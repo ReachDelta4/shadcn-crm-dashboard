@@ -6,9 +6,8 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
   },
-  experimental: {
-    optimizePackageImports: ["lucide-react", "date-fns"],
-  },
+  experimental: {},
+
 };
 
 if (!isWindows) {

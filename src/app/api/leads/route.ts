@@ -38,6 +38,7 @@ function expandStatusAny(status: string | undefined): string[] | undefined {
 	if (!status || status === 'all') return undefined
 	if (status === 'lost') return ['lost','unqualified']
 	if (status === 'won') return ['won','converted']
+    if (status === 'disqualified') return ['unqualified']
 	// pass through canonical single
 	return [status]
 }
@@ -78,8 +79,9 @@ export async function GET(request: NextRequest) {
 		})
 		const repo = new LeadsRepository(supabase)
 		const statusAny = expandStatusAny(filters.status as any)
-		const result = await repo.list({
-			filters: { search: filters.search || undefined, status: filters.status, dateFrom: filters.dateFrom, dateTo: filters.dateTo, statusAny },
+        const statusForRepo = (filters.status as any) === 'disqualified' ? 'unqualified' : filters.status
+        const result = await repo.list({
+            filters: { search: filters.search || undefined, status: statusForRepo as any, dateFrom: filters.dateFrom, dateTo: filters.dateTo, statusAny },
 			sort: filters.sort,
 			direction: filters.direction,
 			page: filters.page,
