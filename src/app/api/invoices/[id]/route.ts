@@ -74,6 +74,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		const current = await repo.getById(id, user.id)
 		if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+		// Disallow direct transition to paid via invoice PATCH; use schedule payment endpoint instead
+		if ((validated as any).status === 'paid') {
+			return NextResponse.json({ error: 'Use payment schedule endpoint to mark invoice paid' }, { status: 400 })
+		}
+
 		// Draft completion guard
 		if ((validated as any).complete_draft) {
 			// Minimal required fields to complete draft
@@ -111,35 +116,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 			} catch {}
 		}
 
-		// If invoice is paid now, best-effort: mark schedules paid and ensure customer becomes active
-		const latest = await repo.getById(id, user.id)
-		if ((validated as any).status === 'paid') {
-			try {
-				const linesRepo = new InvoiceLinesRepository(supabase)
-				const schedulesRepo = new InvoicePaymentSchedulesRepository(supabase)
-				const lines = await linesRepo.findByInvoiceId(id)
-				if (lines.length > 0) {
-					await (supabase as any)
-						.from('invoice_payment_schedules')
-						.update({ status: 'paid' })
-						.eq('invoice_id', id)
-						.eq('status', 'pending')
-				}
-				// Customer activation
-				const customerId = (latest as any)?.customer_id
-				if (customerId) {
-					await (supabase as any)
-						.from('customers')
-						.update({ status: 'active' })
-						.eq('id', customerId)
-						.eq('owner_id', user.id)
-						.in('status', ['pending'])
-				}
-			} catch {
-				// swallow errors for best-effort consistency
-			}
-		}
 
+		const latest = await repo.getById(id, user.id)
 		return NextResponse.json(latest)
 	} catch (error) {
 		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })

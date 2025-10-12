@@ -116,6 +116,9 @@ export async function POST(request: NextRequest) {
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 		
 		const body = await request.json()
+
+		// Minimal idempotency: accept Idempotency-Key and map to external_id
+		const idemKey = request.headers.get('Idempotency-Key') || undefined
 		const validated = invoiceCreateSchema.parse(body)
 		
 		let finalAmount = validated.amount || 0
@@ -155,7 +158,27 @@ export async function POST(request: NextRequest) {
 		delete invoiceData.line_items // Remove from base invoice insert
 		
 		const repo = new InvoicesRepository(supabase)
-		const invoice = await repo.create(invoiceData, user.id)
+		if (idemKey) {
+			(invoiceData as any).external_id = idemKey
+		}
+		let invoice: any
+		try {
+			invoice = await repo.create(invoiceData, user.id)
+		} catch (e: any) {
+			// On unique violation for external_id, fetch existing invoice and return it
+			if (String(e.message || '').includes('unique_invoice_external_id_per_owner')) {
+				const existing = await (supabase as any)
+					.from('invoices')
+					.select('*')
+					.eq('owner_id', user.id)
+					.eq('external_id', idemKey)
+					.single()
+				if (!existing.error && existing.data) {
+					return NextResponse.json(existing.data, { status: 200, headers: rateLimitHeaders(rl) })
+				}
+			}
+			throw e
+		}
 		const invoiceId = (invoice as any).id
 		
 		// Create line items and schedules if provided

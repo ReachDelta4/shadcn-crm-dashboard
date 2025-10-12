@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { flags } from '@/server/config/flags'
 
 export async function GET(_req: NextRequest) {
 	try {
+		// Gate in production unless explicitly enabled
+		if (flags.isProduction && process.env.ENABLE_DEBUG_ROUTES !== 'true') {
+			return NextResponse.json({ error: 'Not available' }, { status: 404 })
+		}
 		const headers: Record<string,string> = {
 			'Content-Type': 'application/json',
 			'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,

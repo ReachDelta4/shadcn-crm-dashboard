@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest) {
 			amount_minor: d.amount_minor,
 			status: d.status,
 		})) })
-	} catch (e: any) {
-		return NextResponse.json({ items: [], error: e?.message || 'Internal server error' }, { status: 200 })
-	}
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'Internal server error' }, { status: 500 })
+  }
 }

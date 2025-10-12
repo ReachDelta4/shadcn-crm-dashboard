@@ -23,6 +23,11 @@ export async function PATCH(_req: NextRequest, { params }: { params: Promise<{ i
 		const schedule = await recRepo.getById(id)
 		if (!schedule) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+		// Idempotent: already billed
+		if ((schedule as any).status === 'billed') {
+			return NextResponse.json({ success: true, billed_at: (schedule as any).billed_at || (schedule as any).billing_at_utc }, { status: 409 })
+		}
+
 		// Owner check: ensure schedule is tied to an invoice owned by the user via invoice_lines -> invoices
 		const { data: ownedCheck, error: ownedErr } = await (supabase as any)
 			.from('recurring_revenue_schedules')

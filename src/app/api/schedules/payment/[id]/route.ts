@@ -24,6 +24,11 @@ export async function PATCH(_req: NextRequest, { params }: { params: Promise<{ i
 		const schedule = await schedulesRepo.getById(id)
 		if (!schedule) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+		// Idempotent: already paid
+		if ((schedule as any).status === 'paid') {
+			return NextResponse.json({ success: true, paid_at: (schedule as any).paid_at || (schedule as any).due_at_utc }, { status: 409 })
+		}
+
 		// Owner check: ensure schedule belongs to an invoice owned by the user
 		const { data: ownedCheck, error: ownedErr } = await (supabase as any)
 			.from('invoice_payment_schedules')
@@ -33,18 +38,15 @@ export async function PATCH(_req: NextRequest, { params }: { params: Promise<{ i
 			.single()
 		if (ownedErr || !ownedCheck) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-		// mark paid
+		// mark paid atomically and cascade invoice if last schedule
 		const when = new Date().toISOString()
-		await schedulesRepo.markPaid(id, when)
-
-		// if all schedules for the invoice are paid, set invoice paid
-		const unpaid = await schedulesRepo.countUnpaidByInvoiceId(schedule.invoice_id)
-		if (unpaid === 0) {
-			const invoicesRepo = new InvoicesRepository(supabase as any)
-			await invoicesRepo.update(schedule.invoice_id, { status: 'paid', paid_at: when } as any, user.id)
+		const { data: cascadeRes, error: cascadeErr } = await (supabase as any)
+			.rpc('mark_schedule_paid_cascade', { p_schedule_id: id, p_paid_at: when })
+			.single()
+		if (cascadeErr) {
+			return NextResponse.json({ error: cascadeErr.message || 'Failed to mark paid' }, { status: 500 })
 		}
-
-		return NextResponse.json({ success: true, paid_at: when })
+		return NextResponse.json({ success: true, paid_at: when, invoice_paid: !!cascadeRes?.invoice_paid })
 	} catch (e: any) {
 		return NextResponse.json({ error: e?.message || 'Internal server error' }, { status: 500 })
 	}
