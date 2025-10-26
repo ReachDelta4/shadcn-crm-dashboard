@@ -12,13 +12,13 @@ type LeadInsert = any
 
 type LeadUpdate = any
 
+type LeadStatus = 'new' | 'contacted' | 'qualified' | 'disqualified' | 'converted'
+
 export interface LeadFilters {
 	search?: string
-	status?: 'all' | 'new' | 'contacted' | 'qualified' | 'unqualified' | 'converted' | 'demo_appointment' | 'proposal_negotiation' | 'invoice_sent' | 'won' | 'lost'
+	status?: 'all' | LeadStatus
 	dateFrom?: string
 	dateTo?: string
-	// New: allow filtering by multiple statuses (e.g., canonical + legacy equivalents)
-	statusAny?: string[]
 }
 
 export interface LeadListOptions {
@@ -58,10 +58,7 @@ export class LeadsRepository {
 			query = query.or(`full_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,company.ilike.%${filters.search}%,lead_number.ilike.%${filters.search}%`)
 		}
 
-		// Support canonical or legacy status, or both via statusAny
-		if (filters.statusAny && filters.statusAny.length > 0) {
-			query = query.in('status', filters.statusAny)
-		} else if (filters.status && filters.status !== 'all') {
+		if (filters.status && filters.status !== 'all') {
 			query = query.eq('status', filters.status)
 		}
 
@@ -145,8 +142,6 @@ export class LeadsRepository {
 }
 
 export const leadsRepository = new LeadsRepository()
-
-
 
 
 

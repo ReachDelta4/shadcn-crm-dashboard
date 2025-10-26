@@ -23,7 +23,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 		const { data: { user } } = await supabase.auth.getUser()
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 		const { id: leadId } = await params
-		const repo = new LeadStatusTransitionsRepository()
+		const repo = new LeadStatusTransitionsRepository(supabase as any)
 		const list = await repo.findByLeadId(leadId, 100)
 		return NextResponse.json({ transitions: list.map(t => ({ at: t.created_at, from: t.status_from, to: t.status_to, by: t.actor_id })) })
 	} catch (e) {

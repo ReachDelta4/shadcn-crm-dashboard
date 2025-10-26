@@ -9,6 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
+import type { LeadStatus } from "@/features/dashboard/pages/leads/types/lead";
+import {
+  APPOINTMENT_TARGET_STATUS,
+  shouldAdvanceToQualified,
+} from "@/features/leads/status-utils";
 
 interface Props { onCreated?: () => void }
 
@@ -19,7 +24,7 @@ export function SpeedDialNewSession({ onCreated }: Props) {
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
   // Existing lead
-  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string }>>([]);
+  const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string; status?: LeadStatus }>>([]);
   const [leadId, setLeadId] = useState<string | undefined>(undefined);
 
   // New lead
@@ -39,7 +44,12 @@ export function SpeedDialNewSession({ onCreated }: Props) {
       const res = await fetch('/api/leads?pageSize=50');
       if (!res.ok) return;
       const data = await res.json();
-      const list = (data?.data || []).map((l: any) => ({ id: l.id, full_name: l.full_name, email: l.email }));
+      const list = (data?.data || []).map((l: any) => ({
+        id: l.id,
+        full_name: l.full_name,
+        email: l.email,
+        status: l.status as LeadStatus | undefined,
+      }));
       setLeads(list);
     } catch {}
   }
@@ -51,33 +61,99 @@ export function SpeedDialNewSession({ onCreated }: Props) {
     setTab("existing");
   }
 
+  async function extractErrorMessage(res: Response): Promise<string> {
+    try {
+      const data = await res.json();
+      return data?.error || data?.message || res.statusText || 'Request failed';
+    } catch {
+      try {
+        return await res.text();
+      } catch {
+        return res.statusText || 'Request failed';
+      }
+    }
+  }
+
+  function validateDateRange(startValue: string, endValue: string): { start: Date; end: Date } {
+    const startDate = new Date(startValue);
+    const endDate = new Date(endValue);
+    if (!startValue || Number.isNaN(startDate.getTime())) {
+      throw new Error('Invalid start time');
+    }
+    if (!endValue || Number.isNaN(endDate.getTime())) {
+      throw new Error('Invalid end time');
+    }
+    if (endDate <= startDate) {
+      throw new Error('End time must be after start time');
+    }
+    return { start: startDate, end: endDate };
+  }
+
+  async function createAppointmentForLead(leadId: string, startIso: string, endIso: string) {
+    const payload = {
+      provider: 'none',
+      start_at_utc: startIso,
+      end_at_utc: endIso,
+      timezone,
+    };
+    const res = await fetch(`/api/leads/${leadId}/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res));
+    }
+  }
+
+  async function advanceLeadStatus(leadId: string, current?: LeadStatus) {
+    if (!shouldAdvanceToQualified(current)) return;
+    try {
+      const res = await fetch(`/api/leads/${leadId}/transition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_status: APPOINTMENT_TARGET_STATUS }),
+      });
+      if (!res.ok) {
+        if (res.status === 409) return;
+        const message = await extractErrorMessage(res);
+        toast.warning(`Appointment saved, but lead status update failed: ${message}`);
+      }
+    } catch (error) {
+      console.error('[calendar] Failed to advance lead status', error);
+      toast.warning('Appointment saved, but lead status update failed');
+    }
+  }
+
   async function submitExisting() {
     if (!leadId) { toast.error("Select a lead"); return; }
     if (!startAt || !endAt) { toast.error("Set start and end time"); return; }
+    let range: { start: Date; end: Date };
+    try {
+      range = validateDateRange(startAt, endAt);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Invalid schedule');
+      return;
+    }
+    const startIso = range.start.toISOString();
+    const endIso = range.end.toISOString();
+    const selectedLead = leads.find(l => l.id === leadId);
     startTransition(async () => {
       try {
-        const payload = {
-          target_status: 'demo_appointment',
-          appointment: {
-            provider: 'none',
-            start_at_utc: new Date(startAt).toISOString(),
-            end_at_utc: new Date(endAt).toISOString(),
-            timezone,
-          }
-        };
-        const res = await fetch(`/api/leads/${leadId}/transition`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error(await res.text());
+        await createAppointmentForLead(leadId, startIso, endIso);
+        await advanceLeadStatus(leadId, selectedLead?.status);
         toast.success('Appointment scheduled');
         window.dispatchEvent(new Event('calendar:changed'));
         window.dispatchEvent(new Event('leads:changed'));
+        await loadLeads();
         onCreated?.();
         setOpen(false); reset();
       } catch (e) {
-        const msg = typeof e === 'string' ? e : (e as any)?.message || '';
-        if (msg.includes('409') || msg.toLowerCase().includes('overlap')) {
+        const msg = e instanceof Error ? e.message : String(e || '');
+        if (msg.toLowerCase().includes('overlap')) {
           toast.error('Selected time overlaps an existing appointment');
+        } else if (msg) {
+          toast.error(msg);
         } else {
           toast.error('Failed to schedule appointment');
         }
@@ -88,6 +164,15 @@ export function SpeedDialNewSession({ onCreated }: Props) {
   async function submitNewLead() {
     if (!fullName || !email) { toast.error("Full name and email are required"); return; }
     if (!startAt || !endAt) { toast.error("Set start and end time"); return; }
+    let range: { start: Date; end: Date };
+    try {
+      range = validateDateRange(startAt, endAt);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Invalid schedule');
+      return;
+    }
+    const startIso = range.start.toISOString();
+    const endIso = range.end.toISOString();
     startTransition(async () => {
       try {
         const create = await fetch('/api/leads', {
@@ -98,29 +183,22 @@ export function SpeedDialNewSession({ onCreated }: Props) {
         if (!create.ok) throw new Error(await create.text());
         const created = await create.json();
         const id = created?.id || created?.lead?.id || created?.data?.id;
+        const initialStatus = (created?.status || created?.lead?.status || created?.data?.status) as LeadStatus | undefined;
         if (!id) throw new Error('Lead creation failed');
-        const payload = {
-          target_status: 'demo_appointment',
-          appointment: {
-            provider: 'none',
-            start_at_utc: new Date(startAt).toISOString(),
-            end_at_utc: new Date(endAt).toISOString(),
-            timezone,
-          }
-        };
-        const res = await fetch(`/api/leads/${id}/transition`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-        });
-        if (!res.ok) throw new Error(await res.text());
+        await createAppointmentForLead(id, startIso, endIso);
+        await advanceLeadStatus(id, initialStatus);
         toast.success('Lead created and appointment scheduled');
         window.dispatchEvent(new Event('calendar:changed'));
         window.dispatchEvent(new Event('leads:changed'));
+        await loadLeads();
         onCreated?.();
         setOpen(false); reset();
       } catch (e) {
-        const msg = typeof e === 'string' ? e : (e as any)?.message || '';
-        if (msg.includes('409') || msg.toLowerCase().includes('overlap')) {
+        const msg = e instanceof Error ? e.message : String(e || '');
+        if (msg.toLowerCase().includes('overlap')) {
           toast.error('Selected time overlaps an existing appointment');
+        } else if (msg) {
+          toast.error(msg);
         } else {
           toast.error('Failed to create lead or schedule');
         }
@@ -220,5 +298,3 @@ export function SpeedDialNewSession({ onCreated }: Props) {
     </>
   );
 }
-
-

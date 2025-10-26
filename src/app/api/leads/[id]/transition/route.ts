@@ -89,7 +89,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     })
 
 		// Send notification (best-effort)
-		const notifService = new NotificationService()
+		const notifService = new NotificationService(supabase)
 		await notifService.send({
 			type: 'status_change',
 			user_id: scope.userId,

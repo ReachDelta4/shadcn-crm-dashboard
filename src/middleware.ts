@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/api/:path*'],
 }
 
 export async function middleware(req: NextRequest) {
@@ -17,10 +17,17 @@ export async function middleware(req: NextRequest) {
     return redirectToLogin(req, url.pathname)
   }
 
-  // Fast-path: if no auth cookies at all, avoid calling Supabase
+  const isApi = url.pathname.startsWith('/api')
+  const allowlistApi = new Set<string>([
+    '/api/device-auth/create',
+    '/api/device-auth/exchange',
+  ])
+  const isAllowlisted = isApi && allowlistApi.has(url.pathname)
+
+  // Fast-path: if no auth cookies at all, avoid calling Supabase (except allowlisted API)
   const hasSupabaseSessionCookie = req.cookies.getAll().some(c => c.name.startsWith('sb-'))
-  if (!hasSupabaseSessionCookie) {
-    return redirectToLogin(req, url.pathname)
+  if (!hasSupabaseSessionCookie && !isAllowlisted) {
+    return isApi ? unauthenticatedResponse() : redirectToLogin(req, url.pathname)
   }
 
   try {
@@ -40,14 +47,14 @@ export async function middleware(req: NextRequest) {
 
     const { data: { user }, error } = await supabase.auth.getUser()
     
-    if (error || !user) {
-      return redirectToLogin(req, url.pathname)
+    if ((error || !user) && !isAllowlisted) {
+      return isApi ? unauthenticatedResponse() : redirectToLogin(req, url.pathname)
     }
 
     return response
   } catch (error) {
     console.error('Middleware auth check failed:', error)
-    return redirectToLogin(req, url.pathname)
+    return isApi ? unauthenticatedResponse() : redirectToLogin(req, url.pathname)
   }
 }
 
@@ -55,4 +62,8 @@ function redirectToLogin(req: NextRequest, pathname: string) {
   const loginUrl = new URL('/login', req.url)
   loginUrl.searchParams.set('redirect', pathname)
   return NextResponse.redirect(loginUrl)
+}
+
+function unauthenticatedResponse() {
+  return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 }

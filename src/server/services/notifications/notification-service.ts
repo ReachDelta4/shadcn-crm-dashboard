@@ -1,11 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { flags } from '@/server/config/flags'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const defaultClient = createClient(supabaseUrl, supabaseAnonKey)
-
-type SupabaseClientAny = typeof defaultClient
 
 export type NotificationType = 'appointment_reminder' | 'status_change' | 'invoice_sent' | 'invoice_paid' | 'system'
 
@@ -31,7 +25,7 @@ interface NotificationSettings {
 const throttleCache = new Map<string, number>()
 
 export class NotificationService {
-	constructor(private client: SupabaseClientAny = defaultClient) {}
+	constructor(private readonly client: SupabaseClient) {}
 
 	/**
 	 * Send notification with throttling

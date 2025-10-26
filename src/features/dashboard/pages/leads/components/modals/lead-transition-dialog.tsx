@@ -9,8 +9,14 @@ import { DatePicker } from "@/components/shared/date-picker";
 import { toast } from "sonner";
 import { ProductPicker, type Product } from "@/features/dashboard/components/product-picker";
 import { PaymentPlanPicker, type PaymentPlan } from "@/features/dashboard/components/payment-plan-picker";
+import type { LeadStatus } from "@/features/dashboard/pages/leads/types/lead";
+import {
+  APPOINTMENT_TARGET_STATUS,
+  MODE_TARGET_STATUS,
+} from "@/features/leads/status-utils";
 
 type Mode = 'demo_appointment' | 'invoice_sent' | 'won'
+type TransitionMode = Exclude<Mode, 'demo_appointment'>
 
 interface Props {
   leadId: string
@@ -57,6 +63,40 @@ export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChang
 
   const isAppointment = mode === 'demo_appointment'
   const isInvoice = mode === 'invoice_sent' || mode === 'won'
+
+  async function extractErrorMessage(res: Response): Promise<string> {
+    try {
+      const data = await res.json()
+      return data?.error || data?.message || res.statusText || 'Request failed'
+    } catch {
+      try {
+        return await res.text()
+      } catch {
+        return res.statusText || 'Request failed'
+      }
+    }
+  }
+
+  async function transitionLeadStrict(target: LeadStatus) {
+    const res = await fetch(`/api/leads/${leadId}/transition`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_status: target }),
+    })
+    if (!res.ok) {
+      if (res.status === 409) return // already transitioned
+      throw new Error(await extractErrorMessage(res))
+    }
+  }
+
+  async function transitionLeadLenient(target: LeadStatus, warning: string) {
+    try {
+      await transitionLeadStrict(target)
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error || '')
+      toast.warning(msg ? `${warning}: ${msg}` : warning)
+    }
+  }
 
   // Simple live preview for a single line
   const preview = (() => {
@@ -136,12 +176,21 @@ export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChang
         const durationNumber = Number(durationMin)
         if (!Number.isFinite(durationNumber) || durationNumber <= 0) { toast.error('Invalid duration'); return }
         const { startUtc, endUtc } = computeUtcRange(schedDate, startTime, durationNumber, timezone)
-        const res = await fetch(`/api/leads/${leadId}/transition`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ target_status: 'demo_appointment', appointment: { provider: 'none', start_at_utc: startUtc, end_at_utc: endUtc, timezone } })
+        const appointmentRes = await fetch(`/api/leads/${leadId}/appointments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'none',
+            start_at_utc: startUtc,
+            end_at_utc: endUtc,
+            timezone,
+          }),
         })
-        if (!res.ok) throw new Error(await res.text())
+        if (!appointmentRes.ok) throw new Error(await extractErrorMessage(appointmentRes))
+        await transitionLeadLenient(APPOINTMENT_TARGET_STATUS, 'Appointment saved, but lead status update failed')
+        window.dispatchEvent(new Event('calendar:changed'))
       } else if (isInvoice) {
+        const targetStatus = MODE_TARGET_STATUS[mode as TransitionMode]
         if (!productId) { toast.error('Select a product'); return }
         const qty = Math.max(1, Number(quantity) || 1)
 
@@ -163,7 +212,7 @@ export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChang
         const idempotency_key = `${leadId}:${mode}:${productId}:${qty}:${discount_type || 'none'}:${discount_value || 0}`
 
         const payload: any = {
-          target_status: mode,
+          target_status: targetStatus,
           idempotency_key,
           invoice: {
             line_items: [
@@ -301,5 +350,3 @@ export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChang
     </Dialog>
   )
 }
-
-

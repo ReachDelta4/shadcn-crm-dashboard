@@ -10,7 +10,6 @@ import { ProductPaymentPlansRepository } from '@/server/repositories/product-pay
 import { getUserAndScope } from '@/server/auth/getUserAndScope'
 import { calculateInvoice, generatePaymentSchedule, generateRecurringSchedule, type LineItemInput } from '@/server/services/pricing-engine'
 import { LeadsRepository } from '@/server/repositories/leads'
-import { LeadStatusTransitionsRepository } from '@/server/repositories/lead-status-transitions'
 import { memoryRateLimit, rateLimitHeaders } from '@/server/utils/rate-limit'
 
 const lineItemSchema = z.object({
@@ -129,7 +128,7 @@ export async function POST(request: NextRequest) {
 		// If line_items provided, calculate totals via pricing engine
 		if (validated.line_items && validated.line_items.length > 0) {
 			const scope = await getUserAndScope()
-			const productsRepo = new ProductsRepository()
+			const productsRepo = new ProductsRepository(supabase as any)
 			
 			// Fetch all products
 			const productIds = validated.line_items.map(li => li.product_id)
@@ -184,7 +183,7 @@ export async function POST(request: NextRequest) {
 		// Create line items and schedules if provided
 		if (validated.line_items && validated.line_items.length > 0 && calculation) {
 			const scope = await getUserAndScope()
-			const plansRepo = new ProductPaymentPlansRepository()
+			const plansRepo = new ProductPaymentPlansRepository(supabase as any)
 			const linesRepo = new InvoiceLinesRepository(supabase)
 			const paymentSchedulesRepo = new InvoicePaymentSchedulesRepository(supabase)
 			const recurringSchedulesRepo = new RecurringRevenueSchedulesRepository(supabase)
@@ -268,7 +267,7 @@ export async function POST(request: NextRequest) {
         // If linked to a lead, auto-convert lead to customer (pending) and attach invoice to that customer
         if ((validated as any).lead_id) {
             try {
-                const leadsRepo = new LeadsRepository()
+                const leadsRepo = new LeadsRepository(supabase as any)
                 const lead = await leadsRepo.getById((validated as any).lead_id, user.id)
                 if (lead) {
                     // Convert (or fetch) customer for this lead

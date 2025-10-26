@@ -11,7 +11,7 @@ import { NotificationService } from '@/server/services/notifications/notificatio
 
 const bulkTransitionSchema = z.object({
 	lead_ids: z.array(z.string().uuid()).min(1).max(1000), // Max 1000 for safety
-	target_status: z.enum(['new','contacted','qualified','demo_appointment','proposal_negotiation','invoice_sent','won','lost']),
+	target_status: z.enum(['new','contacted','qualified','disqualified','converted']),
 	override: z.boolean().optional(),
 	override_reason: z.string().optional(),
 })
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 		const supabase = await getServerClient()
 		const leadsRepo = new LeadsRepository(supabase as any)
 		const transitionsRepo = new LeadStatusTransitionsRepository(supabase as any)
-		const notifService = new NotificationService()
+		const notifService = new NotificationService(supabase)
 
 		// Fetch all leads with scope check
 		const leads = await Promise.all(

@@ -12,14 +12,14 @@ const leadCreateSchema = z.object({
 	company: z.string().optional(),
 	location: z.string().optional(),
 	value: z.coerce.number().min(0).default(0).optional(),
-	status: z.enum(['new','contacted','qualified','disqualified','won','lost']).default('new').optional(),
+	status: z.enum(['new','contacted','qualified','disqualified','converted']).default('new').optional(),
 	source: z.string().optional(),
 	date: z.string().optional(),
 })
 
 const leadFiltersSchema = z.object({
 	search: z.string().nullable().optional().transform(v => v ?? ''),
-	status: z.enum(['all','new','contacted','qualified','disqualified','won','lost']).nullable().optional().transform(v => v ?? 'all'),
+	status: z.enum(['all','new','contacted','qualified','disqualified','converted']).nullable().optional().transform(v => v ?? 'all'),
 	dateFrom: z.string().nullable().optional().transform(v => v ?? undefined),
 	dateTo: z.string().nullable().optional().transform(v => v ?? undefined),
 	sort: z.string().nullable().optional().transform(v => v ?? 'date'),
@@ -27,21 +27,6 @@ const leadFiltersSchema = z.object({
 	page: z.coerce.number().min(0).nullable().optional().transform(v => (v == null ? 0 : v)),
 	pageSize: z.coerce.number().min(1).max(100).nullable().optional().transform(v => (v == null ? 10 : v)),
 })
-
-function toCanonicalStatus(input: string): string {
-	if (input === 'unqualified') return 'lost'
-	if (input === 'converted') return 'won'
-	return input
-}
-
-function expandStatusAny(status: string | undefined): string[] | undefined {
-	if (!status || status === 'all') return undefined
-	if (status === 'lost') return ['lost','unqualified']
-	if (status === 'won') return ['won','converted']
-    if (status === 'disqualified') return ['unqualified']
-	// pass through canonical single
-	return [status]
-}
 
 async function getServerClient() {
 	const cookieStore = await cookies()
@@ -78,10 +63,8 @@ export async function GET(request: NextRequest) {
 			pageSize: searchParams.get('pageSize'),
 		})
 		const repo = new LeadsRepository(supabase)
-		const statusAny = expandStatusAny(filters.status as any)
-        const statusForRepo = (filters.status as any) === 'disqualified' ? 'unqualified' : filters.status
-        const result = await repo.list({
-            filters: { search: filters.search || undefined, status: statusForRepo as any, dateFrom: filters.dateFrom, dateTo: filters.dateTo, statusAny },
+		const result = await repo.list({
+			filters: { search: filters.search || undefined, status: filters.status as any, dateFrom: filters.dateFrom, dateTo: filters.dateTo },
 			sort: filters.sort,
 			direction: filters.direction,
 			page: filters.page,
@@ -103,9 +86,8 @@ export async function POST(request: NextRequest) {
 		const body = await request.json()
 		const validated = leadCreateSchema.parse(body)
 		const repo = new LeadsRepository(supabase)
-		// Canonicalize status before insert (legacy -> canonical)
-		const canonicalStatus = validated.status ? toCanonicalStatus(validated.status) : 'new'
-		const lead = await repo.create({ ...validated, status: canonicalStatus }, user.id)
+		// Status already validated as canonical; insert as provided or default to 'new'
+		const lead = await repo.create({ ...validated, status: validated.status || 'new' }, user.id)
 		// Log activity (best-effort)
 		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
 			await logActivity(supabase as any, user.id, {
