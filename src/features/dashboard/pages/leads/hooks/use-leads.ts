@@ -73,7 +73,8 @@ export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps 
         params.set('direction', sort.desc ? 'desc' : 'asc');
       }
 
-      const response = await fetch(`/api/leads?${params}`);
+      const url = `/api/leads?${params}${params.has('page') ? '&' : ''}_t=${Date.now()}`;
+      const response = await fetch(url, { cache: 'no-store' });
       if (!response.ok) throw new Error(`Failed to fetch leads: ${response.statusText}`);
       const result: ApiResponse = await response.json();
 

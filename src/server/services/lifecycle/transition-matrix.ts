@@ -14,11 +14,8 @@ const ORDER: LeadStatus[] = [
 ]
 
 export function isTransitionAllowed(from: LeadStatus, to: LeadStatus): boolean {
-    if (from === to) return false
-    // Strict forward movement only, except admin override (handled at API level)
-    const iFrom = ORDER.indexOf(from)
-    const iTo = ORDER.indexOf(to)
-    return iTo >= iFrom
+    // Allow any transition between different statuses.
+    return from !== to
 }
 
 export function validateStatus(status: string): status is LeadStatus {

@@ -37,7 +37,8 @@ export function useAppointments(options: UseAppointmentsOptions = {}): UseAppoin
 				if (to) params.set('to', to)
 				if (limit) params.set('limit', String(limit))
 
-				const response = await fetch(`/api/appointments?${params.toString()}`)
+				params.set('_t', String(Date.now()))
+				const response = await fetch(`/api/appointments?${params.toString()}`, { cache: 'no-store' })
 				
 				if (!response.ok) {
 					const errorData = await response.json().catch(() => ({ error: 'Failed to fetch appointments' }))

@@ -216,6 +216,8 @@ export function NewInvoiceDialogV2({ onCreated }: NewInvoiceDialogV2Props) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body?.error || "Failed to create invoice");
         }
+        // Emit global refresh events for instant UI updates
+        try { window.dispatchEvent(new Event('invoices:changed')); } catch {}
         onCreated?.();
         setOpen(false);
         resetForm();

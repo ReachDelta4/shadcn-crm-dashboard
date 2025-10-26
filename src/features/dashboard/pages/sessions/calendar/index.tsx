@@ -66,7 +66,8 @@ export function SessionsCalendarPage() {
         const params = new URLSearchParams();
         if (dateRange.from) params.set('from', dateRange.from);
         if (dateRange.to) params.set('to', dateRange.to);
-        const res = await fetch(`/api/calendar/events?${params.toString()}`, { signal: controller.signal });
+        params.set('_t', String(Date.now()));
+        const res = await fetch(`/api/calendar/events?${params.toString()}`, { signal: controller.signal, cache: 'no-store' });
         if (!res.ok) { setCombinedEvents(apptEvents || []); return; }
         const data = await res.json().catch(() => ({}));
         const list = Array.isArray(data?.events) ? data.events : [];
@@ -79,13 +80,14 @@ export function SessionsCalendarPage() {
     return () => { controller.abort(); if (debounceRef.current) window.clearTimeout(debounceRef.current); };
   }, [dateRange.from, dateRange.to, apptEvents]);
 
-  // Live refresh on calendar:changed
+  // Live refresh on calendar:changed (no-store + cache-buster)
   React.useEffect(() => {
     const handler = () => {
       const params = new URLSearchParams();
       if (dateRange.from) params.set('from', dateRange.from);
       if (dateRange.to) params.set('to', dateRange.to);
-      fetch(`/api/calendar/events?${params.toString()}`)
+      params.set('_t', String(Date.now()));
+      fetch(`/api/calendar/events?${params.toString()}`, { cache: 'no-store' })
         .then(r => r.ok ? r.json() : Promise.reject())
         .then(data => {
           const list = Array.isArray(data?.events) ? data.events : [];
@@ -171,7 +173,10 @@ export function SessionsCalendarPage() {
             <>
               <CalendarShell 
                 view={view}
-                events={combinedEvents}
+                events={combinedEvents
+                  .filter(ev => (showAppointments ? true : ev.source_type !== 'appointment'))
+                  .filter(ev => (showFinancials ? true : (ev.source_type !== 'payment_schedule' && ev.source_type !== 'recurring_revenue')))
+                }
                 visibleRange={visibleRange}
                 onReady={(api) => { calendarApiRef.current = api; }}
                 onRangeChange={(from, to) => {

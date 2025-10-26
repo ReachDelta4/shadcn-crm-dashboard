@@ -1,4 +1,4 @@
-export type LifecycleEnforcementMode = 'off' | 'log_only' | 'enforce'
+﻿export type LifecycleEnforcementMode = 'off' | 'log_only' | 'enforce'
 
 function readBoolean(name: string, defaultValue: boolean): boolean {
 	const v = process.env[name]
@@ -20,7 +20,7 @@ function readMode(name: string, defaultValue: LifecycleEnforcementMode): Lifecyc
 }
 
 export const flags = {
-	lifecycleEnforcement: readMode('LIFECYCLE_ENFORCEMENT_MODE', 'log_only') as LifecycleEnforcementMode,
+	lifecycleEnforcement: readMode('LIFECYCLE_ENFORCEMENT_MODE', 'off') as LifecycleEnforcementMode,
 	calendarIntegrationEnabled: readBoolean('CALENDAR_INTEGRATION_ENABLED', false),
 	allowInvoiceDraft: readBoolean('ALLOW_INVOICE_DRAFT', true),
 	notificationsThrottleMs: readNumber('NOTIFICATIONS_THROTTLE_MS', 5 * 60 * 1000),

@@ -66,18 +66,7 @@ export function SessionsOverviewPage() {
             )}
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Cancelled</CardTitle></CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : statsError ? (
-              <div className="text-2xl font-bold text-red-500">-</div>
-            ) : (
-              <div className="text-2xl font-bold">{stats?.cancelled || 0}</div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Cancelled state not modeled in DB; hide until workflow exists */}
       </div>
 
       <Card>

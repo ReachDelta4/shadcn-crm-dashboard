@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { Lead, LeadStatus } from "../types/lead";
@@ -44,23 +44,36 @@ export function LeadsKanban({ leads, onStatusChanged }: { leads: Lead[]; onStatu
   const [items, setItems] = React.useState<Lead[]>(leads);
   React.useEffect(() => setItems(leads), [leads]);
 
-  const updateStatus = async (lead: Lead, next: LeadStatus) => {
+      const updateStatus = async (lead: Lead, next: LeadStatus) => {
     if (lead.status === next) return;
     const prev = items;
     // optimistic
     setItems((arr) => arr.map((l) => (l.id === lead.id ? { ...l, status: next } : l)));
+    const toastId = toast.loading('Updating lead…');
     try {
       const res = await fetch(`/api/leads/${lead.id}/transition`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target_status: next, idempotency_key: crypto.randomUUID() }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      toast.success("Lead updated");
+      if (!res.ok) {
+        if (res.status === 409) {
+          // lifecycle denied (when enforcement is enabled)
+          toast.error('Transition denied by lifecycle rules', { id: toastId });
+        } else {
+          let msg = '';
+          try { msg = await res.text(); } catch {}
+          toast.error(msg || 'Failed to update lead', { id: toastId });
+        }
+        setItems(prev);
+        return;
+      }
+      toast.success('Lead updated', { id: toastId });
+      try { window.dispatchEvent(new Event('leads:changed')); } catch {}
       onStatusChanged?.();
-    } catch (e) {
+    } catch {
       setItems(prev);
-      toast.error("Failed to update lead");
+      toast.error('Failed to update lead', { id: toastId });
     }
   };
 
@@ -118,3 +131,5 @@ export function LeadsKanban({ leads, onStatusChanged }: { leads: Lead[]; onStatu
     </div>
   );
 }
+
+

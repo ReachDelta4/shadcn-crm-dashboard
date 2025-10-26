@@ -189,20 +189,21 @@ export async function POST(request: NextRequest) {
 			const recurringSchedulesRepo = new RecurringRevenueSchedulesRepository(supabase)
 			
 			// Create invoice lines
-			const lineInserts = calculation.lines.map((line: any) => ({
-				invoice_id: invoiceId,
-				product_id: line.product_id,
-				description: validProducts.find(p => p.id === line.product_id)?.name || 'Product',
-				quantity: line.quantity,
-				unit_price_minor: line.unit_price_minor,
-				subtotal_minor: line.subtotal_minor,
-				discount_minor: line.discount_minor,
-				tax_minor: line.tax_minor,
-				total_minor: line.total_minor,
-				cogs_minor: line.cogs_minor,
-				margin_minor: line.margin_minor,
-				payment_plan_id: line.payment_plan_id,
-			}))
+            const lineInserts = calculation.lines.map((line: any) => ({
+                invoice_id: invoiceId,
+                product_id: line.product_id,
+                description: validProducts.find(p => p.id === line.product_id)?.name || 'Product',
+                quantity: line.quantity,
+                unit_price_minor: line.unit_price_minor,
+                subtotal_minor: line.subtotal_minor,
+                discount_minor: line.discount_minor,
+                tax_minor: line.tax_minor,
+                total_minor: line.total_minor,
+                cogs_minor: line.cogs_minor,
+                margin_minor: line.margin_minor,
+                payment_plan_id: line.payment_plan_id,
+                currency: (validProducts.find(p => p.id === line.product_id)?.currency) || 'INR',
+            }))
 			
 			const createdLines = await linesRepo.bulkCreate(lineInserts)
 			

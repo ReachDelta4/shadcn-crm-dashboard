@@ -1,4 +1,4 @@
-# CRM Dashboard Integration & Test Plan
+npm# CRM Dashboard Integration & Test Plan
 
 ## Scope
 - Lead lifecycle transitions across API, Kanban, calendar scheduling, and invoice creation.

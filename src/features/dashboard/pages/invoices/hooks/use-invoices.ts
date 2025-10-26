@@ -77,7 +77,8 @@ export function useInvoices({ initialInvoices = [], initialCount = 0 }: UseInvoi
         params.set('direction', sort.desc ? 'desc' : 'asc');
       }
 
-      const response = await fetch(`/api/invoices?${params}`, { signal: controller.signal });
+      const url = `/api/invoices?${params}&_t=${Date.now()}`;
+      const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
       if (!response.ok) throw new Error(`Failed to fetch invoices: ${response.statusText}`);
       const result: ApiResponse = await response.json();
 
@@ -120,6 +121,13 @@ export function useInvoices({ initialInvoices = [], initialCount = 0 }: UseInvoi
     return () => {
       if (abortRef.current) abortRef.current.abort();
     };
+  }, [fetchInvoices]);
+
+  // Instant refresh on global events
+  useEffect(() => {
+    const onChanged = () => { fetchInvoices(); };
+    window.addEventListener('invoices:changed', onChanged);
+    return () => window.removeEventListener('invoices:changed', onChanged);
   }, [fetchInvoices]);
 
   const updateFilters = (newFilters: Partial<InvoiceFilters>) => {
