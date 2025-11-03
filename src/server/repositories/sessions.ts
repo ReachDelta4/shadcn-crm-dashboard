@@ -71,7 +71,7 @@ export class SessionsRepository {
 
 		let query = this.supabase
 			.from('sessions')
-			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at', { count: 'exact' })
+			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at', { count: 'estimated' })
 			.eq('user_id', userId)
 
 		// Apply filters

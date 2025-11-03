@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useEffect, useMemo, useState } from "react";
+import { useDebouncedValue } from "@/utils/hooks/useDebouncedValue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +67,7 @@ function bpToPercent(bp?: number): string {
 export function ProductsSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [page, setPage] = useState(0);
   const [pageSize] = useState(20);
   const [totalPages, setTotalPages] = useState(0);
@@ -84,7 +86,7 @@ export function ProductsSettingsPage() {
     setLoading(true);
     try {
       const qs = new URLSearchParams({
-        search,
+        search: debouncedSearch,
         page: String(page),
         pageSize: String(pageSize),
         active: activeFilter,
@@ -104,7 +106,7 @@ export function ProductsSettingsPage() {
   useEffect(() => {
     fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, page, activeFilter]);
+  }, [debouncedSearch, page, activeFilter]);
 
   function openCreate() {
     setEditing(null);

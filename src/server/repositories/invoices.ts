@@ -44,7 +44,7 @@ export class InvoicesRepository {
 
 		let query = this.client
 			.from('invoices')
-			.select('id, invoice_number, customer_name, email, phone, amount, status, date, due_date, items, payment_method', { count: 'exact' })
+			.select('id, invoice_number, customer_name, email, phone, amount, status, date, due_date, items, payment_method', { count: 'estimated' })
 			.eq('owner_id', userId)
 
 		if (filters.search) {
@@ -118,7 +118,6 @@ export class InvoicesRepository {
 }
 
 export const invoicesRepository = new InvoicesRepository()
-
 
 
 

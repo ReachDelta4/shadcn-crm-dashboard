@@ -44,7 +44,7 @@ export class CustomersRepository {
 		
 		let query = this.client
 			.from('customers')
-			.select('*', { count: 'exact' })
+			.select('*', { count: 'estimated' })
 			.eq('owner_id', userId)
 
 		// Apply filters

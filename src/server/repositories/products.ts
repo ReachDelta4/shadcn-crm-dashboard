@@ -65,7 +65,9 @@ export interface ProductListOptions {
 
 	async list(options: ProductListOptions & { ownerId: string; role: string }): Promise<{ data: Product[]; count: number; page: number; pageSize: number; totalPages: number }>{
 		const { orgId = null, active = true, search, page = 0, pageSize = 20, role } = options
-		let query = this.client.from('products').select('*', { count: 'exact' })
+		let query = this.client
+			.from('products')
+			.select('id,org_id,owner_id,name,sku,currency,price_minor,tax_rate_bp,cogs_type,cogs_value,discount_type,discount_value,recurring_interval,recurring_interval_days,active,created_at,updated_at', { count: 'estimated' })
 
 		// Visibility: Manager/Executive see org-level products; Rep/Lead see org-level products (no create unless elevated)
 		if (orgId) {

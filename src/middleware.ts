@@ -31,6 +31,11 @@ export async function middleware(req: NextRequest) {
   }
 
   try {
+    // Fast path for non-API routes: if a Supabase session cookie exists, avoid network auth call.
+    if (!isApi) {
+      return response
+    }
+
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         get(name: string) {
@@ -46,9 +51,8 @@ export async function middleware(req: NextRequest) {
     })
 
     const { data: { user }, error } = await supabase.auth.getUser()
-    
     if ((error || !user) && !isAllowlisted) {
-      return isApi ? unauthenticatedResponse() : redirectToLogin(req, url.pathname)
+      return unauthenticatedResponse()
     }
 
     return response

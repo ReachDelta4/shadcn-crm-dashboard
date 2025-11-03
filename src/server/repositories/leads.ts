@@ -50,7 +50,7 @@ export class LeadsRepository {
 
 		let query = this.client
 			.from('leads')
-			.select('*', { count: 'exact' })
+			.select('*', { count: 'estimated' })
 			.is('deleted_at', null)
 		// owner filter applied later based on effectiveOwnerIds
 
@@ -142,7 +142,6 @@ export class LeadsRepository {
 }
 
 export const leadsRepository = new LeadsRepository()
-
 
 
 
