@@ -68,6 +68,16 @@ export async function PUT(
 				})
 			}
 		}).catch(() => {})
+				// Trigger report generation on session end (idempotent, async)
+		try {
+			const ending = (body as any)?.status === 'completed' || (body as any)?.status === 'cancelled'
+				if (ending) {
+					const origin = new URL(request.url).origin
+					// In-app preferred: trigger Summary + Chance-of-Sale separately
+					fetch(origin + '/api/sessions/' + id + '/summary', { method: 'POST' }).catch(() => {})
+					fetch(origin + '/api/sessions/' + id + '/chance-of-sale', { method: 'POST' }).catch(() => {})
+				}
+		} catch {}
 		return NextResponse.json(session)
 	} catch (error) {
 		console.error('Session update error:', error)
@@ -94,3 +104,6 @@ export async function DELETE(
 		return NextResponse.json({ error: 'Failed to delete session' }, { status: 500 })
 	}
 }
+
+
+

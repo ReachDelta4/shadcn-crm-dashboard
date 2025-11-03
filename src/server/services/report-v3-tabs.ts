@@ -3,6 +3,11 @@ import { SessionsRepository } from '@/server/repositories/sessions'
 import { TranscriptsRepository } from '@/server/repositories/transcripts'
 import { chatJsonSchema } from '@/server/services/openrouter'
 
+export interface GenerateReportV3TabsOptions {
+	/** See GenerateReportV3Options for details */
+	manageQueue?: boolean
+}
+
 // Enterprise-grade JSON schema for the 3 tabs with markdown-in-JSON structure
 const REPORT_V3_TABS_JSON_SCHEMA: any = {
 	type: 'object',
@@ -470,18 +475,25 @@ function ensureArrayMin(arr: any, minLength: number, defaultItem: any): any[] {
 }
 
 // Main generation function
-export async function generateReportV3Tabs(supabase: any, userId: string, sessionId: string): Promise<void> {
+export async function generateReportV3Tabs(
+	supabase: any,
+	userId: string,
+	sessionId: string,
+	options: GenerateReportV3TabsOptions = {}
+): Promise<void> {
 	console.log(`[report-v3-tabs] Starting generation for session ${sessionId}`)
 	
 	const repo = new ReportsV3TabsRepository(supabase)
 	const sessionsRepo = new SessionsRepository(supabase)
 	const transcriptsRepo = new TranscriptsRepository(supabase)
+	const manageQueue = options.manageQueue !== false
 	
 	try {
-		// Set status to running
-		await repo.upsertQueued(sessionId)
-		await repo.setRunning(sessionId)
-		await repo.incrementAttempts(sessionId)
+		if (manageQueue) {
+			await repo.upsertQueued(sessionId)
+			await repo.setRunning(sessionId)
+			await repo.incrementAttempts(sessionId)
+		}
 		
 		// Fetch session and transcript data
 		const session = await sessionsRepo.findById(sessionId, userId)
@@ -500,7 +512,7 @@ export async function generateReportV3Tabs(supabase: any, userId: string, sessio
 		for (let attempt = 1; attempt <= 3; attempt++) {
 			try {
 				const r = await chatJsonSchema({
-					model: 'qwen/qwen3-235b-a22b:free',
+					model: (process.env.OPENROUTER_MODEL || 'qwen/qwen3-235b-a22b:free'),
 					messages: [
 						{ role: 'system', content: systemPrompt },
 						{ role: 'user', content: userPrompt },
@@ -547,6 +559,10 @@ export async function generateReportV3Tabs(supabase: any, userId: string, sessio
 		throw error
 	}
 }
+
+
+
+
 
 
 

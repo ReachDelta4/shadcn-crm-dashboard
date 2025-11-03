@@ -72,18 +72,11 @@ export async function POST(request: NextRequest) {
 				details: { id: (session as any).id }
 			})
 		}).catch(() => {})
-		// Trigger V3 report generation (best-effort, fire-and-forget)
-		import('./[id]/report-v3/route').then(async (m) => {
-			try {
-				await fetch(`${new URL(request.url).origin}/api/sessions/${(session as any).id}/report-v3`, { method: 'POST' })
-			} catch {}
-		}).catch(() => {})
-		// Also trigger Tabs report generation (best-effort, fire-and-forget)
-		import('./[id]/report-v3-tabs/route').then(async () => {
-			try {
-				await fetch(`${new URL(request.url).origin}/api/sessions/${(session as any).id}/report-v3-tabs`, { method: 'POST' })
-			} catch {}
-		}).catch(() => {})
+		// Trigger Summary + Chance of Sale generation (best-effort, fire-and-forget)
+		try {
+			await fetch(`${new URL(request.url).origin}/api/sessions/${(session as any).id}/summary`, { method: 'POST' })
+			await fetch(`${new URL(request.url).origin}/api/sessions/${(session as any).id}/chance-of-sale`, { method: 'POST' })
+		} catch {}
 		return NextResponse.json(session, { status: 201 })
 	} catch (error) {
 		console.error('Session creation error:', error)

@@ -10,10 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "../overview/hooks/use-sessions";
 import { useSessionTranscripts } from "./hooks/use-transcripts";
 import { useReportV3 } from "@/features/dashboard/components/report/hooks/use-report-v3";
-import { useReportV3Tabs } from "@/features/dashboard/components/report/hooks/use-report-v3-tabs";
+import { useSummaryReport } from "@/features/dashboard/components/report/hooks/use-summary-report";
+import { useChanceOfSaleReport } from "@/features/dashboard/components/report/hooks/use-chance-of-sale-report";
 import dynamic from "next/dynamic";
+import { ReportTabV3 } from "@/features/dashboard/components/report/ReportTabV3";
 const MarkdownViewer = dynamic(() => import("@/features/dashboard/components/report/MarkdownViewer"), { loading: () => null });
 import { UpcomingAppointments } from "./components/UpcomingAppointments";
+import { CoSHistoryPanel } from "./components/CoSHistoryPanel";
+import { CoSStatusChip } from "./components/CoSStatusChip";
 
 interface SessionDetailPageProps {
 	sessionId: string;
@@ -25,35 +29,18 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 	const [deckMode, setDeckMode] = useState(false);
 	
 	const { session, loading: sessionLoading, error: sessionError } = useSession(sessionId);
-	const { transcripts, loading: transcriptsLoading, addTranscriptSegment } = useSessionTranscripts(sessionId, true);
-	const { data: reportV3, loading: reportLoading, error: reportError, status: reportStatus, retry: retryReport } = useReportV3(sessionId)
-	const { data: tabsData, loading: tabsLoading, error: tabsError, status: tabsStatus, retry: retryTabs } = useReportV3Tabs(sessionId)
+    const { transcripts, loading: transcriptsLoading, addTranscriptSegment } = useSessionTranscripts(sessionId, true);
+    const { data: reportV3, loading: reportLoading, error: reportError, status: reportStatus, retry: retryReport } = useReportV3(sessionId)
+    const { markdown: summaryMd, loading: summaryLoading, error: summaryError, status: summaryStatus, retry: retrySummary } = useSummaryReport(sessionId)
+    const { markdown: chanceMd, loading: chanceLoading, error: chanceError, status: chanceStatus, retry: retryChance } = useChanceOfSaleReport(sessionId)
 
-	const renderMarkdownIfAny = (payload: any, tab?: 'executive'|'chance'|'rep') => {
-		if (!payload) return null
-		const rawMd =
-			(payload as any)?.raw_markdown ||
-			(payload as any)?.report_json?.raw_markdown ||
-			(payload as any)?.markdown ||
-			(payload as any)?.report_json?.markdown ||
-			(payload as any)?.content
-		if (typeof rawMd === 'string' && rawMd.trim().length > 0) {
-			const normalizedMd = normalizeMarkdownForRender(rawMd)
-			if (tab) {
-				const sections = extractTabMarkdown(rawMd)
-				const chosen = sections[tab]
-				if (!chosen) {
-					return <div className="text-muted-foreground">No Contents</div>
-				}
-				return <MarkdownViewer content={chosen} className="prose prose-lg max-w-none dark:prose-invert" />
-			}
-			return <MarkdownViewer content={normalizedMd} className="prose prose-lg max-w-none dark:prose-invert" />
-		}
-		if (tab) {
-			return <div className="text-muted-foreground">No Contents</div>
-		}
-		return null
-	}
+    const renderMarkdownBlock = (rawMd?: string | null) => {
+        if (typeof rawMd === 'string' && rawMd.trim().length > 0) {
+            const normalizedMd = normalizeMarkdownForRender(rawMd)
+            return <MarkdownViewer content={normalizedMd} className="prose prose-lg max-w-none dark:prose-invert" />
+        }
+        return <div className="text-muted-foreground">No Contents</div>
+    }
 
 	// Markdown normalization to recover well-formed blocks from run-on strings
 	function normalizeMarkdownForRender(raw: string): string {
@@ -202,102 +189,80 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 
 				<Tabs value={active} onValueChange={setActive}>
 					<TabsList>
-						<TabsTrigger value="executive">Executive Summary</TabsTrigger>
-						<TabsTrigger value="chance">Chance of Sale</TabsTrigger>
-						<TabsTrigger value="rep-performance">Sales Rep Performance</TabsTrigger>
-						<TabsTrigger value="detailed">Detailed Report</TabsTrigger>
-						<TabsTrigger value="transcript">Transcript</TabsTrigger>
-					</TabsList>
+                    <TabsTrigger value="executive">Executive Summary</TabsTrigger>
+                    <TabsTrigger value="chance">Chance of Sale</TabsTrigger>
+                    <TabsTrigger value="detailed">Detailed Report (Legacy)</TabsTrigger>
+                    <TabsTrigger value="cos-history">CoS History</TabsTrigger>
+                    <TabsTrigger value="transcript">Transcript</TabsTrigger>
+                </TabsList>
 
-					<TabsContent value="executive">
-						{tabsError && (
-							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
-								<CardContent className="pt-4 flex items-start justify-between gap-2">
-									<div>
-										<div className="text-sm font-medium">Executive Summary generation failed</div>
-										<div className="text-xs">{tabsError}</div>
-									</div>
-									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
-								</CardContent>
-							</Card>
-						)}
-						{tabsLoading || !tabsData ? (
-							<Card>
-								<CardContent className="pt-6">
-									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Generating Executive Summary…' : 'Loading report…'}</span>
-									</div>
-								</CardContent>
-							</Card>
-						) : (
-							<Card>
-								<CardContent className="pt-6 text-sm">
-												{renderMarkdownIfAny(tabsData, 'executive')}
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
+                <TabsContent value="executive">
+                    {summaryError && (
+                        <Card className="border-red-300 bg-red-50 text-red-700 mb-4">
+                            <CardContent className="pt-4 flex items-start justify-between gap-2">
+                                <div>
+                                    <div className="text-sm font-medium">Executive Summary generation failed</div>
+                                    <div className="text-xs">{summaryError}</div>
+                                </div>
+                                <Button size="sm" variant="outline" onClick={() => retrySummary()}>Retry</Button>
+                            </CardContent>
+                        </Card>
+                    )}
+                    {summaryLoading || !summaryMd ? (
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                                    <span>{summaryStatus === 'running' || summaryStatus === 'queued' ? 'Generating Executive Summary…' : 'Loading report…'}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Card>
+                            <CardContent className="pt-6 text-sm">
+                                {renderMarkdownBlock(summaryMd)}
+                            </CardContent>
+                        </Card>
+                    )}
+                </TabsContent>
 
-					<TabsContent value="chance">
-						{tabsError && (
-							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
-								<CardContent className="pt-4 flex items-start justify-between gap-2">
-									<div>
-										<div className="text-sm font-medium">Chance of Sale generation failed</div>
-										<div className="text-xs">{tabsError}</div>
-									</div>
-									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
-								</CardContent>
-							</Card>
-						)}
-						{tabsLoading || !tabsData ? (
-							<Card>
-								<CardContent className="pt-6">
-									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Deal Probability…' : 'Loading report…'}</span>
-									</div>
-								</CardContent>
-							</Card>
-						) : (
-							<Card>
-								<CardContent className="pt-6 text-sm">
-									{renderMarkdownIfAny(tabsData, 'chance')}
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
+                <TabsContent value="chance">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm text-muted-foreground">Chance of Sale</div>
+                      <CoSStatusChip sessionId={sessionId} />
+                    </div>
+                    {chanceError && (
+                        <Card className="border-red-300 bg-red-50 text-red-700 mb-4">
+                            <CardContent className="pt-4 flex items-start justify-between gap-2">
+                                <div>
+                                    <div className="text-sm font-medium">Chance of Sale generation failed</div>
+                                    <div className="text-xs">{chanceError}</div>
+                                </div>
+                                <Button size="sm" variant="outline" onClick={() => retryChance()}>Retry</Button>
+                            </CardContent>
+                        </Card>
+                    )}
+                    {chanceLoading || !chanceMd ? (
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+                                    <span>{chanceStatus === 'running' || chanceStatus === 'queued' ? 'Analyzing Deal Probability…' : 'Loading report…'}</span>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Card>
+                            <CardContent className="pt-6 text-sm">
+                                {renderMarkdownBlock(chanceMd)}
+                            </CardContent>
+                        </Card>
+                    )}
+                </TabsContent>
 
-					<TabsContent value="rep-performance">
-						{tabsError && (
-							<Card className="border-red-300 bg-red-50 text-red-700 mb-4">
-								<CardContent className="pt-4 flex items-start justify-between gap-2">
-									<div>
-										<div className="text-sm font-medium">Sales Rep Performance generation failed</div>
-										<div className="text-xs">{tabsError}</div>
-									</div>
-									<Button size="sm" variant="outline" onClick={() => retryTabs()}>Retry</Button>
-								</CardContent>
-							</Card>
-						)}
-						{tabsLoading || !tabsData ? (
-							<Card>
-								<CardContent className="pt-6">
-									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-										<span>{tabsStatus === 'running' || tabsStatus === 'queued' ? 'Analyzing Rep Performance…' : 'Loading report…'}</span>
-									</div>
-								</CardContent>
-							</Card>
-						) : (
-							<Card>
-								<CardContent className="pt-6 text-sm">
-																	{renderMarkdownIfAny(tabsData, 'rep')}
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
+                <TabsContent value="cos-history">
+                    <CoSHistoryPanel sessionId={sessionId} />
+                </TabsContent>
 
 					<TabsContent value="detailed">
 						<div id="report-controls" className="flex items-center justify-between gap-2 mb-2 print:hidden">
@@ -326,7 +291,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 							</div>
 						) : (
 							<div className="text-sm">
-								{renderMarkdownIfAny(reportV3)}
+								<ReportTabV3 data={reportV3 || undefined} deckMode={deckMode} />
 							</div>
 						)}
 					</TabsContent>
@@ -457,5 +422,3 @@ function TranscriptViewer({ transcripts, loading, onAddSegment, sessionStatus }:
 		</div>
 	);
 }
-
-

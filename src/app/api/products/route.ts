@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getUserAndScope } from '@/server/auth/getUserAndScope'
 import { ProductsRepository } from '@/server/repositories/products'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr'
 
 const createSchema = z.object({
 	org_id: z.string().uuid().optional(),
@@ -22,7 +24,18 @@ const createSchema = z.object({
 export async function GET(request: NextRequest) {
 	try {
 		const scope = await getUserAndScope()
-		const repo = new ProductsRepository()
+		const cookieStore = await cookies()
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+			{
+				cookies: {
+					getAll() { return cookieStore.getAll() },
+					setAll() { /* server route no-op */ },
+				},
+			}
+		)
+		const repo = new ProductsRepository(supabase)
 
 		const { searchParams } = new URL(request.url)
 		const search = searchParams.get('search') || undefined
@@ -35,6 +48,9 @@ export async function GET(request: NextRequest) {
 		return NextResponse.json(result)
 	} catch (error) {
 		console.error('[products] GET error:', error)
+		if (error instanceof Error && error.message === 'Unauthorized') {
+			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+		}
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }
@@ -42,7 +58,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
 	try {
 		const scope = await getUserAndScope()
-		const repo = new ProductsRepository()
+		const cookieStore = await cookies()
+		const supabase = createServerClient(
+			process.env.NEXT_PUBLIC_SUPABASE_URL!,
+			process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+			{
+				cookies: {
+					getAll() { return cookieStore.getAll() },
+					setAll() { /* server route no-op */ },
+				},
+			}
+		)
+		const repo = new ProductsRepository(supabase)
 		const body = await request.json()
 		const parsed = createSchema.safeParse(body)
 		if (!parsed.success) return NextResponse.json({ error: 'Invalid input', details: parsed.error.errors }, { status: 400 })
@@ -51,6 +78,9 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ product: created }, { status: 201 })
 	} catch (error) {
 		console.error('[products] POST error:', error)
+		if (error instanceof Error && error.message === 'Unauthorized') {
+			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+		}
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }

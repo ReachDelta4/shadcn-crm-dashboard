@@ -52,8 +52,8 @@ export interface ProductListOptions {
 	pageSize?: number
 }
 
-export class ProductsRepository {
-	private client: SupabaseClientAny
+	export class ProductsRepository {
+		private client: SupabaseClientAny
 
 	constructor(client?: SupabaseClientAny) {
 		this.client = client || defaultClient
@@ -136,10 +136,41 @@ export class ProductsRepository {
 
 	async delete(id: string, ownerId: string, orgId: string | null, role: string): Promise<void> {
 		const isElevated = ['manager','executive','god'].includes(role)
-		let query = this.client.from('products').delete().eq('id', id)
+		// Guard: block deletion only if product is referenced by ACTIVE financials
+		const activeInvoiceStatuses = ['pending','sent','overdue'] as const
+		for (const st of activeInvoiceStatuses) {
+			const invActiveCheck = await this.client
+				.from('invoice_lines')
+				.select('id, invoices!inner(status)', { count: 'exact', head: true })
+				.eq('product_id', id)
+				.eq('invoices.status', st)
+			if (invActiveCheck.error) throw new Error(`Failed to check product usage: ${invActiveCheck.error.message}`)
+			if ((invActiveCheck.count || 0) > 0) {
+				const err: any = new Error('Product is in use by active invoices and cannot be deleted')
+				err.code = 'PRODUCT_IN_USE'
+				throw err
+			}
+		}
+
+		const schedPendingCheck = await this.client
+			.from('invoice_payment_schedules')
+			.select('id, invoice_lines!inner(product_id)', { count: 'exact', head: true })
+			.eq('invoice_lines.product_id', id)
+			.eq('status', 'pending')
+		if (schedPendingCheck.error) throw new Error(`Failed to check payment schedules: ${schedPendingCheck.error.message}`)
+		if ((schedPendingCheck.count || 0) > 0) {
+			const err: any = new Error('Product is in use by pending schedules and cannot be deleted')
+			err.code = 'PRODUCT_IN_USE'
+			throw err
+		}
+
+		// Soft-delete: set active=false, do not remove row
+		let query = this.client.from('products').update({ active: false }).eq('id', id)
 		if (isElevated && orgId) query = query.eq('org_id', orgId)
 		if (!isElevated) query = query.eq('owner_id', ownerId)
 		const { error } = await query
-		if (error) throw new Error(`Failed to delete product: ${error.message}`)
+		if (error) {
+			throw new Error(`Failed to delete product: ${error.message}`)
+		}
 	}
 }

@@ -2,6 +2,14 @@ import { ReportsV3Repository } from '@/server/repositories/reports-v3'
 import { SessionsRepository } from '@/server/repositories/sessions'
 import { TranscriptsRepository } from '@/server/repositories/transcripts'
 
+export interface GenerateReportV3Options {
+	/**
+	 * When true (default), the service manages queue state (status transitions
+	 * and attempt counters). Set to false when an external worker claimed the job.
+	 */
+	manageQueue?: boolean
+}
+
 // Enterprise-grade JSON schema with strict constraints
 const REPORT_V3_JSON_SCHEMA: any = {
 	type: 'object',
@@ -1225,7 +1233,7 @@ export async function generateReportV3(supabase: any, userId: string, sessionId:
 	const user = assembleUserPrompt(session, transcripts, extras)
 	
 	const body: any = {
-		model: 'qwen/qwen3-235b-a22b:free',
+		model: (process.env.OPENROUTER_MODEL || 'qwen/qwen3-235b-a22b:free'),
 		messages: [
 			{ role: 'system', content: system },
 			{ role: 'user', content: user }
@@ -1322,3 +1330,7 @@ export async function triggerGenerate(supabase: any, userId: string, sessionId: 
 		return { accepted: false, error: (e as Error).message }
 	}
 }
+
+
+
+

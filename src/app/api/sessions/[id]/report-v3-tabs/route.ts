@@ -67,7 +67,7 @@ export async function POST(
 			try {
 				const projectUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 				const projectRef = new URL(projectUrl).hostname.split('.')[0]
-				const fnUrl = `https://${projectRef}.supabase.co/functions/v1/report-v3-tabs`
+				const fnUrl = `https://${projectRef}.supabase.co/functions/v1/generate-reports`
 				const auth = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 				await fetch(fnUrl, {
 					method: 'POST',
@@ -75,7 +75,7 @@ export async function POST(
 						'Content-Type': 'application/json',
 						'Authorization': `Bearer ${auth}`,
 					},
-					body: JSON.stringify({ sessionId: id, userId: user.id })
+					body: JSON.stringify({ session_id: id })
 				}).catch(() => {})
 			} catch (e) {
 				console.error('Report V3 Tabs edge invocation failed (non-fatal):', e)
@@ -98,6 +98,7 @@ export async function POST(
 		return NextResponse.json({ error: 'Failed to trigger tabs generation' }, { status: 500 })
 	}
 }
+
 
 
 
