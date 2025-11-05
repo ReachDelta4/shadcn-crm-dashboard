@@ -88,7 +88,8 @@ export function useCustomers({ initialCustomers = [] }: UseCustomersProps = {}) 
         phone: customer.phone || '',
         company: customer.company || '',
         location: customer.location || '',
-        status: (customer.status || 'active') as 'active' | 'inactive' | 'pending',
+        // Preserve exact status from API; allow 'churned'
+        status: (customer.status || 'pending') as 'active' | 'inactive' | 'pending' | 'churned',
         dateJoined: customer.date_joined || customer.dateJoined || new Date().toISOString(),
         createdAt: customer.created_at || customer.createdAt || new Date().toISOString(),
         updatedAt: customer.updated_at || customer.updatedAt || new Date().toISOString(),

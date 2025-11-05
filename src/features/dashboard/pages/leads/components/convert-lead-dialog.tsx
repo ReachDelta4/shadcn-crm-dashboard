@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ProductPicker, type Product } from "@/features/dashboard/components/product-picker";
-import { PaymentPlanPicker, type PaymentPlan } from "@/features/dashboard/components/payment-plan-picker";
+import { useCallback, useEffect, useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { InvoiceForm } from "@/features/dashboard/pages/invoices/components/InvoiceForm";
 import { toast } from "sonner";
 
 interface ConvertLeadDialogProps {
@@ -20,170 +16,94 @@ interface ConvertLeadDialogProps {
 }
 
 export function ConvertLeadDialog({ leadId, leadName, leadEmail, open, onOpenChange, onCompleted }: ConvertLeadDialogProps) {
-  const [customerName, setCustomerName] = useState(leadName || "");
-  const [email, setEmail] = useState(leadEmail || "");
-  const [phone, setPhone] = useState("");
-  const [createInvoice, setCreateInvoice] = useState(true);
-  const [markPaid, setMarkPaid] = useState(true);
+  const [invoices, setInvoices] = useState<any[]>([]);
 
-  const [productId, setProductId] = useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [planId, setPlanId] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<PaymentPlan | null>(null);
-  const [quantity, setQuantity] = useState<string>("1");
-  const [unitPriceMinorOverride, setUnitPriceMinorOverride] = useState<string>("");
-
-  const [pending, startTransition] = useTransition();
+  const loadInvoices = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/leads/${leadId}/invoices`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setInvoices(data.invoices || []);
+    } catch {}
+  }, [leadId]);
 
   useEffect(() => {
     if (!open) return;
-    setCustomerName(leadName || "");
-    setEmail(leadEmail || "");
-    setPhone("");
-    setCreateInvoice(true);
-    setMarkPaid(true);
-    setProductId(null);
-    setSelectedProduct(null);
-    setPlanId(null);
-    setSelectedPlan(null);
-    setQuantity("1");
-    setUnitPriceMinorOverride("");
-  }, [open, leadName, leadEmail]);
+    loadInvoices();
+  }, [open, loadInvoices]);
 
-  const totalMinor = useMemo(() => {
-    const q = Math.max(1, Number(quantity) || 1);
-    const base = selectedProduct ? selectedProduct.price_minor : 0;
-    const override = unitPriceMinorOverride ? Math.max(0, Number(unitPriceMinorOverride) || 0) : undefined;
-    return q * (override ?? base);
-  }, [selectedProduct, quantity, unitPriceMinorOverride]);
-
-  async function handleSubmit() {
-    startTransition(async () => {
-      try {
-        // 1) Convert lead to customer (server handles linking and ownership)
-        const convertRes = await fetch(`/api/leads/${leadId}/convert`, { method: 'POST' });
-        if (!convertRes.ok) throw new Error(await convertRes.text());
-
-        // 2) Optionally create invoice
-        let createdInvoice: any = null;
-        if (createInvoice && selectedProduct) {
-          const lineItems = [{
-            product_id: selectedProduct.id,
-            quantity: Math.max(1, Number(quantity) || 1),
-            unit_price_override_minor: unitPriceMinorOverride ? Math.max(0, Number(unitPriceMinorOverride) || 0) : undefined,
-            payment_plan_id: planId || undefined,
-          }];
-          const invoicePayload: any = {
-            customer_name: customerName || leadName,
-            email: email || leadEmail,
-            status: 'draft',
-            line_items: lineItems,
-            lead_id: leadId,
-          };
-          const invRes = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(invoicePayload) });
-          if (!invRes.ok) throw new Error(await invRes.text());
-          createdInvoice = await invRes.json();
-        }
-
-        // 3) Optionally mark paid
-        if (createInvoice && markPaid && createdInvoice?.id) {
-          // Naive: mark invoice paid by updating status; schedules will be reconciled by API logic
-          await fetch(`/api/invoices/${createdInvoice.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paid' }) }).catch(() => {});
-        }
-
-        // Emit changes
-        window.dispatchEvent(new Event('leads:changed'));
-        window.dispatchEvent(new Event('customers:changed'));
-        if (createInvoice) window.dispatchEvent(new Event('invoices:changed'));
-
-        toast.success('Lead converted successfully');
-        onCompleted?.();
-        onOpenChange(false);
-      } catch (e: any) {
-        toast.error(typeof e?.message === 'string' ? e.message : 'Conversion failed');
-      }
-    });
-  }
+  useEffect(() => {
+    if (!open) return;
+    const refresh = () => loadInvoices();
+    const interval = setInterval(refresh, 8000);
+    window.addEventListener('invoices:changed', refresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('invoices:changed', refresh);
+    }
+  }, [open, loadInvoices]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Convert Lead</DialogTitle>
-          <DialogDescription>Confirm customer details, optionally create an invoice, and mark paid.</DialogDescription>
+          <DialogDescription>
+            Complete the invoice below. Invoice statuses reflect live data; when an invoice is paid, the customer becomes active automatically.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
-          <Card>
-            <CardHeader><CardTitle>Customer Details</CardTitle></CardHeader>
-            <CardContent className="grid gap-3">
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm">Full Name</label>
-                  <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-sm">Email</label>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-sm">Phone</label>
-                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <InvoiceForm
+            defaultValues={{
+              customer_name: leadName || "",
+              email: leadEmail || "",
+              lead_id: leadId,
+              status: 'draft',
+              line_items: [{ product_id: "", quantity: 1 }],
+            }}
+            showLeadSelector={false}
+            allowLeadCreation={false}
+            submitLabel="Convert Lead"
+            onCancel={() => onOpenChange(false)}
+            beforeSubmit={async () => {
+              const res = await fetch(`/api/leads/${leadId}/convert`, { method: 'POST' });
+              if (!res.ok) throw new Error(await res.text());
+            }}
+            onCreated={() => {
+              toast.success('Lead converted successfully');
+              loadInvoices();
+              onCompleted?.();
+              window.dispatchEvent(new Event('leads:changed'));
+              window.dispatchEvent(new Event('customers:changed'));
+              onOpenChange(false);
+            }}
+          />
 
           <Card>
-            <CardHeader><CardTitle>Invoice (optional)</CardTitle></CardHeader>
-            <CardContent className="grid gap-3">
-              <div className="flex items-center gap-2">
-                <input id="createInvoice" type="checkbox" checked={createInvoice} onChange={(e) => setCreateInvoice(e.target.checked)} />
-                <label htmlFor="createInvoice" className="text-sm">Create invoice</label>
-              </div>
-              {createInvoice && (
-                <div className="grid gap-3">
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-sm">Product</label>
-                      <ProductPicker value={productId || undefined} onValueChange={(pid, p) => { setProductId(pid); setSelectedProduct(p); }} />
+            <CardHeader><CardTitle>Invoices for this Lead</CardTitle></CardHeader>
+            <CardContent>
+              {invoices.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No invoices yet</div>
+              ) : (
+                <div className="space-y-2">
+                  {invoices.map((inv: any) => (
+                    <div key={inv.id} className="flex items-center justify-between border rounded p-2">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{inv.invoice_number || inv.id}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(inv.date).toLocaleString()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-secondary px-2 py-0.5 rounded">{inv.status}</span>
+                        <span className="text-sm font-medium">{(inv.amount || 0).toLocaleString()}</span>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-sm">Payment Plan</label>
-                      <PaymentPlanPicker productId={productId} value={planId || undefined} onValueChange={(plid, pl) => { setPlanId(plid); setSelectedPlan(pl); }} />
-                    </div>
-                  </div>
-                  <div className="grid sm:grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-sm">Quantity</label>
-                      <Input type="number" min={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-                    </div>
-                    <div>
-                      <label className="text-sm">Unit Price (minor, override)</label>
-                      <Input type="number" min={0} value={unitPriceMinorOverride} onChange={(e) => setUnitPriceMinorOverride(e.target.value)} />
-                    </div>
-                    <div className="flex items-end justify-end">
-                      <div className="text-sm">Total: {(totalMinor/100).toLocaleString()}</div>
-                    </div>
-                  </div>
-                  <Separator />
-                  <div className="flex items-center gap-2">
-                    <input id="markPaid" type="checkbox" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} />
-                    <label htmlFor="markPaid" className="text-sm">Mark as paid after creation</label>
-                  </div>
+                  ))}
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={pending}>{pending ? 'Converting…' : 'Convert'}</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-
-
-

@@ -126,7 +126,7 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
           const invRes = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(invoicePayload) });
           if (invRes.ok && markPaid) {
             const inv = await invRes.json().catch(() => null);
-            if (inv?.id) await fetch(`/api/invoices/${inv.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'paid' }) }).catch(() => {})
+            if (inv?.id) await fetch(`/api/invoices/${inv.id}/pay`, { method: 'POST' }).catch(() => {})
           }
         }
 
@@ -251,7 +251,6 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
     </Dialog>
   );
 }
-
 
 
 

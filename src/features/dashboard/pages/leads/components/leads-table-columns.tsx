@@ -41,6 +41,9 @@ export const useLeadColumns = () => {
             <span className="text-sm text-muted-foreground">
               {row.original.email}
             </span>
+            {row.original.phone ? (
+              <span className="text-xs text-muted-foreground">{row.original.phone}</span>
+            ) : null}
           </div>
         ),
       },

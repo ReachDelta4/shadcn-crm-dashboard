@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
     const supabase = await getServerClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const userId = user!.id as string
 
     const { searchParams } = new URL(request.url)
     const parsed = querySchema.safeParse({
@@ -54,16 +55,22 @@ export async function GET(request: NextRequest) {
     const to = parsed.data.to || null
     const groupBy = parsed.data.groupBy
 
-    // Source series via RPC (if available) for visualization
-    const [one, sched, recur] = await Promise.all([
-      (supabase as any).rpc('get_onetime_invoice_revenue', { user_id: user.id, date_from: from, date_to: to, group_by: groupBy }).catch(() => ({ data: [] })),
-      (supabase as any).rpc('get_payment_schedule_revenue', { user_id: user.id, date_from: from, date_to: to, group_by: groupBy }).catch(() => ({ data: [] })),
-      (supabase as any).rpc('get_recurring_revenue', { user_id: user.id, date_from: from, date_to: to, group_by: groupBy }).catch(() => ({ data: [] })),
-    ])
+    // Helper to call RPC with safe fallback (rpc() is awaitable but may not expose .catch())
+    async function rpcSeries(name: string) {
+      try {
+        const res = await (supabase as any).rpc(name, { user_id: userId, date_from: from, date_to: to, group_by: groupBy })
+        return (res?.data || []) as Array<{ period: string; amount_minor: number }>
+      } catch {
+        return [] as Array<{ period: string; amount_minor: number }>
+      }
+    }
 
-    const oneSeries = (one.data || []) as Array<{ period: string; amount_minor: number }>
-    const schedSeries = (sched.data || []) as Array<{ period: string; amount_minor: number }>
-    const recurSeries = (recur.data || []) as Array<{ period: string; amount_minor: number }>
+    // Source series via RPC (if available) for visualization
+    const [oneSeries, schedSeries, recurSeries] = await Promise.all([
+      rpcSeries('get_onetime_invoice_revenue'),
+      rpcSeries('get_payment_schedule_revenue'),
+      rpcSeries('get_recurring_revenue'),
+    ])
 
     // Build merged periods and totals in UI-expected shape
     const allPeriods = new Set<string>([
@@ -92,7 +99,7 @@ export async function GET(request: NextRequest) {
     const paidSchedQuery = (supabase as any)
       .from('invoice_payment_schedules')
       .select('amount_minor, invoice_line_id, invoices!inner(owner_id)')
-      .eq('invoices.owner_id', user.id)
+      .eq('invoices.owner_id', userId)
       .eq('status', 'paid')
     if (from) paidSchedQuery.gte('paid_at', from)
     if (to) paidSchedQuery.lte('paid_at', to)
@@ -103,7 +110,7 @@ export async function GET(request: NextRequest) {
     const billedRecQuery = (supabase as any)
       .from('recurring_revenue_schedules')
       .select('amount_minor, invoice_line_id, invoices!invoice_lines_invoice_id_fkey!inner(owner_id), invoice_lines!inner(id)')
-      .eq('invoices.owner_id', user.id)
+      .eq('invoices.owner_id', userId)
       .eq('status', 'billed')
     if (from) billedRecQuery.gte('billed_at', from)
     if (to) billedRecQuery.lte('billed_at', to)
@@ -114,7 +121,7 @@ export async function GET(request: NextRequest) {
     const pendingSchedQuery = (supabase as any)
       .from('invoice_payment_schedules')
       .select('amount_minor, invoices!inner(owner_id)')
-      .eq('invoices.owner_id', user.id)
+      .eq('invoices.owner_id', userId)
       .in('status', ['pending','overdue'])
     if (from) pendingSchedQuery.gte('due_at_utc', from)
     if (to) pendingSchedQuery.lte('due_at_utc', to)
@@ -135,7 +142,7 @@ export async function GET(request: NextRequest) {
     const draftInvRes = await (supabase as any)
       .from('invoices')
       .select('amount')
-      .eq('owner_id', user.id)
+      .eq('owner_id', userId)
       .eq('status', 'draft')
     const draftInvoices = (draftInvRes.data || []) as Array<{ amount: number }>
 
@@ -143,20 +150,56 @@ export async function GET(request: NextRequest) {
     const leadsRes = await (supabase as any)
       .from('leads')
       .select('value, status')
-      .eq('owner_id', user.id)
+      .eq('owner_id', userId)
       .is('deleted_at', null)
     const leads = (leadsRes.data || []) as Array<{ value: number; status: string }>
     const openLeads = leads.filter(l => l.status !== 'converted' && l.status !== 'disqualified')
 
-    // Realized revenue total
+    // Onetime invoices (no schedules and no recurring lines) — include in KPIs
+    async function sumOnetimeInvoices(statuses: string[]) {
+      let q = (supabase as any)
+        .from('invoices')
+        .select('id, amount')
+        .eq('owner_id', userId)
+        .in('status', statuses)
+      if (from) q = q.gte('date', from)
+      if (to) q = q.lte('date', to)
+      // Filter: exclude if any schedules exist
+      const { data: invs, error: invErr } = await q
+      if (invErr) return { totalMinor: 0, invoiceIds: [] as string[] }
+      const ids = (invs || []).map((i: any) => i.id)
+      if (ids.length === 0) return { totalMinor: 0, invoiceIds: [] as string[] }
+      // Exclude invoices that have schedules
+      const { data: schedAny } = await (supabase as any)
+        .from('invoice_payment_schedules')
+        .select('invoice_id')
+        .in('invoice_id', ids)
+      const withSched = new Set((schedAny || []).map((r: any) => r.invoice_id))
+      const candidate = (invs || []).filter((i: any) => !withSched.has(i.id))
+      if (candidate.length === 0) return { totalMinor: 0, invoiceIds: [] as string[] }
+      // Exclude invoices whose any line is recurring
+      const { data: recurLines } = await (supabase as any)
+        .from('invoice_lines')
+        .select('invoice_id, product_id, products:product_id(recurring_interval)')
+        .in('invoice_id', candidate.map((c: any) => c.id))
+      const recurringInvoiceIds = new Set((recurLines || []).filter((rl: any) => (rl.products?.recurring_interval ?? null) !== null).map((rl: any) => rl.invoice_id))
+      const final = candidate.filter((c: any) => !recurringInvoiceIds.has(c.id))
+      const totalMinor = final.reduce((s: number, r: any) => s + Math.round((r.amount || 0) * 100), 0)
+      return { totalMinor, invoiceIds: final.map((f: any) => f.id as string) }
+    }
+
+    const { totalMinor: onetimeRealizedMinor, invoiceIds: onetimeRealizedIds } = await sumOnetimeInvoices(['paid'])
+    const { totalMinor: onetimePendingMinor, invoiceIds: onetimePendingIds } = await sumOnetimeInvoices(['pending','overdue','sent'])
+
+    // Realized revenue total (schedules + recurring + onetime paid)
     const realizedFromSchedules = paidSchedules.reduce((s, r) => s + (r.amount_minor || 0), 0)
     const realizedFromRecurring = billedRecurring.reduce((s, r) => s + (r.amount_minor || 0), 0)
-    const realized_total_minor = realizedFromSchedules + realizedFromRecurring
+    const realized_total_minor = realizedFromSchedules + realizedFromRecurring + onetimeRealizedMinor
 
-    // Pending revenue total (unpaid + unbilled in range)
+    // Pending revenue total (unpaid + unbilled in range + onetime sent/pending/overdue)
     const pendingFromSchedules = pendingSchedules.reduce((s, r) => s + (r.amount_minor || 0), 0)
     const pendingFromRecurring = scheduledRecurring.reduce((s, r) => s + (r.amount_minor || 0), 0)
-    const pending_total_minor = pendingFromSchedules + pendingFromRecurring
+    const pending_total_minor = pendingFromSchedules + pendingFromRecurring + onetimePendingMinor
 
     const draft_total_minor = draftInvoices.reduce((s, r) => s + Math.round((r.amount || 0) * 100), 0)
     const lead_potential_minor = openLeads.reduce((s, r) => s + Math.round((r.value || 0) * 100), 0)
@@ -185,9 +228,18 @@ export async function GET(request: NextRequest) {
       return Math.round((l.cogs_minor || 0) * ratio)
     }
 
+    // Add COGS for onetime realized invoices (full line cogs)
+    let onetimeCogsMinor = 0
+    if (onetimeRealizedIds.length > 0) {
+      const { data: otLines } = await (supabase as any)
+        .from('invoice_lines')
+        .select('id, invoice_id, cogs_minor')
+        .in('invoice_id', onetimeRealizedIds)
+      onetimeCogsMinor = (otLines || []).reduce((s: number, l: any) => s + (l.cogs_minor || 0), 0)
+    }
     const realized_cogs_from_sched = paidSchedules.reduce((s, r) => s + proration(r.invoice_line_id, r.amount_minor || 0), 0)
     const realized_cogs_from_recur = billedRecurring.reduce((s, r) => s + proration(r.invoice_line_id, r.amount_minor || 0), 0)
-    const realized_cogs_minor = realized_cogs_from_sched + realized_cogs_from_recur
+    const realized_cogs_minor = realized_cogs_from_sched + realized_cogs_from_recur + onetimeCogsMinor
 
     const gross_profit_minor = Math.max(0, realized_total_minor - realized_cogs_minor)
     const gross_margin_percent = realized_total_minor > 0 ? (gross_profit_minor * 100) / realized_total_minor : 0

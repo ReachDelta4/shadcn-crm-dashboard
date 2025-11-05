@@ -40,17 +40,21 @@ export async function PATCH(_req: NextRequest, { params }: { params: Promise<{ i
 
 		// mark paid atomically and cascade invoice if last schedule
 		const when = new Date().toISOString()
-		const { data: cascadeRes, error: cascadeErr } = await (supabase as any)
-			.rpc('mark_schedule_paid_cascade', { p_schedule_id: id, p_paid_at: when })
-			.single()
-		if (cascadeErr) {
-			return NextResponse.json({ error: cascadeErr.message || 'Failed to mark paid' }, { status: 500 })
-		}
-		return NextResponse.json({ success: true, paid_at: when, invoice_paid: !!cascadeRes?.invoice_paid })
+    const { data: cascadeRes, error: cascadeErr } = await (supabase as any)
+      .rpc('mark_schedule_paid_cascade', { p_schedule_id: id, p_paid_at: when })
+      .single()
+    if (cascadeErr) {
+      return NextResponse.json({ error: cascadeErr.message || 'Failed to mark paid' }, { status: 500 })
+    }
+
+    // If invoice is fully paid now, ensure conversion to paying customer
+    if (cascadeRes?.invoice_paid) {
+      await (supabase as any).rpc('ensure_paying_customer_for_invoice', { p_invoice_id: (cascadeRes as any).invoice_id }).catch(() => {})
+    }
+
+    return NextResponse.json({ success: true, paid_at: when, invoice_paid: !!cascadeRes?.invoice_paid })
 	} catch (e: any) {
 		return NextResponse.json({ error: e?.message || 'Internal server error' }, { status: 500 })
 	}
 }
-
-
 

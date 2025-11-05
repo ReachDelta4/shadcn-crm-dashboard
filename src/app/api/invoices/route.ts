@@ -201,6 +201,7 @@ export async function POST(request: NextRequest) {
                 total_minor: line.total_minor,
                 cogs_minor: line.cogs_minor,
                 margin_minor: line.margin_minor,
+                tax_rate_bp: (validProducts.find(p => p.id === line.product_id)?.tax_rate_bp) ?? 0,
                 payment_plan_id: line.payment_plan_id,
                 currency: (validProducts.find(p => p.id === line.product_id)?.currency) || 'INR',
             }))

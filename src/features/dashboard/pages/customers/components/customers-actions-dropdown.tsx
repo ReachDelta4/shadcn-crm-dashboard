@@ -23,6 +23,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { EditCustomerDialog } from "./edit-customer-dialog";
+import { ViewCustomerDialog } from "./view-customer-dialog";
+import { useRouter } from "next/navigation";
 
 interface CustomerActionsDropdownProps {
   customer: Customer;
@@ -32,16 +35,13 @@ export function CustomerActionsDropdown({
   customer,
 }: CustomerActionsDropdownProps) {
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+  const [openEdit, setOpenEdit] = useState(false);
+  const [openView, setOpenView] = useState(false);
+  const router = useRouter();
 
-  const handleView = () => {
-    console.log("View customer:", customer.id);
-    // TODO: Navigate to customer detail page
-  };
+  const handleView = () => setOpenView(true);
 
-  const handleEdit = () => {
-    console.log("Edit customer:", customer.id);
-    // TODO: Navigate to customer edit page or open edit modal
-  };
+  const handleEdit = () => setOpenEdit(true);
 
   const handleDelete = () => {
     console.log("Delete customer:", customer.id);
@@ -59,6 +59,7 @@ export function CustomerActionsDropdown({
       window.dispatchEvent(new Event('customers:changed'));
       window.dispatchEvent(new Event('invoices:changed'));
       toast.success('Customer activated');
+      router.refresh();
     } catch {
       toast.error('Failed to activate customer');
     } finally {
@@ -91,7 +92,7 @@ export function CustomerActionsDropdown({
             <span>Edit Customer</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          {customer.status === "inactive" && (
+          {(customer.status === "inactive" || customer.status === 'pending') && (
             <DropdownMenuItem onClick={handleActivateCustomer} disabled={pending}>
               <UserCheck className="mr-2 h-4 w-4" />
               <span>Activate Customer</span>
@@ -113,6 +114,9 @@ export function CustomerActionsDropdown({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <EditCustomerDialog customer={customer} open={openEdit} onOpenChange={setOpenEdit} onSaved={() => router.refresh()} />
+      <ViewCustomerDialog customer={customer} open={openView} onOpenChange={setOpenView} />
 
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
         <AlertDialogContent>

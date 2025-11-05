@@ -49,15 +49,15 @@ function mapDbSession(row: any): any {
 }
 
 export class SessionsRepository {
-	constructor(private supabase: SupabaseClientAny = defaultClient) {}
+    constructor(private supabase: SupabaseClientAny = defaultClient) {}
 
-	async findAll(options: SessionListOptions): Promise<{
-		sessions: Session[]
-		total: number
-		page: number
-		pageSize: number
-		totalPages: number
-	}> {
+    async findAll(options: SessionListOptions): Promise<{
+        sessions: Session[]
+        total: number
+        page: number
+        pageSize: number
+        totalPages: number
+    }> {
 		const {
 			filters = {},
 			sort = 'started_at',
@@ -107,18 +107,61 @@ export class SessionsRepository {
 		const to = from + pageSize - 1
 		query = query.range(from, to)
 
-		const { data: rows, error, count } = await query
+        const { data: rows, error, count } = await query
 
-		if (error) {
-			throw new Error(`Failed to fetch sessions: ${error.message}`)
-		}
+        if (error) {
+            throw new Error(`Failed to fetch sessions: ${error.message}`)
+        }
 
-		const sessions = (rows || []).map(mapDbSession)
-		const total = count || 0
-		const totalPages = Math.ceil(total / pageSize)
+        const baseRows = rows || []
 
-		return { sessions, total, page, pageSize, totalPages }
-	}
+        // Enrich with contact phone via subject lookup (prefer customer over lead)
+        const phoneBySubject: Record<string, string> = {}
+        const subjectIds = Array.from(new Set(
+            baseRows.map((r: any) => r.subject_id).filter((v: any) => !!v)
+        )) as string[]
+
+        if (subjectIds.length > 0) {
+            // Fetch customer phones in bulk
+            const { data: custRows, error: custErr } = await this.supabase
+                .from('customers')
+                .select('subject_id, phone')
+                .in('subject_id', subjectIds)
+                .eq('owner_id', userId)
+            if (!custErr && Array.isArray(custRows)) {
+                for (const r of custRows) {
+                    if (r.subject_id && r.phone) phoneBySubject[r.subject_id] = r.phone
+                }
+            }
+
+            // Fetch lead phones where customer missing
+            const missing = subjectIds.filter(id => !phoneBySubject[id])
+            if (missing.length > 0) {
+                const { data: leadRows } = await this.supabase
+                    .from('leads')
+                    .select('subject_id, phone')
+                    .in('subject_id', missing)
+                    .eq('owner_id', userId)
+                if (Array.isArray(leadRows)) {
+                    for (const r of leadRows) {
+                        if (r.subject_id && r.phone && !phoneBySubject[r.subject_id]) {
+                            phoneBySubject[r.subject_id] = r.phone
+                        }
+                    }
+                }
+            }
+        }
+
+        const sessions = baseRows.map((r: any) => {
+            const s = mapDbSession(r)
+            const phone = r.subject_id ? phoneBySubject[r.subject_id] : undefined
+            return phone ? { ...s, phone } : s
+        })
+        const total = count || 0
+        const totalPages = Math.ceil(total / pageSize)
+
+        return { sessions, total, page, pageSize, totalPages }
+    }
 
 	async findById(id: string, userId: string): Promise<Session | null> {
 		const { data: row, error } = await this.supabase

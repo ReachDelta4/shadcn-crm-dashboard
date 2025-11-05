@@ -9,7 +9,7 @@ const customerUpdateSchema = z.object({
 	email: z.string().email().optional(),
 	company: z.string().optional(),
 	location: z.string().optional(),
-	status: z.enum(['active', 'inactive', 'pending']).optional(),
+	status: z.enum(['active', 'inactive', 'pending', 'churned']).optional(),
 })
 
 async function getServerClient() {

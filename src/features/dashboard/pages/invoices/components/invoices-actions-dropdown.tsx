@@ -43,11 +43,7 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
   const handleMarkAsPaid = async () => {
     try {
       setPending('paid');
-      const res = await fetch(`/api/invoices/${invoice.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "paid" }),
-      });
+      const res = await fetch(`/api/invoices/${invoice.id}/pay`, { method: 'POST' });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Invoice marked as paid");
       window.dispatchEvent(new Event('invoices:changed'));
