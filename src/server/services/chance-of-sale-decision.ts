@@ -137,7 +137,7 @@ export async function decideChanceOfSaleUpdate(
 		parallelToolCalls: false,
 		maxToolIterations: 1,
 		returnOnToolCall: true,
-		providerSort: 'quality',
+		providerSort: 'latency',
 		temperature: 0,
 	})
 
@@ -163,4 +163,3 @@ export async function decideChanceOfSaleUpdate(
 		reason: 'Defaulting to update when model returned no explicit decision.',
 	}
 }
-

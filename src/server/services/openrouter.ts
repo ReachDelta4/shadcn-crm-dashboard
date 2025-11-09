@@ -29,12 +29,26 @@ export interface ChatJsonSchemaOptions {
 	schema: JsonSchemaSpec
 	temperature?: number
 	maxTokens?: number
-	providerSort?: 'price' | 'quality' | 'speed'
+	providerSort?: 'price' | 'throughput' | 'latency'
 	timeoutMs?: number
 	debug?: boolean
 }
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
+
+// Normalize provider sort to current OpenRouter API values.
+// Backwards compatible mapping for legacy values used in older code.
+export function normalizeProviderSort(sort: string | undefined): 'price' | 'throughput' | 'latency' {
+	const envDefault = (process.env.OPENROUTER_PROVIDER_SORT || '').toLowerCase()
+	const candidate = (sort || envDefault || 'price').toLowerCase()
+	if (candidate === 'price') return 'price'
+	if (candidate === 'throughput') return 'throughput'
+	if (candidate === 'latency') return 'latency'
+	// legacy aliases
+	if (candidate === 'speed') return 'latency'
+	if (candidate === 'quality') return 'latency'
+	return 'price'
+}
 
 function buildHeaders(): Record<string, string> {
 	const headers: Record<string, string> = {
@@ -71,7 +85,7 @@ export async function chatJsonSchema(opts: ChatJsonSchemaOptions): Promise<{ con
 				schema: opts.schema.schema,
 			},
 		},
-		provider: { sort: opts.providerSort || 'price' },
+		provider: { sort: normalizeProviderSort(opts.providerSort) },
 		temperature: typeof opts.temperature === 'number' ? opts.temperature : 0.1,
 		max_tokens: typeof opts.maxTokens === 'number' ? opts.maxTokens : 16000,
 	}
@@ -129,7 +143,7 @@ export interface ChatTextOptions {
   messages: ChatMessage[]
   temperature?: number
   maxTokens?: number
-  providerSort?: 'price' | 'quality' | 'speed'
+  providerSort?: 'price' | 'throughput' | 'latency'
   timeoutMs?: number
   debug?: boolean
 }
@@ -138,7 +152,7 @@ export async function chatText(opts: ChatTextOptions): Promise<{ content: string
   const body: any = {
     model: opts.model,
     messages: opts.messages,
-    provider: { sort: opts.providerSort || 'price' },
+    provider: { sort: normalizeProviderSort(opts.providerSort) },
     temperature: typeof opts.temperature === 'number' ? opts.temperature : 0.3,
     max_tokens: typeof opts.maxTokens === 'number' ? opts.maxTokens : 4000,
   }
@@ -223,7 +237,7 @@ export interface ChatWithToolsOptions {
 	toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } }
 	parallelToolCalls?: boolean
 	maxToolIterations?: number
-	providerSort?: 'price' | 'quality' | 'speed'
+	providerSort?: 'price' | 'throughput' | 'latency'
 	temperature?: number
 	maxTokens?: number
 	timeoutMs?: number
@@ -256,7 +270,7 @@ export async function chatWithTools(opts: ChatWithToolsOptions): Promise<ChatWit
 			model: opts.model,
 			messages: conversation,
 			tools: opts.tools,
-			provider: { sort: opts.providerSort || 'price' },
+			provider: { sort: normalizeProviderSort(opts.providerSort) },
 			tool_choice: opts.toolChoice ?? 'auto',
 			parallel_tool_calls: typeof opts.parallelToolCalls === 'boolean' ? opts.parallelToolCalls : undefined,
 			temperature: typeof opts.temperature === 'number' ? opts.temperature : 0,
@@ -283,6 +297,7 @@ export async function chatWithTools(opts: ChatWithToolsOptions): Promise<ChatWit
 					input_tokens_approx: approxTokens,
 					input_chars: charCount,
 					request_size_bytes: requestSizeBytes,
+					provider_sort: body.provider?.sort,
 					tool_choice: body.tool_choice,
 					parallel_tool_calls: body.parallel_tool_calls,
 				})

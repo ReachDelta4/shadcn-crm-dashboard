@@ -283,7 +283,7 @@ export async function generateCosPatchFromModel(
         parallelToolCalls: false,
         maxToolIterations: 1,
         returnOnToolCall: true,
-        providerSort: 'quality',
+        providerSort: 'latency',
         temperature: 0,
         timeoutMs: 120_000,
       })
