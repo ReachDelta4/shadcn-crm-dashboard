@@ -1,3 +1,61 @@
 {
-  "pages": {}
+  "pages": {
+    "/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout.js"
+    ],
+    "/dashboard/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/layout.js"
+    ],
+    "/dashboard/sessions/all/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/sessions/all/page.js"
+    ],
+    "/api/sessions/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/sessions/route.js"
+    ],
+    "/dashboard/sessions/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/dashboard/sessions/[id]/page.css",
+      "static/chunks/app/dashboard/sessions/[id]/page.js"
+    ],
+    "/api/transcripts/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/transcripts/route.js"
+    ],
+    "/api/sessions/[id]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/sessions/[id]/route.js"
+    ],
+    "/api/sessions/[id]/report-v3/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/sessions/[id]/report-v3/route.js"
+    ],
+    "/api/sessions/[id]/chance-of-sale/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/sessions/[id]/chance-of-sale/route.js"
+    ],
+    "/api/sessions/[id]/summary/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/sessions/[id]/summary/route.js"
+    ],
+    "/api/sessions/[id]/chance-of-sale/versions/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/sessions/[id]/chance-of-sale/versions/route.js"
+    ]
+  }
 }

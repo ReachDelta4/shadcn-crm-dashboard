@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownViewer from '@/features/dashboard/components/report/MarkdownViewer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -168,50 +168,7 @@ export function NarrativeDisplaySection({
       <CardContent className="space-y-4">
         {/* Main narrative content */}
         <div className="prose prose-sm dark:prose-invert max-w-none">
-          <ReactMarkdown
-            components={{
-              h2: ({ children, ...props }) => (
-                <h2 className="text-xl font-semibold mb-3 mt-4 text-foreground" {...props}>
-                  {children}
-                </h2>
-              ),
-              h3: ({ children, ...props }) => (
-                <h3 className="text-lg font-medium mb-2 mt-3 text-foreground" {...props}>
-                  {children}
-                </h3>
-              ),
-              p: ({ children, ...props }) => (
-                <p className="mb-3 text-muted-foreground leading-relaxed" {...props}>
-                  {children}
-                </p>
-              ),
-              strong: ({ children, ...props }) => (
-                <strong className="font-semibold text-foreground" {...props}>
-                  {children}
-                </strong>
-              ),
-              ul: ({ children, ...props }) => (
-                <ul className="list-disc list-inside space-y-1 mb-3" {...props}>
-                  {children}
-                </ul>
-              ),
-              li: ({ children, ...props }) => (
-                <li className="text-muted-foreground" {...props}>
-                  {children}
-                </li>
-              ),
-              blockquote: ({ children, ...props }) => (
-                <blockquote 
-                  className="border-l-4 border-primary pl-4 italic my-4 text-muted-foreground bg-muted/50 py-2 rounded-r" 
-                  {...props}
-                >
-                  {children}
-                </blockquote>
-              )
-            }}
-          >
-            {narrative.content}
-          </ReactMarkdown>
+          <MarkdownViewer content={narrative.content} />
         </div>
 
         {/* Metadata section */}

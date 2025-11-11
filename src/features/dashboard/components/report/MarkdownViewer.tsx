@@ -6,6 +6,19 @@ import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
 import styles from './MarkdownViewer.module.css'
 
+function isSafeHref(href?: string): boolean {
+  if (!href || typeof href !== 'string') return false
+  try {
+    // Allow relative URLs
+    if (href.startsWith('#') || href.startsWith('/') || href.startsWith('./') || href.startsWith('../')) return true
+    const u = new URL(href, 'http://local.test')
+    const p = (u.protocol || '').toLowerCase()
+    return p === 'http:' || p === 'https:' || p === 'mailto:' || p === 'tel:'
+  } catch {
+    return false
+  }
+}
+
 interface MarkdownViewerProps {
 	content: string
 	className?: string
@@ -19,6 +32,18 @@ export function MarkdownViewer({ content, className }: MarkdownViewerProps) {
 			<ReactMarkdown 
 				remarkPlugins={[remarkGfm, remarkBreaks as any]}
 				components={{
+            a: ({ href, children }) => {
+              const safe = isSafeHref(href)
+              if (!safe) {
+                return <span className="text-muted-foreground cursor-not-allowed" aria-disabled>{children}</span>
+              }
+              // Always noopener/noreferrer to avoid tab-napping
+              return (
+                <a href={href} target="_blank" rel="noopener noreferrer" className="underline text-blue-600 dark:text-blue-400 hover:opacity-90">
+                  {children}
+                </a>
+              )
+            },
 					// Enhanced heading hierarchy like note-taking apps
 					h1: ({ children }) => (
 						<h1 className="text-6xl font-extrabold text-gray-900 dark:text-gray-100 mb-6 mt-8 first:mt-0 border-b border-gray-200 dark:border-gray-800 pb-3">

@@ -1,1 +1,5 @@
-{}
+{
+  "/api/sessions/[id]/chance-of-sale/versions/route": "app/api/sessions/[id]/chance-of-sale/versions/route.js",
+  "/dashboard/sessions/[id]/page": "app/dashboard/sessions/[id]/page.js",
+  "/dashboard/sessions/all/page": "app/dashboard/sessions/all/page.js"
+}

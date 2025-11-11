@@ -31,7 +31,12 @@ export async function GET(
     const repo = new ReportsV3TabsRepository(supabase as any)
     const row = await repo.findBySessionId(id, user.id)
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    const markdown: string | null = (row.report as any)?.markdown || null
+    const rep: any = (row as any).report || {}
+    const markdown: string | null = (typeof rep.markdown === 'string' && rep.markdown.trim().length > 0)
+      ? rep.markdown
+      : (typeof rep.raw_markdown === 'string' && rep.raw_markdown.trim().length > 0)
+        ? rep.raw_markdown
+        : null
     // Extract only Chance of Sale portion (marker based)
     let chance: string | null = null
     if (markdown) {

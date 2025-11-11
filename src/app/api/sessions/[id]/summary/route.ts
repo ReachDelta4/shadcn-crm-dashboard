@@ -30,7 +30,12 @@ export async function GET(
     const repo = new ReportsV3TabsRepository(supabase as any)
     const row = await repo.findBySessionId(id, user.id)
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    const markdown = (row.report as any)?.markdown || null
+    const rep: any = (row as any).report || {}
+    const markdown = (typeof rep.markdown === 'string' && rep.markdown.trim().length > 0)
+      ? rep.markdown
+      : (typeof rep.raw_markdown === 'string' && rep.raw_markdown.trim().length > 0)
+        ? rep.raw_markdown
+        : null
     if (!markdown && (row.status === 'queued' || row.status === 'running')) {
       // Best-effort: ensure generation is triggered when stale
       Promise.resolve().then(async () => {
