@@ -24,28 +24,27 @@
     "/dashboard/sessions/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/dashboard/sessions/[id]/page.css",
       "static/chunks/app/dashboard/sessions/[id]/page.js"
     ],
-    "/api/transcripts/route": [
+    "/api/sessions/[id]/chance-of-sale/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/transcripts/route.js"
+      "static/chunks/app/api/sessions/[id]/chance-of-sale/route.js"
     ],
     "/api/sessions/[id]/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/sessions/[id]/route.js"
     ],
-    "/api/sessions/[id]/report-v3/route": [
+    "/api/transcripts/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/sessions/[id]/report-v3/route.js"
+      "static/chunks/app/api/transcripts/route.js"
     ],
-    "/api/sessions/[id]/chance-of-sale/route": [
+    "/api/sessions/[id]/tabs/metadata/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/sessions/[id]/chance-of-sale/route.js"
+      "static/chunks/app/api/sessions/[id]/tabs/metadata/route.js"
     ],
     "/api/sessions/[id]/summary/route": [
       "static/chunks/webpack.js",

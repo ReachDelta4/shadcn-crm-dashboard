@@ -24,10 +24,22 @@ export function useChanceOfSaleReport(sessionId?: string) {
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
       const json = await res.json()
+      if (json?.status === 'failed') {
+        const msg = json?.last_error || 'Chance of Sale generation failed'
+        setError(msg)
+        setStatus('error')
+        return { ok: false, error: msg }
+      }
       if (json?.markdown) {
         setMarkdown(json.markdown)
         setStatus('done')
         return { ok: true }
+      }
+      if (json?.status === 'ready' && !json?.markdown) {
+        const msg = json?.last_error || 'Chance of Sale tab is missing in the stored report'
+        setError(msg)
+        setStatus('error')
+        return { ok: false, error: msg }
       }
       if ((json?.status === 'queued' || json?.status === 'running') && !ensured) {
         try { await fetch(`/api/sessions/${sessionId}/chance-of-sale`, { method: 'POST' }) } catch {}

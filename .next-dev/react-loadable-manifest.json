@@ -27,12 +27,6 @@
       "static/chunks/_app-pages-browser_src_features_dashboard_components_quick-actions-dock_QuickActionsDock_tsx.js"
     ]
   },
-  "features\\dashboard\\components\\report\\ReportTabV3.tsx -> ./sections/GraphSection": {
-    "id": "features\\dashboard\\components\\report\\ReportTabV3.tsx -> ./sections/GraphSection",
-    "files": [
-      "static/chunks/_app-pages-browser_src_features_dashboard_components_report_sections_GraphSection_tsx.js"
-    ]
-  },
   "features\\dashboard\\pages\\sessions\\detail\\components\\CoSHistoryPanel.tsx -> @/features/dashboard/components/report/MarkdownViewer": {
     "id": "features\\dashboard\\pages\\sessions\\detail\\components\\CoSHistoryPanel.tsx -> @/features/dashboard/components/report/MarkdownViewer",
     "files": [

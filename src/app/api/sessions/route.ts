@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { SessionsRepository } from '@/server/repositories/sessions'
+import { fetchOrgScope, ensureLicenseActive } from '@/server/org/context'
 
 async function getServerClient() {
 	const cookieStore = await cookies()
@@ -27,6 +28,18 @@ export async function GET(request: NextRequest) {
 		const { data: { user } } = await supabase.auth.getUser()
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+		let orgId: string | null = null
+		try {
+			const scope = await fetchOrgScope(supabase as any, user.id)
+			ensureLicenseActive(scope)
+			orgId = scope.orgId
+		} catch (error: any) {
+			const status = Number(error?.statusCode || 0)
+			if (status === 402 || status === 403) {
+				return NextResponse.json({ error: error.message }, { status })
+			}
+		}
+
 		const { searchParams } = new URL(request.url)
 		const page = parseInt(searchParams.get('page') || '1')
 		const pageSize = parseInt(searchParams.get('pageSize') || '10')
@@ -45,7 +58,8 @@ export async function GET(request: NextRequest) {
 			direction,
 			page,
 			pageSize,
-			userId: user.id
+			userId: user.id,
+			orgId: orgId || undefined
 		})
 		return NextResponse.json(result)
 	} catch (error) {
@@ -60,9 +74,21 @@ export async function POST(request: NextRequest) {
 		const { data: { user } } = await supabase.auth.getUser()
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+		let orgId: string | null = null
+		try {
+			const scope = await fetchOrgScope(supabase as any, user.id)
+			ensureLicenseActive(scope)
+			orgId = scope.orgId
+		} catch (error: any) {
+			const status = Number(error?.statusCode || 0)
+			if (status === 402 || status === 403) {
+				return NextResponse.json({ error: error.message }, { status })
+			}
+		}
+
 		const body = await request.json()
 		const repository = new SessionsRepository(supabase)
-		const session = await repository.create(body, user.id)
+		const session = await repository.create(body, user.id, orgId || undefined)
 		// Log activity (best-effort)
 		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
 			await logActivity(supabase as any, user.id, {

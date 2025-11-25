@@ -230,9 +230,50 @@ function buildTabsSystemPrompt(): string {
 		'',
 		'OUTPUT STRUCTURE:',
 		'',
-		'<!-- TAB: EXECUTIVE SUMMARY -->',
-		'# Executive Summary',
-		'',
+    '<!-- TAB: EXECUTIVE SUMMARY -->',
+    '# Executive Summary',
+    '',
+    // Stable anchors for our indexer — do not remove
+    '<!-- SECTION: EXEC/CALL_OVERVIEW -->',
+    '## Call Overview',
+    'Write a concise paragraph capturing sequence, tone, flow, rep approach, engagement.',
+    '<!-- /SECTION: EXEC/CALL_OVERVIEW -->',
+    '',
+    '<!-- SECTION: EXEC/PAINS -->',
+    '## Pain Points of the Prospect',
+    '- Include timestamps and short evidence quotes where relevant.',
+    '<!-- /SECTION: EXEC/PAINS -->',
+    '',
+    '<!-- SECTION: EXEC/OBJECTIONS -->',
+    '## Objections Raised',
+    '- List with timestamps; reflect how they were handled if applicable.',
+    '<!-- /SECTION: EXEC/OBJECTIONS -->',
+    '',
+    '<!-- SECTION: EXEC/BUYING_SIGNALS -->',
+    '## Buying Signals',
+    '- Verbal or implied indications of interest.',
+    '<!-- /SECTION: EXEC/BUYING_SIGNALS -->',
+    '',
+    '<!-- SECTION: EXEC/KEY_DETAILS -->',
+    '## Key Details to Remember',
+    '- Team size, decision makers, priorities, budget, timelines.',
+    '<!-- /SECTION: EXEC/KEY_DETAILS -->',
+    '',
+    '<!-- SECTION: EXEC/MISSED_OPPS -->',
+    '## Missed Opportunities',
+    '- Areas the rep could have probed further or strengthened the deal.',
+    '<!-- /SECTION: EXEC/MISSED_OPPS -->',
+    '',
+    '<!-- SECTION: EXEC/IMPROVEMENTS -->',
+    '## Areas to Improve',
+    '- Specific, actionable points for the rep.',
+    '<!-- /SECTION: EXEC/IMPROVEMENTS -->',
+    '',
+    '<!-- SECTION: EXEC/NEXT_STEPS -->',
+    '## To-Do List / Next Steps',
+    '- Bullets with owner & deadline.',
+    '<!-- /SECTION: EXEC/NEXT_STEPS -->',
+    '',
 		'**Call Overview (Paragraph)**  ',
 		'Describe what happened in the call: sequence, tone, flow, rep approach, prospect engagement, overall alignment.',
 		'',
@@ -264,9 +305,58 @@ function buildTabsSystemPrompt(): string {
 		'',
 		'---',
 		'',
-		'<!-- TAB: CHANCE OF SALE -->',
-		'# Chance of Sale',
-		'',
+    '<!-- TAB: CHANCE OF SALE -->',
+    '# Chance of Sale',
+    '',
+    // Stable anchors for our indexer — do not remove
+    '<!-- SECTION: COS/DEAL_HEALTH -->',
+    '## Deal Health Pipeline',
+    '- Paragraph summary of readiness and engagement, followed by bullets for boosters and blockers context.',
+    '<!-- /SECTION: COS/DEAL_HEALTH -->',
+    '',
+    '<!-- SECTION: COS/MEDDICC -->',
+    '## MEDDICC',
+    '| Dimension        | Observations | Score (%) |',
+    '|------------------|--------------|-----------|',
+    '| Metrics          | ■            | ■         |',
+    '| Economic Buyer   | ■            | ■         |',
+    '| Decision Criteria| ■            | ■         |',
+    '| Decision Process | ■            | ■         |',
+    '| Identify Pain    | ■            | ■         |',
+    '| Champion         | ■            | ■         |',
+    '| Competition      | ■            | ■         |',
+    '<!-- /SECTION: COS/MEDDICC -->',
+    '',
+    '<!-- SECTION: COS/BANT -->',
+    '## BANT',
+    '| Dimension | Observations | Score (%) |',
+    '|----------|--------------|-----------|',
+    '| Budget   | ■            | ■         |',
+    '| Authority| ■            | ■         |',
+    '| Need     | ■            | ■         |',
+    '| Timeline | ■            | ■         |',
+    '<!-- /SECTION: COS/BANT -->',
+    '',
+    '<!-- SECTION: COS/DEAL_SCORE -->',
+    '## Deal Score Calculation',
+    'Deal Score = (0.25*Metrics + 0.15*EconomicBuyer + 0.10*DecisionCriteria + 0.10*DecisionProcess + 0.15*IdentifyPain + 0.10*Champion + 0.05*Competition + 0.05*Authority)',
+    '<!-- /SECTION: COS/DEAL_SCORE -->',
+    '',
+    '<!-- SECTION: COS/PROBABILITY -->',
+    '## Probability of Sale',
+    'Provide a short paragraph with the % estimate and risks.',
+    '<!-- /SECTION: COS/PROBABILITY -->',
+    '',
+    '<!-- SECTION: COS/BOOSTERS_BLOCKERS -->',
+    '## Boosters vs Blockers',
+    '- Separate bullets for positive vs negative influences.',
+    '<!-- /SECTION: COS/BOOSTERS_BLOCKERS -->',
+    '',
+    '<!-- SECTION: COS/NEXT_STEPS -->',
+    '## Next Steps to Close',
+    '- 3–5 bullets with owner, deadline, micro-scripts.',
+    '<!-- /SECTION: COS/NEXT_STEPS -->',
+    '',
 		'**Deal Health Pipeline (Paragraph + Bullets)**  ',
 		'- Assess readiness, engagement, boosters, blockers.',
 		'',
@@ -549,6 +639,29 @@ export async function generateReportV3Tabs(
 		}
 
 		const normalizedReport = normalizeReportV3Tabs(report)
+
+		// Preserve any existing markdown/raw_markdown and previously computed extras.
+		// This avoids wiping Summary/CoS slices that were already stored by other flows.
+		try {
+			const existing = await repo.findBySessionId(sessionId, userId)
+			if (existing && existing.report && typeof existing.report === 'object') {
+				const prev: any = existing.report
+				if (typeof prev.markdown === 'string' && prev.markdown.trim()) {
+					(normalizedReport as any).markdown = prev.markdown
+				}
+				if (typeof prev.raw_markdown === 'string' && prev.raw_markdown.trim()) {
+					(normalizedReport as any).raw_markdown = prev.raw_markdown
+				}
+				// If earlier runs added meta/scores, keep them when not present in the new payload
+				if ((normalizedReport as any).meta == null && prev.meta != null) {
+					(normalizedReport as any).meta = prev.meta
+				}
+				if ((normalizedReport as any).scores == null && prev.scores != null) {
+					(normalizedReport as any).scores = prev.scores
+				}
+			}
+		} catch {}
+
 		await repo.setReady(sessionId, normalizedReport)
 		
 		console.log(`[report-v3-tabs] Successfully generated tabs report for session ${sessionId}`)

@@ -24,10 +24,23 @@ export function useSummaryReport(sessionId?: string) {
       }
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
       const json = await res.json()
+      if (json?.status === 'failed') {
+        const msg = json?.last_error || 'Summary generation failed'
+        setError(msg)
+        setStatus('error')
+        return { ok: false, error: msg }
+      }
       if (json?.markdown) {
         setMarkdown(json.markdown)
         setStatus('done')
         return { ok: true }
+      }
+      // Guard: a 'ready' status with no markdown indicates a stale or incompatible row; stop polling with error.
+      if (json?.status === 'ready' && !json?.markdown) {
+        const msg = json?.last_error || 'Summary tab is missing in the stored report'
+        setError(msg)
+        setStatus('error')
+        return { ok: false, error: msg }
       }
       if ((json?.status === 'queued' || json?.status === 'running') && !ensured) {
         try { await fetch(`/api/sessions/${sessionId}/summary`, { method: 'POST' }) } catch {}

@@ -27,6 +27,7 @@ export interface SessionListOptions {
 	page?: number
 	pageSize?: number
 	userId: string
+	orgId?: string | null
 }
 
 function mapDbSession(row: any): any {
@@ -64,15 +65,20 @@ export class SessionsRepository {
 			direction = 'desc',
 			page = 1,
 			pageSize = 10,
-			userId
+			userId,
+			orgId
 		} = options
 
 		const sortColumn = ['started_at','updated_at','ended_at'].includes(sort) ? sort : 'started_at'
 
 		let query = this.supabase
 			.from('sessions')
-			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at', { count: 'estimated' })
+			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at,org_id', { count: 'estimated' })
 			.eq('user_id', userId)
+
+		if (orgId) {
+			query = query.eq('org_id', orgId)
+		}
 
 		// Apply filters
 		if (filters.search) {
@@ -163,13 +169,16 @@ export class SessionsRepository {
         return { sessions, total, page, pageSize, totalPages }
     }
 
-	async findById(id: string, userId: string): Promise<Session | null> {
-		const { data: row, error } = await this.supabase
+	async findById(id: string, userId: string, orgId?: string | null): Promise<Session | null> {
+		let query = this.supabase
 			.from('sessions')
-			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at')
+			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at,org_id')
 			.eq('id', id)
 			.eq('user_id', userId)
-			.single()
+		if (orgId) {
+			query = query.eq('org_id', orgId)
+		}
+		const { data: row, error } = await query.single()
 
 		if (error) {
 			if ((error as any).code === 'PGRST116') {
@@ -181,7 +190,7 @@ export class SessionsRepository {
 		return mapDbSession(row)
 	}
 
-	async create(sessionData: SessionInsert, userId: string): Promise<Session> {
+	async create(sessionData: SessionInsert, userId: string, orgId?: string | null): Promise<Session> {
 		const requestedType = (sessionData as any)?.type || 'ask'
 		const { data: newSessionId, error: rpcError } = await (this.supabase as any)
 			.rpc('get_or_create_active_session', { requested_type: requestedType })
@@ -190,12 +199,15 @@ export class SessionsRepository {
 			throw new Error(`Failed to create session: ${rpcError.message}`)
 		}
 
-		const { data: row, error } = await this.supabase
+		let query = this.supabase
 			.from('sessions')
-			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at')
+			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at,org_id')
 			.eq('id', newSessionId)
 			.eq('user_id', userId)
-			.single()
+		if (orgId) {
+			query = query.eq('org_id', orgId)
+		}
+		const { data: row, error } = await query.single()
 
 		if (error) {
 			throw new Error(`Failed to fetch created session: ${error.message}`)
@@ -204,7 +216,7 @@ export class SessionsRepository {
 		return mapDbSession(row)
 	}
 
-	async update(id: string, sessionData: SessionUpdate, userId: string): Promise<Session> {
+	async update(id: string, sessionData: SessionUpdate, userId: string, orgId?: string | null): Promise<Session> {
 		// Support title update and ending a session
 		if ((sessionData as any)?.status === 'completed' || (sessionData as any)?.status === 'cancelled') {
 			const { error: endErr } = await (this.supabase as any).rpc('end_session', { session_id: id })
@@ -220,12 +232,15 @@ export class SessionsRepository {
 			if (updErr) throw new Error(`Failed to update session: ${updErr.message}`)
 		}
 
-		const { data: row, error } = await this.supabase
+		let query = this.supabase
 			.from('sessions')
-			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at')
+			.select('id,user_id,subject_id,title_enc,session_type,started_at,ended_at,updated_at,org_id')
 			.eq('id', id)
 			.eq('user_id', userId)
-			.single()
+		if (orgId) {
+			query = query.eq('org_id', orgId)
+		}
+		const { data: row, error } = await query.single()
 		if (error) throw new Error(`Failed to fetch session: ${error.message}`)
 		return mapDbSession(row)
 	}

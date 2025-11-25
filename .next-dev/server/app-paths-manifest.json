@@ -1,5 +1,10 @@
 {
+  "/api/sessions/[id]/chance-of-sale/route": "app/api/sessions/[id]/chance-of-sale/route.js",
+  "/api/sessions/[id]/route": "app/api/sessions/[id]/route.js",
+  "/api/transcripts/route": "app/api/transcripts/route.js",
+  "/api/sessions/[id]/tabs/metadata/route": "app/api/sessions/[id]/tabs/metadata/route.js",
+  "/api/sessions/[id]/summary/route": "app/api/sessions/[id]/summary/route.js",
   "/api/sessions/[id]/chance-of-sale/versions/route": "app/api/sessions/[id]/chance-of-sale/versions/route.js",
-  "/dashboard/sessions/[id]/page": "app/dashboard/sessions/[id]/page.js",
-  "/dashboard/sessions/all/page": "app/dashboard/sessions/all/page.js"
+  "/dashboard/sessions/all/page": "app/dashboard/sessions/all/page.js",
+  "/dashboard/sessions/[id]/page": "app/dashboard/sessions/[id]/page.js"
 }

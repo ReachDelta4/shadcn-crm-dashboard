@@ -31,18 +31,31 @@ export async function GET(
     const row = await repo.findBySessionId(id, user.id)
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const rep: any = (row as any).report || {}
-    const markdown = (typeof rep.markdown === 'string' && rep.markdown.trim().length > 0)
+    // Prefer combined markdown if present, else edge raw_markdown
+    const base: string | null = (typeof rep.markdown === 'string' && rep.markdown.trim().length > 0)
       ? rep.markdown
       : (typeof rep.raw_markdown === 'string' && rep.raw_markdown.trim().length > 0)
         ? rep.raw_markdown
         : null
-    if (!markdown && (row.status === 'queued' || row.status === 'running')) {
-      // Best-effort: ensure generation is triggered when stale
+    // Extract only EXECUTIVE SUMMARY tab if markers present
+    let markdown: string | null = null
+    if (base) {
+      const start = base.indexOf('<!-- TAB: EXECUTIVE SUMMARY -->')
+      const end = base.indexOf('<!-- /TAB: EXECUTIVE SUMMARY -->')
+      markdown = (start >= 0 && end > start) ? base.slice(start, end + '<!-- /TAB: EXECUTIVE SUMMARY -->'.length) : base
+      // Strip markers from display (tolerate minor typos)
+      markdown = markdown
+        .replace(/<!--[^]*?-->/g, '')
+        .replace(/<!-+\s*\/?\s*(TAB|SECTION):[^]*?-->/gi, '')
+        .trim()
+    }
+    if (!markdown) {
+      // If content is missing even when a row exists, treat as stale/missing and trigger regeneration.
       Promise.resolve().then(async () => {
-        try {
-          await fetch(`${new URL(request.url).origin}/api/sessions/${id}/summary`, { method: 'POST' })
-        } catch {}
+        try { await fetch(`${new URL(request.url).origin}/api/sessions/${id}/summary`, { method: 'POST' }) } catch {}
       }).catch(() => {})
+      const last_error = row?.last_error || 'TAB_MISSING_EXECUTIVE_SUMMARY'
+      return NextResponse.json({ session_id: row.session_id, markdown: null, status: 'failed', attempts: row.attempts, last_error })
     }
     return NextResponse.json({ session_id: row.session_id, markdown, status: row.status, attempts: row.attempts, last_error: row.last_error })
   } catch (error) {

@@ -32,24 +32,30 @@ export async function GET(
     const row = await repo.findBySessionId(id, user.id)
     if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const rep: any = (row as any).report || {}
-    const markdown: string | null = (typeof rep.markdown === 'string' && rep.markdown.trim().length > 0)
+    const base: string | null = (typeof rep.markdown === 'string' && rep.markdown.trim().length > 0)
       ? rep.markdown
       : (typeof rep.raw_markdown === 'string' && rep.raw_markdown.trim().length > 0)
         ? rep.raw_markdown
         : null
     // Extract only Chance of Sale portion (marker based)
     let chance: string | null = null
-    if (markdown) {
-      const start = markdown.indexOf('<!-- TAB: CHANCE OF SALE -->')
-      const end = markdown.indexOf('<!-- /TAB: CHANCE OF SALE -->')
-      if (start >= 0 && end > start) chance = markdown.slice(start, end + '<!-- /TAB: CHANCE OF SALE -->'.length)
+    if (base) {
+      const start = base.indexOf('<!-- TAB: CHANCE OF SALE -->')
+      const end = base.indexOf('<!-- /TAB: CHANCE OF SALE -->')
+      chance = (start >= 0 && end > start) ? base.slice(start, end + '<!-- /TAB: CHANCE OF SALE -->'.length) : base
+      // Strip markers (tolerate minor typos)
+      chance = chance
+        .replace(/<!--[^]*?-->/g, '')
+        .replace(/<!-+\s*\/?\s*(TAB|SECTION):[^]*?-->/gi, '')
+        .trim()
     }
-    if (!chance && (row.status === 'queued' || row.status === 'running')) {
+    if (!chance) {
+      // Missing slice from a ready row -> treat as stale/missing and trigger regeneration, return failed to stop UI polling.
       Promise.resolve().then(async () => {
-        try {
-          await fetch(`${new URL(request.url).origin}/api/sessions/${id}/chance-of-sale`, { method: 'POST' })
-        } catch {}
+        try { await fetch(`${new URL(request.url).origin}/api/sessions/${id}/chance-of-sale`, { method: 'POST' }) } catch {}
       }).catch(() => {})
+      const last_error = row?.last_error || 'TAB_MISSING_CHANCE_OF_SALE'
+      return NextResponse.json({ session_id: row.session_id, markdown: null, status: 'failed', attempts: row.attempts, last_error })
     }
     return NextResponse.json({ session_id: row.session_id, markdown: chance, status: row.status, attempts: row.attempts, last_error: row.last_error })
   } catch (error) {
@@ -91,9 +97,9 @@ export async function POST(
       try {
         const repo = new (await import('@/server/repositories/reports-v3-tabs')).ReportsV3TabsRepository(supabase as any)
         const row = await repo.findBySessionId(id, user.id)
-        const hasCos = typeof ((row?.report as any)?.markdown || '').includes('<!-- TAB: CHANCE OF SALE -->') === 'boolean'
-          ? ((row?.report as any)?.markdown || '').includes('<!-- TAB: CHANCE OF SALE -->')
-          : false
+        const rep: any = (row?.report as any) || {}
+        const combined: string = (typeof rep.markdown === 'string' && rep.markdown) || (typeof rep.raw_markdown === 'string' && rep.raw_markdown) || ''
+        const hasCos = combined.includes('<!-- TAB: CHANCE OF SALE -->')
         if (hasCos) {
           const { generateCosPatchFromModel } = await import('@/server/services/chance-of-sale-patch')
           await generateCosPatchFromModel(supabase as any, user.id, id)

@@ -64,12 +64,21 @@ export async function GET(
       q = q.like('slug_path', `${prefix}%`)
     }
 
+    type Row = {
+      slug_path: string
+      title: string
+      level: number
+      content_markdown: string
+      start_line: number
+      end_line: number
+    }
     const { data: rows, error } = await q.range(offset, offset + limit - 1)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     const items = (() => {
-      if (!prefix || !depth) return rows || []
-      return (rows || []).filter(r => withinDepth(r.slug_path as string, prefix, depth))
+      if (!prefix || !depth) return (rows || []) as Row[]
+      const rowsTyped = (rows || []) as Row[]
+      return rowsTyped.filter((r: Row) => withinDepth(r.slug_path as string, prefix!, depth!))
     })()
 
     return NextResponse.json({ session_id: id, report_kind: reportKind, count: items.length, items })
@@ -80,4 +89,3 @@ export async function GET(
 }
 
 export const runtime = 'nodejs'
-

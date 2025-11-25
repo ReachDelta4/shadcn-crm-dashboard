@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "../overview/hooks/use-sessions";
 import { useSessionTranscripts } from "./hooks/use-transcripts";
-import { useReportV3 } from "@/features/dashboard/components/report/hooks/use-report-v3";
 import { useSummaryReport } from "@/features/dashboard/components/report/hooks/use-summary-report";
 import { useChanceOfSaleReport } from "@/features/dashboard/components/report/hooks/use-chance-of-sale-report";
 import dynamic from "next/dynamic";
-import { ReportTabV3 } from "@/features/dashboard/components/report/ReportTabV3";
 const MarkdownViewer = dynamic(() => import("@/features/dashboard/components/report/MarkdownViewer"), { loading: () => null });
 import { UpcomingAppointments } from "./components/UpcomingAppointments";
 import { CoSHistoryPanel } from "./components/CoSHistoryPanel";
@@ -26,43 +24,75 @@ interface SessionDetailPageProps {
 export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 	const [active, setActive] = useState("transcript");
 	const [aiOpen, setAiOpen] = useState(false);
-	const [deckMode, setDeckMode] = useState(false);
+    
 	
 	const { session, loading: sessionLoading, error: sessionError } = useSession(sessionId);
     const { transcripts, loading: transcriptsLoading, addTranscriptSegment } = useSessionTranscripts(sessionId, true);
-    const { data: reportV3, loading: reportLoading, error: reportError, status: reportStatus, retry: retryReport } = useReportV3(sessionId)
+    const [subjectSummary, setSubjectSummary] = useState<{ stage_label?: string | null; calls_count?: number } | null>(null)
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const sid = session?.subject_id
+                if (!sid) { setSubjectSummary(null); return }
+                const res = await fetch(`/api/subjects/${sid}`)
+                if (!res.ok) { setSubjectSummary(null); return }
+                const json = await res.json()
+                setSubjectSummary({ stage_label: json?.stage_label || null, calls_count: json?.calls_count || 0 })
+            } catch { setSubjectSummary(null) }
+        }
+        load()
+    }, [session?.subject_id])
     const { markdown: summaryMd, loading: summaryLoading, error: summaryError, status: summaryStatus, retry: retrySummary } = useSummaryReport(sessionId)
     const { markdown: chanceMd, loading: chanceLoading, error: chanceError, status: chanceStatus, retry: retryChance } = useChanceOfSaleReport(sessionId)
+    const [reportMeta, setReportMeta] = useState<{ probability?: number; score10?: number; stage?: string } | null>(null)
+
+    // Fetch lightweight report metadata for badges (probability/score)
+    useEffect(() => {
+        let active = true
+        const load = async () => {
+            try {
+                const res = await fetch(`/api/sessions/${sessionId}/tabs/metadata`)
+                if (!res.ok) return
+                const j = await res.json()
+                const probability = typeof j?.scores?.probability_100 === 'number' ? Math.round(j.scores.probability_100) : undefined
+                const score10 = typeof j?.scores?.deal_score_10 === 'number' ? j.scores.deal_score_10 : undefined
+                const stage = j?.meta?.stage || undefined
+                if (active) setReportMeta({ probability, score10, stage })
+            } catch {}
+        }
+        load()
+        return () => { active = false }
+    }, [])
 
     const renderMarkdownBlock = (rawMd?: string | null) => {
         if (typeof rawMd === 'string' && rawMd.trim().length > 0) {
-            const normalizedMd = normalizeMarkdownForRender(rawMd)
-            return <MarkdownViewer content={normalizedMd} className="prose prose-lg max-w-none dark:prose-invert" />
+            // Normalize minor spacing issues to reduce stray bullets/headings, then render
+            const normalized = normalizeMarkdownForRender(rawMd)
+            return <MarkdownViewer content={normalized} className="prose prose-lg max-w-none dark:prose-invert" />
         }
         return <div className="text-muted-foreground">No Contents</div>
     }
 
 	// Markdown normalization to recover well-formed blocks from run-on strings
-	function normalizeMarkdownForRender(raw: string): string {
-		if (!raw || typeof raw !== 'string') return ''
-		const input = raw.replace(/\r\n?/g, '\n').trim()
-		const parts = input.split(/(```[\s\S]*?```)/g)
-		const normalized: string[] = []
-		for (const part of parts) {
-			if (part.startsWith('```')) { normalized.push(part); continue }
-			let section = part
-			section = section.replace(/([^\n])\s*(#{1,6}\s+)/g, '$1\n\n$2')
-			section = section.replace(/([^\n])\s*((?:[\*\-\+]\s+|\d+\.\s+))/g, '$1\n\n$2')
-			// Only insert spacing before true blockquote lines; never touch HTML comments
-			section = section.replace(/(^|\n)(>\s+)/g, '\n$2')
-			section = section.replace(/([^\n])\s*(\|.*?\|)/g, '$1\n\n$2')
-			section = section.replace(/\n{3,}/g, '\n\n')
-			normalized.push(section)
-		}
-		return normalized.join('')
-	}
+    function normalizeMarkdownForRender(raw: string): string {
+        if (!raw || typeof raw !== 'string') return ''
+        const input = raw.replace(/\r\n?/g, '\n').trim()
+        const parts = input.split(/(```[\s\S]*?```)/g)
+        const normalized: string[] = []
+        for (const part of parts) {
+            if (part.startsWith('```')) { normalized.push(part); continue }
+            let section = part
+            section = section.replace(/([^\n])\s*(#{1,6}\s+)/g, '$1\n\n$2')
+            section = section.replace(/([^\n])\s*((?:[\*\-\+]\s+|\d+\.\s+))/g, '$1\n\n$2')
+            // Only insert spacing before true blockquote lines; never touch HTML comments
+            section = section.replace(/(^|\n)(>\s+)/g, '\n$2')
+            section = section.replace(/\n{3,}/g, '\n\n')
+            normalized.push(section)
+        }
+        return normalized.join('')
+    }
 
-	function extractTabMarkdown(raw: string): { executive?: string; chance?: string; rep?: string } {
+    function extractTabMarkdown(raw: string): { executive?: string; chance?: string; rep?: string } {
 		if (!raw || typeof raw !== 'string') return {}
 		const text = raw.replace(/\r\n?/g, '\n')
 		// Split out fenced code blocks to avoid matching markers inside code
@@ -99,7 +129,9 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 				else if (cur === 'chance') chance += part
 				else if (cur === 'rep') rep += part
 				continue
-			}
+    }
+
+    
 			
 			let s = part
 			while (s.length > 0) {
@@ -162,12 +194,27 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 							</>
 						) : (
 							<>
-								<div className="text-xl font-semibold">{session?.title || 'Untitled Session'}</div>
+								<div className="flex items-center gap-2">
+									<div className="text-xl font-semibold">{session?.title || 'Untitled Session'}</div>
+									{subjectSummary?.stage_label && (
+										<Badge variant="outline" className="text-[10px] uppercase tracking-wide">{subjectSummary.stage_label}</Badge>
+									)}
+								</div>
 								<div className="text-xs text-muted-foreground">
 									{session?.created_at && new Date(session.created_at).toLocaleDateString()} · 
 									{transcripts.length} segments · 
 									{[...new Set(transcripts.map(t => t.speaker).filter(Boolean))].length} speakers
 								</div>
+								{(reportMeta?.probability != null || reportMeta?.score10 != null) && (
+									<div className="mt-1 flex items-center gap-2">
+										{reportMeta?.probability != null && (
+											<Badge variant="secondary">Prob {reportMeta.probability}%</Badge>
+										)}
+										{reportMeta?.score10 != null && (
+											<Badge variant="outline">Score {reportMeta.score10}/10</Badge>
+										)}
+									</div>
+								)}
 							</>
 						)}
 					</div>
@@ -180,6 +227,9 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 						{session?.type && (
 							<Badge variant="outline">{session.type}</Badge>
 						)}
+						{typeof subjectSummary?.calls_count === 'number' && (
+							<Badge variant="outline">{subjectSummary.calls_count} calls</Badge>
+						)}
 						<Button variant="outline">Share</Button>
 						<Button onClick={() => setAiOpen(true)}>Chat with AI</Button>
 					</div>
@@ -188,10 +238,10 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 				<UpcomingAppointments subjectId={session?.subject_id || null} />
 
 				<Tabs value={active} onValueChange={setActive}>
-					<TabsList>
+                <TabsList>
                     <TabsTrigger value="executive">Executive Summary</TabsTrigger>
                     <TabsTrigger value="chance">Chance of Sale</TabsTrigger>
-                    <TabsTrigger value="detailed">Detailed Report (Legacy)</TabsTrigger>
+                    {/* Legacy V3 report removed */}
                     <TabsTrigger value="cos-history">CoS History</TabsTrigger>
                     <TabsTrigger value="transcript">Transcript</TabsTrigger>
                 </TabsList>
@@ -264,7 +314,8 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
                     <CoSHistoryPanel sessionId={sessionId} />
                 </TabsContent>
 
-					<TabsContent value="detailed">
+                {/*
+                					<TabsContent value="detailed">
 						<div id="report-controls" className="flex items-center justify-between gap-2 mb-2 print:hidden">
 							<div className="text-sm text-muted-foreground">Automatically generated report</div>
 							<div className="flex items-center gap-2">
@@ -294,7 +345,8 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
 								<ReportTabV3 data={reportV3 || undefined} deckMode={deckMode} />
 							</div>
 						)}
-					</TabsContent>
+                					</TabsContent>
+                */}
 
 					<TabsContent value="transcript">
 						<TranscriptViewer 
@@ -422,3 +474,5 @@ function TranscriptViewer({ transcripts, loading, onAddSegment, sessionStatus }:
 		</div>
 	);
 }
+
+
