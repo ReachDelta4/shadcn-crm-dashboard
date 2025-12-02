@@ -6,55 +6,55 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
+    ],
+    "/login/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/login/page.js"
+    ],
+    "/auth/callback/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/auth/callback/route.js"
+    ],
     "/dashboard/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/layout.js"
     ],
-    "/dashboard/sessions/all/page": [
+    "/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/sessions/all/page.js"
+      "static/chunks/app/dashboard/page.js"
     ],
-    "/api/sessions/route": [
+    "/dashboard/overview/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/sessions/route.js"
+      "static/chunks/app/dashboard/overview/page.js"
     ],
-    "/dashboard/sessions/[id]/page": [
+    "/api/god/probe/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/sessions/[id]/page.js"
+      "static/chunks/app/api/god/probe/route.js"
     ],
-    "/api/sessions/[id]/chance-of-sale/route": [
+    "/dashboard-dikshithpodhila-god/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/sessions/[id]/chance-of-sale/route.js"
+      "static/chunks/app/dashboard-dikshithpodhila-god/layout.js"
     ],
-    "/api/sessions/[id]/route": [
+    "/dashboard-dikshithpodhila-god/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/sessions/[id]/route.js"
+      "static/chunks/app/dashboard-dikshithpodhila-god/page.js"
     ],
-    "/api/transcripts/route": [
+    "/dashboard-dikshithpodhila-god/orgs/[id]/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/api/transcripts/route.js"
-    ],
-    "/api/sessions/[id]/tabs/metadata/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/sessions/[id]/tabs/metadata/route.js"
-    ],
-    "/api/sessions/[id]/summary/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/sessions/[id]/summary/route.js"
-    ],
-    "/api/sessions/[id]/chance-of-sale/versions/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/sessions/[id]/chance-of-sale/versions/route.js"
+      "static/chunks/app/dashboard-dikshithpodhila-god/orgs/[id]/page.js"
     ]
   }
 }

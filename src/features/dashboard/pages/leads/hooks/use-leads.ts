@@ -1,10 +1,15 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { Lead, LeadFilters, LeadStatus } from "@/features/dashboard/pages/leads/types/lead";
+import { useEffect, useState } from "react";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
-  SortingState,
-  PaginationState,
   OnChangeFn,
+  PaginationState,
+  SortingState,
 } from "@tanstack/react-table";
+import {
+  Lead,
+  LeadFilters,
+  LeadStatus,
+} from "@/features/dashboard/pages/leads/types/lead";
 
 interface UseLeadsProps {
   initialLeads?: Lead[];
@@ -14,12 +19,63 @@ interface UseLeadsProps {
 interface ApiResponse {
   data: any[];
   count: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
 }
 
-// Legacy canonicalization removed – statuses are already canonical
+const sortFieldMap: Record<string, string> = {
+  date: "date",
+  fullName: "full_name",
+  leadNumber: "lead_number",
+};
+
+export function buildLeadsQueryParams(
+  pagination: PaginationState,
+  filters: LeadFilters,
+  sorting: SortingState
+) {
+  const params = new URLSearchParams({
+    page: pagination.pageIndex.toString(),
+    pageSize: pagination.pageSize.toString(),
+  });
+
+  const search = filters.search?.trim();
+  if (search) params.set("search", search);
+  if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  if (filters.dateRange.from) params.set("dateFrom", filters.dateRange.from.toISOString());
+  if (filters.dateRange.to) params.set("dateTo", filters.dateRange.to.toISOString());
+
+  if (sorting.length > 0) {
+    const sort = sorting[0];
+    const sortField = sortFieldMap[sort.id] || sort.id;
+    params.set("sort", sortField);
+    params.set("direction", sort.desc ? "desc" : "asc");
+  }
+
+  return params;
+}
+
+export function mapLeadRecord(raw: any): Lead {
+  const fallbackDate = new Date().toISOString();
+  const status = (raw?.status || "new") as LeadStatus;
+
+  const normalizeNumber = (value: any) => {
+    if (typeof value === "number") return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  return {
+    id: raw?.id || "",
+    leadNumber: raw?.lead_number || raw?.leadNumber || "",
+    fullName: raw?.full_name || raw?.fullName || "",
+    email: raw?.email || "",
+    phone: raw?.phone || "",
+    company: raw?.company || "",
+    value: normalizeNumber(raw?.value),
+    status,
+    date: raw?.date || fallbackDate,
+    source: raw?.source || "unknown",
+  };
+}
 
 export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps = {}) {
   const [filters, setFilters] = useState<LeadFilters>({
@@ -40,83 +96,30 @@ export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps 
     pageSize: 10,
   });
 
-  const [leads, setLeads] = useState<Lead[]>(initialLeads);
-  const [totalCount, setTotalCount] = useState(initialCount);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const skipFirstFetchRef = useRef<boolean>(initialLeads.length > 0 || initialCount > 0);
-
-  const fetchLeads = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const params = new URLSearchParams({
-        page: pagination.pageIndex.toString(),
-        pageSize: pagination.pageSize.toString(),
-      });
-
-      if (filters.search) params.set('search', filters.search);
-      if (filters.status && filters.status !== 'all') {
-        params.set('status', filters.status as string)
-      }
-      if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
-      if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
-
-      if (sorting.length > 0) {
-        const sort = sorting[0];
-        let sortField = sort.id;
-        if (sortField === 'date') sortField = 'date';
-        if (sortField === 'fullName') sortField = 'full_name';
-        if (sortField === 'leadNumber') sortField = 'lead_number';
-        params.set('sort', sortField);
-        params.set('direction', sort.desc ? 'desc' : 'asc');
-      }
-
-      const url = `/api/leads?${params}${params.has('page') ? '&' : ''}_t=${Date.now()}`;
-      const response = await fetch(url, { cache: 'no-store' });
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["leads", pagination, filters, sorting],
+    queryFn: async () => {
+      const params = buildLeadsQueryParams(pagination, filters, sorting);
+      const response = await fetch(`/api/leads?${params.toString()}`);
       if (!response.ok) throw new Error(`Failed to fetch leads: ${response.statusText}`);
-      const result: ApiResponse = await response.json();
+      return response.json() as Promise<ApiResponse>;
+    },
+    select: (response) => ({
+      data: (response?.data || []).map(mapLeadRecord),
+      count: response?.count || 0,
+    }),
+    placeholderData: keepPreviousData,
+    initialData: initialLeads.length > 0 ? { data: initialLeads, count: initialCount } : undefined,
+  });
 
-      const transformed: Lead[] = (result.data || []).map((lead: any) => ({
-        id: lead.id || '',
-        leadNumber: lead.lead_number || lead.leadNumber || '',
-        fullName: lead.full_name || lead.fullName || '',
-        email: lead.email || '',
-        phone: lead.phone || '',
-        company: lead.company || '',
-        value: typeof lead.value === 'number' ? lead.value : 0,
-        status: (lead.status || 'new') as LeadStatus,
-        date: lead.date || new Date().toISOString(),
-        source: lead.source || 'unknown',
-      }));
-
-      setLeads(transformed);
-      setTotalCount(result.count || 0);
-    } catch (err) {
-      console.error('Failed to fetch leads:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch leads');
-      setLeads([]);
-      setTotalCount(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [filters, sorting, pagination]);
+  const leads: Lead[] = data?.data || initialLeads;
+  const totalCount = data?.count ?? initialCount;
 
   useEffect(() => {
-    if (skipFirstFetchRef.current) {
-      skipFirstFetchRef.current = false;
-      return;
-    }
-    fetchLeads();
-  }, [fetchLeads]);
-
-  // Instant refresh on global events
-  useEffect(() => {
-    const onChanged = () => { fetchLeads(); };
-    window.addEventListener('leads:changed', onChanged);
-    return () => window.removeEventListener('leads:changed', onChanged);
-  }, [fetchLeads]);
+    const onChanged = () => { refetch(); };
+    window.addEventListener("leads:changed", onChanged);
+    return () => window.removeEventListener("leads:changed", onChanged);
+  }, [refetch]);
 
   const updateFilters = (newFilters: Partial<LeadFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -150,7 +153,7 @@ export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps 
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   };
 
-  const pageCount = Math.ceil(totalCount / pagination.pageSize);
+  const pageCount = totalCount > 0 ? Math.ceil(totalCount / pagination.pageSize) : 0;
 
   return {
     allLeads: leads,
@@ -159,12 +162,12 @@ export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps 
     filters,
     sorting,
     pagination,
-    loading,
-    error,
+    loading: isLoading,
+    error: isError ? (error as Error).message : null,
     updateFilters,
     handleSortingChange,
     handlePaginationChange,
     handleClearFilters,
-    refetch: fetchLeads,
+    refetch,
   };
-} 
+}

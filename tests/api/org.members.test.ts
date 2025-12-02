@@ -84,7 +84,7 @@ describe('Org members API', () => {
 			license_expires_at: '2024-01-01T00:00:00Z'
 		}])
 		const { GET } = await import('@/app/api/org/members/route')
-		const res = await GET(new Request('http://localhost/api/org/members') as any)
+		const res = await GET()
 		expect(res.status).toBe(402)
 	})
 

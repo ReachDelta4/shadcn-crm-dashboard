@@ -66,5 +66,22 @@ describe('SessionsRepository.findAll phone enrichment', () => {
     const res = await repo.findAll({ userId: 'u1', page: 1, pageSize: 10 })
     expect(res.sessions[0].phone).toBe('777-333')
   })
-})
 
+  it('uses DB started_at time (UTC text) for fallback title', async () => {
+    const sessions = [{
+      id: 's3',
+      user_id: 'u1',
+      subject_id: null,
+      title_enc: null,
+      session_type: 'listen',
+      started_at: '2025-11-27 13:34:03.140206+00',
+      ended_at: '2025-11-27 13:35:09.33279+00',
+      updated_at: '2025-11-27 13:35:09.33279+00',
+    }]
+    const client = makeClient({ sessions, customers: [], leads: [] })
+    const { SessionsRepository } = await import('@/server/repositories/sessions')
+    const repo = new SessionsRepository(client)
+    const res = await repo.findAll({ userId: 'u1', page: 1, pageSize: 10 })
+    expect(res.sessions[0].title).toBe('Session @ 13:34:03')
+  })
+})

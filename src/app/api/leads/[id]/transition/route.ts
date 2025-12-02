@@ -9,6 +9,7 @@ import { isTransitionAllowed, validateStatus } from '@/server/services/lifecycle
 import { withIdempotency } from '@/server/utils/idempotency'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { canOverrideLifecycle } from '@/server/guards/rbac'
 
 // No appointment/invoice payloads in lifecycle v2
 
@@ -52,6 +53,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const leadsRepo = new LeadsRepository(supabase as any)
 		const lead = await leadsRepo.getById(leadId, scope.userId)
 		if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+
+		if (parsed.override && !canOverrideLifecycle(scope.role)) {
+			return NextResponse.json({ error: 'Override not permitted for this role' }, { status: 403 })
+		}
 
 		// Validate target status
 		if (!validateStatus(parsed.target_status)) {

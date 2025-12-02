@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,58 +37,48 @@ import {
 } from "lucide-react";
 import type { ActivityLog } from "./data/activity-logs-data";
 import { formatRelativeDate } from "@/utils/date-formatter";
+import { fetchActivityLogs } from "./query";
 
 export function ActivityLogsPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | ActivityLog["type"]>(
-    "all",
-  );
+  const [filterType, setFilterType] = useState<"all" | ActivityLog["type"]>("all");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const debouncedSearch = useDebouncedValue(searchQuery, 250);
 
-  const loadLogs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (filterType) params.set("type", filterType);
-      if (searchQuery) params.set("search", searchQuery);
-      params.set("direction", sortOrder);
-      const res = await fetch(`/api/activity-logs?${params}`);
-      if (!res.ok) throw new Error("Failed to load activity logs");
-      const result = await res.json();
-      const data = (result?.data || []) as any[];
-      const mapped: ActivityLog[] = data.map((d) => ({
-        id: d.id,
-        type: d.type,
-        description: d.description,
-        user: d.user,
-        entity: d.entity || undefined,
-        timestamp: d.timestamp,
-        details: d.details || undefined,
-      }));
-      setLogs(mapped);
-    } catch (e: any) {
-      setError(typeof e?.message === "string" ? e.message : "Failed to load activity logs");
-      setLogs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [filterType, searchQuery, sortOrder]);
+  const queryParams = useMemo(
+    () => ({
+      filterType,
+      sortOrder,
+      searchQuery: debouncedSearch,
+    }),
+    [filterType, sortOrder, debouncedSearch],
+  );
 
-  useEffect(() => {
-    loadLogs();
-  }, [loadLogs]);
+  const {
+    data: logs = [],
+    isLoading,
+    isFetching,
+    isError,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["activity-logs", queryParams],
+    queryFn: () => fetchActivityLogs(queryParams),
+    placeholderData: keepPreviousData,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  const filteredLogs = useMemo(() => {
-    const sorted = [...logs].sort((a, b) => {
+  const loading = isLoading || isFetching;
+  const errorMessage = isError
+    ? (queryError as Error)?.message || "Failed to load activity logs"
+    : null;
+
+  const sortedLogs = useMemo(() => {
+    const ordered = [...logs].sort((a, b) => {
       const dateA = new Date(a.timestamp).getTime();
       const dateB = new Date(b.timestamp).getTime();
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
-    return sorted;
+    return ordered;
   }, [logs, sortOrder]);
 
   return (
@@ -159,24 +150,24 @@ export function ActivityLogsPage() {
             Recent Activities
           </CardTitle>
           <CardDescription>
-            {filteredLogs.length} activities found
+            {sortedLogs.length} activities found
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <div className="space-y-px">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <span className="text-muted-foreground text-sm">Loading…</span>
+                <span className="text-muted-foreground text-sm">Loading...</span>
               </div>
-            ) : error ? (
+            ) : errorMessage ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <span className="text-red-600 text-sm">{error}</span>
+                <span className="text-red-600 text-sm">{errorMessage}</span>
               </div>
-            ) : filteredLogs.length > 0 ? (
-              filteredLogs.map((log: ActivityLog, index: number) => (
+            ) : sortedLogs.length > 0 ? (
+              sortedLogs.map((log: ActivityLog, index: number) => (
                 <div
                   key={log.id}
-                  className={`flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center ${index !== filteredLogs.length - 1 ? "border-b" : ""}`}
+                  className={`flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center ${index !== sortedLogs.length - 1 ? "border-b" : ""}`}
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <div
@@ -246,15 +237,26 @@ export function ActivityLogsPage() {
       </Card>
 
       {/* Pagination (future: infinite scroll) */}
-      {filteredLogs.length > 0 && (
-        <div className="flex items-center justify_between">
+      {sortedLogs.length > 0 && (
+        <div className="flex items-center justify-between">
           <p className="text-muted-foreground text-sm">
-            Showing <span className="font-medium">{filteredLogs.length}</span>
+            Showing <span className="font-medium">{sortedLogs.length}</span>
           </p>
         </div>
       )}
     </div>
   );
+}
+
+function useDebouncedValue<T>(value: T, delay = 250) {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+
+  return debounced;
 }
 
 // Helper functions
@@ -278,20 +280,19 @@ function getActivityTypeColor(type: ActivityLog["type"]): string {
 }
 
 function getActivityTypeIcon(type: ActivityLog["type"]) {
-  switch (type) {
-    case "user":
-      return <span className="text-xs">👤</span>;
-    case "contact":
-      return <span className="text-xs">🙂</span>;
-    case "lead":
-      return <span className="text-xs">🎯</span>;
-    case "deal":
-      return <span className="text-xs">💰</span>;
-    case "task":
-      return <span className="text-xs">✓</span>;
-    case "email":
-      return <span className="text-xs">✉️</span>;
-    default:
-      return <span className="text-xs">📝</span>;
-  }
+  const label =
+    type === "user"
+      ? "U"
+      : type === "contact"
+        ? "C"
+        : type === "lead"
+          ? "L"
+          : type === "deal"
+            ? "D"
+            : type === "task"
+              ? "T"
+              : type === "email"
+                ? "E"
+                : "?";
+  return <span className="text-[10px] font-semibold">{label}</span>;
 }

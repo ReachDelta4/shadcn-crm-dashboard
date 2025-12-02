@@ -1,31 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { ReportsV3TabsRepository } from '@/server/repositories/reports-v3-tabs'
-import { generateChanceOfSaleReport } from '@/server/services/chance-of-sale-report'
 import { decideChanceOfSaleUpdate } from '@/server/services/chance-of-sale-decision'
-
-async function getServerClient() {
-  const cookieStore = await cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) },
-      },
-    }
-  )
-}
+import { generateChanceOfSaleReport } from '@/server/services/chance-of-sale-report'
+import { invokeChanceOfSaleGeneration } from './helpers'
+import { getSupabaseUser } from '../auth'
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await getServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { id } = await params
     const repo = new ReportsV3TabsRepository(supabase as any)
@@ -51,9 +36,7 @@ export async function GET(
     }
     if (!chance) {
       // Missing slice from a ready row -> treat as stale/missing and trigger regeneration, return failed to stop UI polling.
-      Promise.resolve().then(async () => {
-        try { await fetch(`${new URL(request.url).origin}/api/sessions/${id}/chance-of-sale`, { method: 'POST' }) } catch {}
-      }).catch(() => {})
+      Promise.resolve().then(() => invokeChanceOfSaleGeneration(supabase as any, user.id, id)).catch(() => {})
       const last_error = row?.last_error || 'TAB_MISSING_CHANCE_OF_SALE'
       return NextResponse.json({ session_id: row.session_id, markdown: null, status: 'failed', attempts: row.attempts, last_error })
     }
@@ -69,8 +52,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await getServerClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user } = await getSupabaseUser(request)
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { id } = await params
 

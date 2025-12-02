@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { QueryProvider } from "@/providers/query-provider";
 import { CommandPaletteProvider } from "@/components/command-palette";
 const CommandPalette = dynamic(() => import("@/components/command-palette").then(m => m.CommandPalette));
 
@@ -28,12 +29,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <CommandPaletteProvider>
-            <TooltipProvider>
-              {children}
-              <CommandPalette />
-            </TooltipProvider>
-          </CommandPaletteProvider>
+          <QueryProvider>
+            <CommandPaletteProvider>
+              <TooltipProvider>
+                {children}
+                <CommandPalette />
+              </TooltipProvider>
+            </CommandPaletteProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

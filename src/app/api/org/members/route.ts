@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { supabaseAdmin } from '@/server/supabase'
 import { fetchOrgScope, ensureLicenseActive, ensureOrgAdmin } from '@/server/org/context'
+import { assertOrgAdmin } from '@/server/guards/rbac'
 
 async function getServerClient() {
 	const cookieStore = await cookies()
@@ -42,6 +43,7 @@ export async function GET() {
 		try {
 			scope = await fetchOrgScope(supabase as any, user.id)
 			ensureLicenseActive(scope)
+			assertOrgAdmin(scope)
 		} catch (error: any) {
 			const status = Number(error?.statusCode || 0)
 			if (status === 402 || status === 403) {

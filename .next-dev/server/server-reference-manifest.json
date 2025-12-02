@@ -1,5 +1,28 @@
 {
-  "node": {},
+  "node": {
+    "004e276f25fa72e799f279dc4ae353eff7d3b12009": {
+      "workers": {
+        "app/dashboard-dikshithpodhila-god/orgs/page": {
+          "moduleId": "(rsc)/./node_modules/.pnpm/next@15.2.2_react-dom@19.1.1_react@19.1.1__react@19.1.1/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22D%3A%5C%5CDelta%20IV%5C%5CSofwares%5C%5Cglass%5C%5Csandbox%5C%5Cshadcn-crm-dashboard%5C%5Csrc%5C%5Capp%5C%5Cdashboard-dikshithpodhila-god%5C%5Corgs%5C%5Cpage.tsx%22%2C%5B%7B%22id%22%3A%22004e276f25fa72e799f279dc4ae353eff7d3b12009%22%2C%22exportedName%22%3A%22default%22%7D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/dashboard-dikshithpodhila-god/orgs/page": "rsc"
+      }
+    },
+    "40a9f9e257d908532b802003cdeba878c954cffe69": {
+      "workers": {
+        "app/dashboard-dikshithpodhila-god/orgs/[id]/page": {
+          "moduleId": "(rsc)/./node_modules/.pnpm/next@15.2.2_react-dom@19.1.1_react@19.1.1__react@19.1.1/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22D%3A%5C%5CDelta%20IV%5C%5CSofwares%5C%5Cglass%5C%5Csandbox%5C%5Cshadcn-crm-dashboard%5C%5Csrc%5C%5Capp%5C%5Cdashboard-dikshithpodhila-god%5C%5Corgs%5C%5C%5Bid%5D%5C%5Cpage.tsx%22%2C%5B%7B%22id%22%3A%2240a9f9e257d908532b802003cdeba878c954cffe69%22%2C%22exportedName%22%3A%22default%22%7D%5D%5D%5D&__client_imported__=!",
+          "async": false
+        }
+      },
+      "layer": {
+        "app/dashboard-dikshithpodhila-god/orgs/[id]/page": "rsc"
+      }
+    }
+  },
   "edge": {},
   "encryptionKey": "+QysoXukt/XBgv9DHRdAsyNMonFMCmLTZYMfNWzHVnU="
 }

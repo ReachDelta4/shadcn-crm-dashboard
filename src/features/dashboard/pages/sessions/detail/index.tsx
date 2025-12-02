@@ -62,7 +62,7 @@ export function SessionDetailPage({ sessionId }: SessionDetailPageProps) {
         }
         load()
         return () => { active = false }
-    }, [])
+    }, [sessionId])
 
     const renderMarkdownBlock = (rawMd?: string | null) => {
         if (typeof rawMd === 'string' && rawMd.trim().length > 0) {

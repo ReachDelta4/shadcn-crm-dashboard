@@ -1,24 +1,23 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Customer, CustomerFilters } from "@/features/dashboard/pages/customers/types/customer";
 import {
   SortingState,
   PaginationState,
   OnChangeFn,
 } from "@tanstack/react-table";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 
 interface UseCustomersProps {
   initialCustomers?: Customer[];
+  initialCount?: number;
 }
 
 interface ApiResponse {
   data: any[];
   count: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
 }
 
-export function useCustomers({ initialCustomers = [] }: UseCustomersProps = {}) {
+export function useCustomers({ initialCustomers = [], initialCount = 0 }: UseCustomersProps = {}) {
   const [filters, setFilters] = useState<CustomerFilters>({
     status: "all",
     search: "",
@@ -37,80 +36,77 @@ export function useCustomers({ initialCustomers = [] }: UseCustomersProps = {}) 
     pageSize: 10,
   });
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const fetchCustomers = async () => {
+    const params = new URLSearchParams({
+      page: pagination.pageIndex.toString(),
+      pageSize: pagination.pageSize.toString(),
+    });
 
-  const fetchCustomers = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+    if (filters.search) params.set('search', filters.search);
+    if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+    if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
+    if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
 
-    try {
-      const params = new URLSearchParams({
-        page: pagination.pageIndex.toString(),
-        pageSize: pagination.pageSize.toString(),
-      });
-
-      if (filters.search) params.set('search', filters.search);
-      if (filters.status && filters.status !== 'all') params.set('status', filters.status);
-      if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
-      if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
-
-      // Convert TanStack sorting to API format
-      if (sorting.length > 0) {
-        const sort = sorting[0];
-        let sortField = sort.id;
-        
-        // Map frontend field names to backend field names
-        if (sortField === 'dateJoined') sortField = 'date_joined';
-        if (sortField === 'fullName') sortField = 'full_name';
-        if (sortField === 'customerNumber') sortField = 'customer_number';
-        
-        params.set('sort', sortField);
-        params.set('direction', sort.desc ? 'desc' : 'asc');
-      }
-
-      const response = await fetch(`/api/customers?${params}`);
+    // Convert TanStack sorting to API format
+    if (sorting.length > 0) {
+      const sort = sorting[0];
+      let sortField = sort.id;
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch customers: ${response.statusText}`);
-      }
-
-      const result: ApiResponse = await response.json();
+      // Map frontend field names to backend field names
+      if (sortField === 'dateJoined') sortField = 'date_joined';
+      if (sortField === 'fullName') sortField = 'full_name';
+      if (sortField === 'customerNumber') sortField = 'customer_number';
       
-      // Transform API data to match frontend Customer type with safe property access
-      const transformedCustomers: Customer[] = (result.data || []).map((customer: any) => ({
-        id: customer.id || '',
-        customerNumber: customer.customer_number || customer.customerNumber || '',
-        fullName: customer.full_name || customer.fullName || '',
-        email: customer.email || '',
-        phone: customer.phone || '',
-        company: customer.company || '',
-        location: customer.location || '',
-        // Preserve exact status from API; allow 'churned'
-        status: (customer.status || 'pending') as 'active' | 'inactive' | 'pending' | 'churned',
-        dateJoined: customer.date_joined || customer.dateJoined || new Date().toISOString(),
-        createdAt: customer.created_at || customer.createdAt || new Date().toISOString(),
-        updatedAt: customer.updated_at || customer.updatedAt || new Date().toISOString(),
-      }));
-
-      setCustomers(transformedCustomers);
-      setTotalCount(result.count || 0);
-    } catch (err) {
-      console.error('Failed to fetch customers:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch customers');
-      setCustomers([]);
-      setTotalCount(0);
-    } finally {
-      setLoading(false);
+      params.set('sort', sortField);
+      params.set('direction', sort.desc ? 'desc' : 'asc');
     }
-  }, [filters, sorting, pagination]);
 
-  // Fetch data when dependencies change
+    const response = await fetch(`/api/customers?${params}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch customers: ${response.statusText}`);
+    }
+
+    return response.json() as Promise<ApiResponse>;
+  };
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['customers', pagination, filters, sorting],
+    queryFn: fetchCustomers,
+    placeholderData: keepPreviousData,
+    initialData: initialCustomers.length > 0 ? { data: initialCustomers, count: initialCount } as any : undefined,
+  });
+
+  // Transform API data to match frontend Customer type with safe property access
+  const customers: Customer[] = (data?.data || []).map((customer: any) => {
+    // If it's already a Customer object (from initialData), return it
+    if (customer.customerNumber !== undefined && customer.fullName !== undefined) return customer;
+
+    return {
+      id: customer.id || '',
+      customerNumber: customer.customer_number || customer.customerNumber || '',
+      fullName: customer.full_name || customer.fullName || '',
+      email: customer.email || '',
+      phone: customer.phone || '',
+      company: customer.company || '',
+      location: customer.location || '',
+      // Preserve exact status from API; allow 'churned'
+      status: (customer.status || 'pending') as 'active' | 'inactive' | 'pending' | 'churned',
+      dateJoined: customer.date_joined || customer.dateJoined || new Date().toISOString(),
+      createdAt: customer.created_at || customer.createdAt || new Date().toISOString(),
+      updatedAt: customer.updated_at || customer.updatedAt || new Date().toISOString(),
+    };
+  });
+
+  const totalCount = data?.count || initialCount;
+
+  // Fetch data when dependencies change - handled by useQuery
+  // Listen for global events to refetch
   useEffect(() => {
-    fetchCustomers();
-  }, [fetchCustomers]);
+    const onChanged = () => { refetch(); };
+    window.addEventListener('customers:changed', onChanged);
+    return () => window.removeEventListener('customers:changed', onChanged);
+  }, [refetch]);
 
   const updateFilters = (newFilters: Partial<CustomerFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -158,14 +154,14 @@ export function useCustomers({ initialCustomers = [] }: UseCustomersProps = {}) 
     filters,
     sorting,
     pagination,
-    loading,
-    error,
+    loading: isLoading,
+    error: isError ? (error as Error).message : null,
     // Update handlers
     updateFilters,
     handleSortingChange,
     handlePaginationChange,
     handleClearFilters,
     // Refresh function
-    refetch: fetchCustomers,
+    refetch,
   };
 } 

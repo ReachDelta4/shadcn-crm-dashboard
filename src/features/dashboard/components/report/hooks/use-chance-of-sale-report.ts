@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createClient } from '@/utils/supabase/client'
 
 type Status = 'idle' | 'queued' | 'running' | 'done' | 'error'
 
@@ -10,15 +11,21 @@ export function useChanceOfSaleReport(sessionId?: string) {
 
   const [ensured, setEnsured] = useState(false)
 
+  const supabase = useMemo(() => createClient(), [])
+
   const fetchOnce = useCallback(async () => {
     if (!sessionId) return { ok: false }
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch(`/api/sessions/${sessionId}/chance-of-sale`)
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers: Record<string,string> = {}
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+
+      const res = await fetch(`/api/sessions/${sessionId}/chance-of-sale`, { headers, credentials: 'include' })
       if (res.status === 404) {
         setStatus('queued')
-        const t = await fetch(`/api/sessions/${sessionId}/chance-of-sale`, { method: 'POST' })
+        const t = await fetch(`/api/sessions/${sessionId}/chance-of-sale`, { method: 'POST', headers, credentials: 'include' })
         if (!t.ok) throw new Error(`Failed to trigger chance-of-sale: ${t.statusText}`)
         return { triggered: true }
       }
@@ -55,7 +62,7 @@ export function useChanceOfSaleReport(sessionId?: string) {
     } finally {
       setLoading(false)
     }
-  }, [sessionId, ensured])
+  }, [sessionId, ensured, supabase])
 
   const retry = useCallback(() => {
     if (!sessionId) return

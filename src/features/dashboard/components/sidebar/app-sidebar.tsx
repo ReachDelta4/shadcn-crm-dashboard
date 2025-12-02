@@ -21,7 +21,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { sidebarMenus } from "@/data/sidebar-menus";
-import { createClient } from "@/utils/supabase/client";
+import { useUser } from "@/hooks/use-user";
+import { useGodRole } from "@/hooks/use-god-role";
 
 /**
  * AppSidebar Component
@@ -32,48 +33,13 @@ import { createClient } from "@/utils/supabase/client";
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { open } = useSidebar();
-  const [user, setUser] = React.useState(sidebarMenus.user); // fallback to placeholder
-  const supabase = createClient();
+  const { data: user } = useUser();
+  const isGod = useGodRole();
 
   // Persist sidebar open state in localStorage
   React.useEffect(() => {
     localStorage.setItem("sidebar-open", open.toString());
   }, [open]);
-
-  // Load real user data from Supabase auth
-  React.useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (authUser?.email) {
-          setUser({
-            name: authUser.user_metadata?.full_name || authUser.email.split('@')[0] || 'User',
-            email: authUser.email,
-            avatar: authUser.user_metadata?.avatar_url || '/avatars/avatar.webp',
-          });
-        }
-      } catch (error) {
-        console.error('Failed to load user:', error);
-      }
-    };
-
-    loadUser();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser({
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
-          email: session.user.email || '',
-          avatar: session.user.user_metadata?.avatar_url || '/avatars/avatar.webp',
-        });
-      } else if (event === 'SIGNED_OUT') {
-        setUser(sidebarMenus.user); // fallback
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
 
   return (
     <Sidebar
@@ -108,12 +74,55 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={sidebarMenus.navMain} />
+        {isGod ? <GodSection /> : null}
         <NavWorkspace workspaces={sidebarMenus.workspaces} />
         <NavSecondary items={sidebarMenus.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user} />
+        <NavUser user={user || sidebarMenus.user} />
       </SidebarFooter>
     </Sidebar>
+  );
+}
+
+function GodSection() {
+  return (
+    <SidebarMenu className="mt-2">
+      <SidebarMenuItem>
+        <div className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          God Admin
+        </div>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <Link href="/dashboard-dikshithpodhila-god">God Console</Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <Link href="/dashboard-dikshithpodhila-god/orgs">Organizations</Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <Link href="/dashboard-dikshithpodhila-god/orgs/new">Create Organization</Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <Link href="/dashboard-dikshithpodhila-god/plans">Plans</Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <Link href="/dashboard-dikshithpodhila-god/subscriptions">Subscriptions</Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild>
+          <Link href="/dashboard-dikshithpodhila-god/login">God Login</Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 }

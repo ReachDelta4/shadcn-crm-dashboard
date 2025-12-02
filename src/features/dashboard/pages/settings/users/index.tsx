@@ -51,6 +51,7 @@ export function UsersPermissionsPage() {
   const [formUserId, setFormUserId] = useState("");
   const [formRole, setFormRole] = useState("sales_rep");
   const [submitting, setSubmitting] = useState(false);
+  const [csvInfo, setCsvInfo] = useState<string | null>(null);
 
   const quotaLabel = useMemo(() => {
     if (seatInfo.seatLimitReps == null) return `${seatInfo.activeReps} active reps`;
@@ -83,6 +84,12 @@ export function UsersPermissionsPage() {
   useEffect(() => {
     fetchMembers();
   }, []);
+
+  function handleCsvSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCsvInfo(`${file.name} (${Math.round(file.size / 1024)} KB) selected — parsing coming soon.`);
+  }
 
   async function handleAddMember(e: React.FormEvent) {
     e.preventDefault();
@@ -182,6 +189,21 @@ export function UsersPermissionsPage() {
           </Button>
         </div>
       </form>
+
+      <div className="rounded-lg border bg-card p-6 space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">CSV Import (skeleton)</h2>
+          <p className="text-sm text-muted-foreground">
+            Upload a CSV with columns: email, role (optional). Preview, validation, and bulk submit will be added.
+          </p>
+        </div>
+        <Input type="file" accept=".csv" onChange={handleCsvSelect} />
+        {csvInfo && (
+          <div className="text-sm text-muted-foreground">
+            {csvInfo}
+          </div>
+        )}
+      </div>
 
       <div className="rounded-lg border bg-card p-0">
         <Table>

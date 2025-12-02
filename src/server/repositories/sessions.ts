@@ -31,8 +31,16 @@ export interface SessionListOptions {
 }
 
 function mapDbSession(row: any): any {
-	const startedAt = row.started_at ? new Date(row.started_at) : null
-	const fallbackTitle = startedAt ? `Session @ ${startedAt.toLocaleTimeString('en-GB', { hour12: false })}` : 'Session'
+	const startedAtRaw = typeof row.started_at === 'string' ? row.started_at : null
+	let fallbackTitle = 'Session'
+	if (startedAtRaw) {
+		// Preserve the exact DB timestamp (UTC text) for deterministic titles
+		const parts = startedAtRaw.split(' ')
+		const timePart = parts.length > 1 ? parts[1].slice(0, 8) : null // HH:MM:SS from 'YYYY-MM-DD HH:MM:SS.sss+TZ'
+		if (timePart) {
+			fallbackTitle = `Session @ ${timePart}`
+		}
+	}
 	// Heuristic: if title_enc looks like base64/opaque, use fallback for display
 	const looksEncoded = typeof row.title_enc === 'string' && /^[A-Za-z0-9+/=]{20,}$/.test(row.title_enc)
 	return {
@@ -77,7 +85,8 @@ export class SessionsRepository {
 			.eq('user_id', userId)
 
 		if (orgId) {
-			query = query.eq('org_id', orgId)
+			// Include both org-bound sessions and legacy sessions with null org_id for this user
+			query = query.or(`org_id.eq.${orgId},org_id.is.null`)
 		}
 
 		// Apply filters
@@ -176,7 +185,7 @@ export class SessionsRepository {
 			.eq('id', id)
 			.eq('user_id', userId)
 		if (orgId) {
-			query = query.eq('org_id', orgId)
+			query = query.or(`org_id.eq.${orgId},org_id.is.null`)
 		}
 		const { data: row, error } = await query.single()
 
@@ -205,7 +214,7 @@ export class SessionsRepository {
 			.eq('id', newSessionId)
 			.eq('user_id', userId)
 		if (orgId) {
-			query = query.eq('org_id', orgId)
+			query = query.or(`org_id.eq.${orgId},org_id.is.null`)
 		}
 		const { data: row, error } = await query.single()
 
@@ -238,7 +247,7 @@ export class SessionsRepository {
 			.eq('id', id)
 			.eq('user_id', userId)
 		if (orgId) {
-			query = query.eq('org_id', orgId)
+			query = query.or(`org_id.eq.${orgId},org_id.is.null`)
 		}
 		const { data: row, error } = await query.single()
 		if (error) throw new Error(`Failed to fetch session: ${error.message}`)

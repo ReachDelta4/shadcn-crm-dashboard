@@ -1,6 +1,7 @@
 export function makeQueryMock(result: any = { data: [], error: null, count: 0 }) {
   const q: any = {
     _selectOpts: undefined as any,
+    _lastOrFilter: undefined as any,
     select(_cols?: string, opts?: any) {
       ;(this as any)._lastSelectColumns = _cols
       this._selectOpts = opts
@@ -8,7 +9,7 @@ export function makeQueryMock(result: any = { data: [], error: null, count: 0 })
     },
     eq() { return this },
     ilike() { return this },
-    or() { return this },
+    or(filter: string) { this._lastOrFilter = filter; return this },
     in() { return this },
     is() { return this },
     not() { return this },
