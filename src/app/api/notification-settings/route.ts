@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { ZodError } from 'zod'
 import { getNotificationSettings, settingsUpdateSchema, updateNotificationSettings } from '@/server/notifications/handlers'
 
 async function getServerClient() {
@@ -41,8 +42,8 @@ export async function PATCH(request: NextRequest) {
 		const updated = await updateNotificationSettings({ supabase, userId: user.id, payload: body })
 
 		return NextResponse.json(updated)
-	} catch (error) {
-		if ((error as any).name === 'ZodError') {
+	} catch (error: unknown) {
+		if (error instanceof ZodError) {
 			return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
 		}
 		console.error('[notification-settings] PATCH error:', error)
