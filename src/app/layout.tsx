@@ -3,6 +3,8 @@ import { GeistMono } from "geist/font/mono";
 import dynamic from "next/dynamic";
 
 import "./globals.css";
+
+export const runtime = "nodejs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { QueryProvider } from "@/providers/query-provider";

@@ -10,6 +10,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Invite = {
   id: string;
@@ -28,6 +38,7 @@ export default function InvitesPanel({ orgId }: { orgId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [form, setForm] = useState({ email: "", role: "sales_rep", expiresInDays: 14 });
+  const [confirmInviteId, setConfirmInviteId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -99,6 +110,12 @@ export default function InvitesPanel({ orgId }: { orgId: string }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  function requestRevoke(inviteId: string) {
+    setConfirmInviteId(inviteId);
+    setSuccess(null);
+    setError(null);
   }
 
   return (
@@ -176,7 +193,7 @@ export default function InvitesPanel({ orgId }: { orgId: string }) {
                       <TimerReset className="mr-1 h-3 w-3" aria-hidden />
                       Extend
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => act(invite.id, "revoke")} disabled={loading}>
+                    <Button variant="ghost" size="sm" onClick={() => requestRevoke(invite.id)} disabled={loading}>
                       <ShieldX className="mr-1 h-3 w-3" aria-hidden />
                       Revoke
                     </Button>
@@ -194,6 +211,30 @@ export default function InvitesPanel({ orgId }: { orgId: string }) {
           </Table>
         </div>
       </CardContent>
+
+      <AlertDialog open={!!confirmInviteId} onOpenChange={(open) => !open && setConfirmInviteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke invite?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Revoking will prevent this invite from being used to access the org. You can reissue a new invite at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmInviteId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (confirmInviteId) {
+                  await act(confirmInviteId, "revoke");
+                  setConfirmInviteId(null);
+                }
+              }}
+            >
+              Confirm revoke
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

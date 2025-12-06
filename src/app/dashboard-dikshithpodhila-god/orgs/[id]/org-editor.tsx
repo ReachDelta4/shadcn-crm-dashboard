@@ -10,6 +10,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { findLoweredSeatLimits, formatRole, type SeatLimits } from "../seat-limit-warnings";
 
 type Org = {
   id: string;
@@ -19,6 +30,7 @@ type Org = {
   planId?: string | null;
   licenseExpiresAt: string | null;
   seatLimits: { admins: number; managers: number; supervisors: number; users: number };
+  seatUsage: { admins: number; managers: number; supervisors: number; users: number };
 };
 
 export default function OrgEditor({ org }: { org: Org }) {
@@ -38,15 +50,24 @@ export default function OrgEditor({ org }: { org: Org }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingSeatLimits, setPendingSeatLimits] = useState<SeatLimits | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const lowering = pendingSeatLimits
+    ? findLoweredSeatLimits(org.seatUsage, pendingSeatLimits)
+    : [];
+
+  function parseSeatLimits(): SeatLimits {
+    const seatLimits = Object.fromEntries(
+      Object.entries(form.seatLimits).map(([k, v]) => [k, Number(v)])
+    ) as SeatLimits;
+    return seatLimits;
+  }
+
+  async function submit(seatLimits: SeatLimits) {
     setError(null);
     setSuccess(null);
 
-    const seatLimits = Object.fromEntries(
-      Object.entries(form.seatLimits).map(([k, v]) => [k, Number(v)])
-    );
     if (Object.values(seatLimits).some((v) => !Number.isFinite(v) || v < 0)) {
       setError("Seat limits must be non-negative numbers");
       return;
@@ -80,6 +101,23 @@ export default function OrgEditor({ org }: { org: Org }) {
     }
   }
 
+  async function handleSubmit(e: React.FormEvent, skipConfirm = false) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    const seatLimits = parseSeatLimits();
+    const lowered = findLoweredSeatLimits(org.seatUsage, seatLimits);
+
+    if (!skipConfirm && lowered.length > 0) {
+      setPendingSeatLimits(seatLimits);
+      setConfirmOpen(true);
+      return;
+    }
+
+    await submit(seatLimits);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -87,7 +125,7 @@ export default function OrgEditor({ org }: { org: Org }) {
         <CardDescription>Update plan, status, license, and seat limits.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={(e) => handleSubmit(e)} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="org-name">Name</Label>
@@ -159,6 +197,9 @@ export default function OrgEditor({ org }: { org: Org }) {
                     }))
                   }
                 />
+                <p className="text-xs text-muted-foreground">
+                  Active: {(org.seatUsage as any)[role]} / Limit {(org.seatLimits as any)[role]}
+                </p>
               </div>
             ))}
           </div>
@@ -173,6 +214,39 @@ export default function OrgEditor({ org }: { org: Org }) {
           </div>
         </form>
       </CardContent>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm seat limit reduction</AlertDialogTitle>
+            <AlertDialogDescription>
+              You currently have active members above the new limits:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="list-disc space-y-1 pl-5 text-sm">
+            {lowering.map((item) => (
+              <li key={item.role}>
+                {formatRole(item.role)}: {item.current} active → new limit {item.next}. Lowering will block new members
+                until usage drops.
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingSeatLimits(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (pendingSeatLimits) {
+                  setConfirmOpen(false);
+                  await submit(pendingSeatLimits);
+                  setPendingSeatLimits(null);
+                }
+              }}
+            >
+              Confirm reduction
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

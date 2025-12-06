@@ -24,3 +24,4 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
+export const runtime = "nodejs";

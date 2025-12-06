@@ -12,6 +12,8 @@ import { validateInviteAction } from "@/server/god/invites.js";
 // @ts-ignore allow JS interop
 import { GodOrgError } from "@/server/god/errors.js";
 
+export const runtime = "nodejs";
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireGod();
@@ -102,7 +104,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (!invite) throw new GodOrgError("Invite not found", 404);
       if (invite.status !== "pending") throw new GodOrgError("Only pending invites can be extended", 400);
       const newExpires = new Date();
-      newExpires.setDate(newExpires.getDate() + action.expiresInDays);
+      const extendDays = typeof action.expiresInDays === 'number' ? action.expiresInDays : 14;
+      newExpires.setDate(newExpires.getDate() + extendDays);
       const { error: updErr } = await supabaseAdmin
         .from("invites")
         .update({ expires_at: newExpires.toISOString() })

@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
   },
   experimental: {},
+  serverExternalPackages: ['@supabase/supabase-js', '@supabase/ssr', '@supabase/realtime-js'],
 
 };
 
@@ -18,9 +19,9 @@ export default nextConfig;
 
 // Webpack customization: safe polyfills + avoid filesystem cache issues on Windows dev
 ;(nextConfig as any).webpack = (config: any, { dev }: { dev: boolean }) => {
-  // Avoid file-based persistent cache in dev on Windows to prevent ENOENT/EPERM against .next/cache
-  if (dev && process.platform === 'win32') {
-    config.cache = { type: 'memory' }
+  // Avoid file-based persistent cache on Windows (dev/prod) to prevent ENOENT/EPERM and PackFile warnings
+  if (process.platform === 'win32') {
+    config.cache = false
   }
   // Polyfill buffer for browser-side consumers (e.g., @supabase/storage-js)
   config.resolve = config.resolve || {}

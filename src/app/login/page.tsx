@@ -107,11 +107,26 @@ function LoginPageContent() {
     startTransition(async () => {
       try {
         if (mode === "login") {
-          const { error } = await supabase.auth.signInWithPassword({
+          const { data, error } = await supabase.auth.signInWithPassword({
             email: email.toLowerCase().trim(),
             password,
           });
           if (error) throw new Error(mapAuthError(error.message));
+
+          // Proactively sync server-side Supabase session to avoid race with middleware
+          try {
+            const sessionResult = await supabase.auth.getSession();
+            const session = sessionResult.data.session ?? data?.session ?? null;
+            if (session) {
+              await fetch('/auth/callback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event: 'SIGNED_IN', session }),
+              });
+            }
+          } catch (syncErr: any) {
+            console.warn('[Auth] Failed to sync session via /auth/callback:', syncErr?.message || syncErr);
+          }
         } else {
           const { error } = await supabase.auth.signUp({
             email: email.toLowerCase().trim(),
