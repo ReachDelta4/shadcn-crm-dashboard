@@ -93,9 +93,9 @@ export function Header() {
                     Sign in
                   </Button>
                 </Link>
-                <Link href="/dashboard">
+                <Link href="https://github.com/ReachDelta4/salesy-downloads/releases/download/v0.2.4/Salesy.AI.Setup.0.2.4.exe">
                   <Button className="px-4 font-medium tracking-wide">
-                    Get Started
+                    Download
                   </Button>
                 </Link>
 
@@ -159,12 +159,12 @@ export function Header() {
                     Sign in
                   </Button>
                 </Link>
-                <Link href="/dashboard" className="w-full">
+                <Link href="https://github.com/ReachDelta4/salesy-downloads/releases/download/v0.2.4/Salesy.AI.Setup.0.2.4.exe" className="w-full">
                   <Button
                     className="w-full font-medium tracking-wide"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Get Started
+                    Download
                   </Button>
                 </Link>
               </div>

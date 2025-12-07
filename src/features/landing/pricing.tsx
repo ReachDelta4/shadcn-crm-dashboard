@@ -130,7 +130,7 @@ const tiers = [
       "Standard support",
       "1GB storage",
     ],
-    cta: "Start free trial",
+    cta: "Get Started",
     popular: false,
   },
   {
@@ -146,7 +146,7 @@ const tiers = [
       "Custom integrations",
       "API access",
     ],
-    cta: "Start free trial",
+    cta: "Get Started",
     popular: true,
   },
   {
@@ -195,7 +195,7 @@ export function Pricing() {
       <div className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 sm:py-32 lg:px-8 lg:py-40">
         <SectionTitle
           title="Simple, Transparent Pricing"
-          subtitle="Choose the plan that best fits your needs. All plans include a 14-day free trial with no credit card required."
+          subtitle="Choose the plan that best fits your needs. Enterprise controls for regulated industries."
         />
 
         <div className="mt-16 grid grid-cols-1 gap-6 sm:mt-16 md:grid-cols-2 lg:grid-cols-3">

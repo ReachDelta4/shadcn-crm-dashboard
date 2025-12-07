@@ -11,6 +11,7 @@ import { Footer } from "@/features/landing/footer";
 import { Header } from "@/features/landing/header";
 import { Hero } from "@/features/landing/hero";
 import { Pricing } from "@/features/landing/pricing";
+import { ProblemSolution } from "@/features/landing/problem-solution";
 import { Testimonials } from "@/features/landing/testimonials";
 
 export default function Home() {
@@ -18,6 +19,7 @@ export default function Home() {
     <main>
       <Header />
       <Hero />
+      <ProblemSolution />
       <Features />
       <Pricing />
       <Testimonials />

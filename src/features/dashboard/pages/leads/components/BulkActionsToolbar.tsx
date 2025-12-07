@@ -30,7 +30,7 @@ export function BulkActionsToolbar({ selectedIds, onClear, onSuccess }: Props) {
 
 	useEffect(() => {
 		setHasConfirmed(false)
-	}, [targetStatus, selectedIds.join(",")])
+	}, [targetStatus, selectedIds])
 
 	async function executeBulkTransition() {
 		setLoading(true)
