@@ -50,6 +50,8 @@ export function NavUser({
     name: string;
     email: string;
     avatar: string;
+    orgName?: string | null;
+    orgRole?: string | null;
   };
 }) {
   const router = useRouter();
@@ -65,6 +67,11 @@ export function NavUser({
       router.push("/");
     }
   };
+
+  const orgLine =
+    user.orgName && user.orgRole
+      ? `${user.orgName} · ${formatOrgRole(user.orgRole)}`
+      : null;
 
   return (
     <SidebarMenu>
@@ -94,6 +101,11 @@ export function NavUser({
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.name}</span>
                 <span className="truncate text-xs">{user.email}</span>
+                {orgLine ? (
+                  <span className="truncate text-[10px] text-muted-foreground">
+                    {orgLine}
+                  </span>
+                ) : null}
               </div>
               <ChevronsUpDown className="ml-auto size-4" aria-hidden="true" />
             </SidebarMenuButton>
@@ -126,6 +138,11 @@ export function NavUser({
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{user.name}</span>
                   <span className="truncate text-xs">{user.email}</span>
+                  {orgLine ? (
+                    <span className="truncate text-[10px] text-muted-foreground">
+                      {orgLine}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </DropdownMenuLabel>
@@ -161,4 +178,21 @@ export function NavUser({
       </SidebarMenuItem>
     </SidebarMenu>
   );
+}
+
+function formatOrgRole(role: string): string {
+  switch (role) {
+    case "org_admin":
+      return "Org Admin";
+    case "sales_rep":
+      return "Sales Rep";
+    case "supervisor":
+      return "Supervisor";
+    case "manager":
+      return "Manager";
+    case "director":
+      return "Director";
+    default:
+      return role;
+  }
 }

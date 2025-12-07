@@ -15,6 +15,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { evaluateBulkActionGuard, formatStatusLabel } from "./bulk-actions-guard";
+import type { LeadStatus } from "@/features/dashboard/pages/leads/types/lead";
+import { mapBulkStatusToCanonical } from "@/features/leads/status-utils";
 
 interface Props {
 	selectedIds: string[];
@@ -32,22 +34,36 @@ export function BulkActionsToolbar({ selectedIds, onClear, onSuccess }: Props) {
 		setHasConfirmed(false)
 	}, [targetStatus, selectedIds])
 
+	function resolveTargetStatus(): LeadStatus | null {
+		return mapBulkStatusToCanonical(targetStatus)
+	}
+
 	async function executeBulkTransition() {
 		setLoading(true)
 		try {
+			const canonical = resolveTargetStatus()
+			if (!canonical) {
+				toast.error("Unsupported target status")
+				return
+			}
+
 			const res = await fetch("/api/leads/bulk/transition", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ lead_ids: selectedIds, target_status: targetStatus }),
+				body: JSON.stringify({ lead_ids: selectedIds, target_status: canonical }),
 			})
 
 			const data = await res.json()
 
 			if (!res.ok) {
-				throw new Error(data.error || "Bulk transition failed")
+				const detail = data?.error || data?.message
+				throw new Error(detail || "Bulk transition failed")
 			}
 
-			toast.success(`Updated ${data.successful} of ${data.total} leads`)
+			const updated = typeof data.successful === "number" ? data.successful : 0
+			const skipped = typeof data.skipped === "number" ? data.skipped : 0
+			const failed = typeof data.failed === "number" ? data.failed : (data.total && updated ? data.total - updated : 0)
+			toast.success(`Updated ${updated} leads (skipped ${skipped}, failed ${failed})`)
 			onClear()
 			onSuccess?.()
 		} catch (error: any) {

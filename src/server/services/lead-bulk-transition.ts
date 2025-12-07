@@ -30,26 +30,36 @@ export async function runBulkTransition(params: {
         parsed.lead_ids.map(id => leadsRepo.getById(id, scope.userId, scope.allowedOwnerIds))
     )
 
-    const results: Array<{ lead_id: string; success: boolean; error?: string }> = []
+    const results: Array<{ lead_id: string; success: boolean; status: 'updated' | 'skipped' | 'error'; message?: string; error?: string }> = []
 
     for (let i = 0; i < leads.length; i++) {
         const lead = leads[i]
         const leadId = parsed.lead_ids[i]
 
         if (!lead) {
-            results.push({ lead_id: leadId, success: false, error: 'Not found or access denied' })
+            results.push({ lead_id: leadId, success: false, status: 'error', error: 'Not found or access denied' })
             continue
         }
 
         try {
             if ((lead as any).status === parsed.target_status) {
-                results.push({ lead_id: leadId, success: true, error: 'Already in target status (skipped)' })
+                results.push({
+                    lead_id: leadId,
+                    success: true,
+                    status: 'skipped',
+                    message: 'Already in target status (skipped)',
+                })
                 continue
             }
 
             const allowed = isTransitionAllowed(((lead as any).status as any), parsed.target_status as any)
             if (!allowed && !parsed.override && flags.lifecycleEnforcement === 'enforce') {
-                results.push({ lead_id: leadId, success: false, error: 'Transition not allowed by lifecycle rules' })
+                results.push({
+                    lead_id: leadId,
+                    success: false,
+                    status: 'error',
+                    error: 'Transition not allowed by lifecycle rules',
+                })
                 continue
             }
 
@@ -66,9 +76,9 @@ export async function runBulkTransition(params: {
                 metadata: { bulk_operation: true },
             })
 
-            await leadsRepo.update(leadId, { status: parsed.target_status as any }, scope.userId)
+            await leadsRepo.update(leadId, { status: parsed.target_status as any }, scope.userId, scope.allowedOwnerIds)
 
-            results.push({ lead_id: leadId, success: true })
+            results.push({ lead_id: leadId, success: true, status: 'updated' })
 
             notifService.send({
                 type: 'status_change',
@@ -79,18 +89,25 @@ export async function runBulkTransition(params: {
             }).catch(() => {})
 
         } catch (error: any) {
-            results.push({ lead_id: leadId, success: false, error: error.message || 'Unknown error' })
+            results.push({
+                lead_id: leadId,
+                success: false,
+                status: 'error',
+                error: error?.message || 'Unknown error',
+            })
         }
     }
 
-    const successCount = results.filter(r => r.success).length
-    const failureCount = results.filter(r => !r.success).length
+    const updatedCount = results.filter(r => r.status === 'updated').length
+    const skippedCount = results.filter(r => r.status === 'skipped').length
+    const failureCount = results.filter(r => r.status === 'error').length
 
     return {
         success: failureCount === 0,
         total: results.length,
-        successful: successCount,
+        successful: updatedCount,
         failed: failureCount,
+        skipped: skippedCount,
         results,
     }
 }

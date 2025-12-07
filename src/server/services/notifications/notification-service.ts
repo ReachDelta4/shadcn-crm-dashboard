@@ -21,8 +21,33 @@ interface NotificationSettings {
 	reminder_1h: boolean
 }
 
-// In-memory throttle cache (production: use Redis)
-const throttleCache = new Map<string, number>()
+export interface NotificationThrottleStore {
+	get(key: string): number | undefined
+	set(key: string, ts: number): void
+	clear?(): void
+}
+
+// Default in-memory throttle store (production: can be swapped for a shared backend)
+function createInMemoryNotificationThrottleStore(): NotificationThrottleStore {
+	const cache = new Map<string, number>()
+	return {
+		get(key: string) {
+			return cache.get(key)
+		},
+		set(key: string, ts: number) {
+			cache.set(key, ts)
+		},
+		clear() {
+			cache.clear()
+		},
+	}
+}
+
+let throttleStore: NotificationThrottleStore = createInMemoryNotificationThrottleStore()
+
+export function setNotificationThrottleStore(store: NotificationThrottleStore) {
+	throttleStore = store
+}
 
 export class NotificationService {
 	constructor(private readonly client: SupabaseClient) {}
@@ -33,7 +58,7 @@ export class NotificationService {
 	async send(payload: NotificationPayload): Promise<void> {
 		// Throttle check
 		const throttleKey = `${payload.user_id}:${payload.type}:${payload.entity_id || 'global'}`
-		const lastSent = throttleCache.get(throttleKey)
+		const lastSent = throttleStore.get(throttleKey)
 		const now = Date.now()
 		
 		if (lastSent && (now - lastSent) < flags.notificationsThrottleMs) {
@@ -62,7 +87,7 @@ export class NotificationService {
 		await Promise.allSettled(promises)
 
 		// Update throttle cache
-		throttleCache.set(throttleKey, now)
+		throttleStore.set(throttleKey, now)
 	}
 
 	/**
@@ -196,6 +221,8 @@ export class NotificationService {
 	 * Clear throttle cache (for testing)
 	 */
 	static clearThrottleCache(): void {
-		throttleCache.clear()
+		if (typeof throttleStore.clear === 'function') {
+			throttleStore.clear()
+		}
 	}
 }

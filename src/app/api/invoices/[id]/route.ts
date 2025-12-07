@@ -100,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 		// If linked to a lead now (or changed), auto-convert lead and attach invoice to that customer
 		if ((validated as any).lead_id) {
 			try {
-				const leadsRepo = new LeadsRepository()
+				const leadsRepo = new LeadsRepository(supabase as any)
 				const lead = await leadsRepo.getById((validated as any).lead_id, user.id)
 				if (lead) {
 					const { data: customerId, error: rpcErr } = await (supabase as any)

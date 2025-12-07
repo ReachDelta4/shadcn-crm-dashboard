@@ -117,32 +117,43 @@ export class LeadsRepository {
 		return data
 	}
 
-	async update(id: string, updates: LeadUpdate, userId: string): Promise<Lead> {
-		const { data, error } = await this.client
+	async update(id: string, updates: LeadUpdate, userId: string, ownerIds?: string[]): Promise<Lead> {
+		const effectiveOwnerIds = ownerIds === undefined ? [userId] : ownerIds
+
+		let query = this.client
 			.from('leads')
 			.update(updates)
 			.eq('id', id)
-			.eq('owner_id', userId)
-			.is('deleted_at', null)
-			.select()
-			.single()
+			.is('deleted_at', null) as any
+
+		if (effectiveOwnerIds && effectiveOwnerIds.length > 0) {
+			query = query.in('owner_id', effectiveOwnerIds)
+		}
+
+		const { data, error } = await query.select().single()
 		if (error) throw new Error(`Failed to update lead: ${error.message}`)
 		return data
 	}
 
-	async delete(id: string, userId: string): Promise<void> {
-		const { error } = await this.client
+	async delete(id: string, userId: string, ownerIds?: string[]): Promise<void> {
+		const effectiveOwnerIds = ownerIds === undefined ? [userId] : ownerIds
+
+		let query = this.client
 			.from('leads')
 			.update({ deleted_at: new Date().toISOString() })
 			.eq('id', id)
-			.eq('owner_id', userId)
-			.is('deleted_at', null)
+			.is('deleted_at', null) as any
+
+		if (effectiveOwnerIds && effectiveOwnerIds.length > 0) {
+			query = query.in('owner_id', effectiveOwnerIds)
+		}
+
+		const { error } = await query
 		if (error) throw new Error(`Failed to delete lead: ${error.message}`)
 	}
 }
 
 export const leadsRepository = new LeadsRepository()
-
 
 
 

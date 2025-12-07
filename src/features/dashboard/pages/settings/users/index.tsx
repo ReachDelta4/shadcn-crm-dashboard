@@ -28,6 +28,15 @@ type OrgMember = {
   updated_at?: string;
 };
 
+type OrgInvite = {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  expires_at: string;
+  created_at: string;
+};
+
 const roleOptions = [
   { value: "sales_rep", label: "Sales Rep" },
   { value: "supervisor", label: "Supervisor" },
@@ -45,13 +54,22 @@ const statusLabels: Record<string, string> = {
 export function UsersPermissionsPage() {
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [invitesLoading, setInvitesLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [seatInfo, setSeatInfo] = useState<{ activeReps: number; seatLimitReps: number | null }>({ activeReps: 0, seatLimitReps: null });
+  const [seatInfo, setSeatInfo] = useState<{ activeReps: number; seatLimitReps: number | null }>({
+    activeReps: 0,
+    seatLimitReps: null,
+  });
   const [licenseExpiresAt, setLicenseExpiresAt] = useState<string | null>(null);
-  const [formUserId, setFormUserId] = useState("");
-  const [formRole, setFormRole] = useState("sales_rep");
-  const [submitting, setSubmitting] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("sales_rep");
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
   const [csvInfo, setCsvInfo] = useState<string | null>(null);
+  const [invites, setInvites] = useState<OrgInvite[]>([]);
+  const [roleSeatSummary, setRoleSeatSummary] = useState<{
+    limits: { admins: number; managers: number; supervisors: number; users: number };
+    usage: { admins: number; managers: number; supervisors: number; users: number };
+  } | null>(null);
 
   const quotaLabel = useMemo(() => {
     if (seatInfo.seatLimitReps == null) return `${seatInfo.activeReps} active reps`;
@@ -81,40 +99,74 @@ export function UsersPermissionsPage() {
     }
   }
 
+  async function fetchInvites() {
+    setInvitesLoading(true);
+    try {
+      const res = await fetch("/api/org/invites", { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      setInvites(data.invites || []);
+    } finally {
+      setInvitesLoading(false);
+    }
+  }
+
   useEffect(() => {
     fetchMembers();
+    fetchInvites();
+    fetchSeatSummary();
   }, []);
+
+  async function fetchSeatSummary() {
+    try {
+      const res = await fetch("/api/org/summary", { cache: "no-store" });
+      if (!res.ok) {
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data?.summary?.seatLimits && data?.summary?.seatUsage) {
+        setRoleSeatSummary({
+          limits: data.summary.seatLimits,
+          usage: data.summary.seatUsage,
+        });
+      }
+    } catch {
+      // Seat summary is advisory; ignore failures and keep page functional.
+    }
+  }
 
   function handleCsvSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setCsvInfo(`${file.name} (${Math.round(file.size / 1024)} KB) selected — parsing coming soon.`);
+    setCsvInfo(`${file.name} (${Math.round(file.size / 1024)} KB) selected (parsing coming soon).`);
   }
 
-  async function handleAddMember(e: React.FormEvent) {
+  async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
-    if (!formUserId.trim()) {
-      setError("Supabase user ID is required");
+    if (!inviteEmail.trim()) {
+      setError("Email is required");
       return;
     }
-    setSubmitting(true);
+    setInviteSubmitting(true);
     setError(null);
     try {
-      const res = await fetch("/api/org/members", {
+      const res = await fetch("/api/org/invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: formUserId.trim(), role: formRole }),
+        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole, expiresInDays: 14 }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "Failed to add member");
+        throw new Error(data?.error || "Failed to send invite");
       }
-      setFormUserId("");
-      await fetchMembers();
+      setInviteEmail("");
+      await fetchInvites();
     } catch (err: any) {
-      setError(err.message || "Failed to add member");
+      setError(err.message || "Failed to send invite");
     } finally {
-      setSubmitting(false);
+      setInviteSubmitting(false);
     }
   }
 
@@ -141,7 +193,7 @@ export function UsersPermissionsPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-bold tracking-tight">Users &amp; Permissions</h1>
         <p className="text-sm text-muted-foreground">
-          Manage org members, assignments, and seat usage.
+          Manage org members, assignments, seat usage, and invites.
         </p>
       </div>
 
@@ -159,20 +211,55 @@ export function UsersPermissionsPage() {
         </div>
       </div>
 
-      <form onSubmit={handleAddMember} className="rounded-lg border bg-card p-6 space-y-4">
+      {roleSeatSummary && (
+        <div className="rounded-lg border bg-card p-6 space-y-3">
+          <div>
+            <h2 className="text-lg font-semibold">Seats by role</h2>
+            <p className="text-sm text-muted-foreground">
+              Active members against configured limits for each role.
+            </p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-4 text-sm">
+            {(["admins", "managers", "supervisors", "users"] as const).map((key) => {
+              const used = roleSeatSummary.usage[key];
+              const limit = roleSeatSummary.limits[key];
+              const over = used > limit;
+              const label =
+                key === "admins"
+                  ? "Org Admins"
+                  : key === "users"
+                  ? "Sales Reps"
+                  : key.charAt(0).toUpperCase() + key.slice(1);
+              return (
+                <div key={key} className="rounded-md border px-3 py-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{label}</span>
+                    <span className={`text-xs font-medium ${over ? "text-destructive" : ""}`}>
+                      {used} / {limit}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleInvite} className="rounded-lg border bg-card p-6 space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">Add member</h2>
+          <h2 className="text-lg font-semibold">Invite member</h2>
           <p className="text-sm text-muted-foreground">
-            Provide the Supabase user ID and desired role. Seats are enforced automatically.
+            Send an email invite with a role. Seats and license limits are enforced automatically.
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           <Input
-            placeholder="Supabase User ID"
-            value={formUserId}
-            onChange={(e) => setFormUserId(e.target.value)}
+            type="email"
+            placeholder="user@example.com"
+            value={inviteEmail}
+            onChange={(e) => setInviteEmail(e.target.value)}
           />
-          <Select value={formRole} onValueChange={setFormRole}>
+          <Select value={inviteRole} onValueChange={setInviteRole}>
             <SelectTrigger>
               <SelectValue placeholder="Select role" />
             </SelectTrigger>
@@ -184,11 +271,54 @@ export function UsersPermissionsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Adding…" : "Add Member"}
+          <Button type="submit" disabled={inviteSubmitting}>
+            {inviteSubmitting ? "Sending..." : "Send Invite"}
           </Button>
         </div>
       </form>
+
+      <div className="rounded-lg border bg-card p-6 space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold">Pending invites</h2>
+          <p className="text-sm text-muted-foreground">
+            Track outstanding email invites and their roles.
+          </p>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Expires</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {invitesLoading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-6 text-sm text-muted-foreground">
+                  Loading invites...
+                </TableCell>
+              </TableRow>
+            ) : invites.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center py-6 text-sm text-muted-foreground">
+                  No invites found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              invites.map((invite) => (
+                <TableRow key={invite.id}>
+                  <TableCell>{invite.email}</TableCell>
+                  <TableCell className="capitalize">{invite.role.replace("_", " ")}</TableCell>
+                  <TableCell>{invite.status}</TableCell>
+                  <TableCell>{invite.expires_at?.substring(0, 10)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       <div className="rounded-lg border bg-card p-6 space-y-3">
         <div>
@@ -219,7 +349,7 @@ export function UsersPermissionsPage() {
             {loading ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
-                  Loading members…
+                  Loading members...
                 </TableCell>
               </TableRow>
             ) : members.length === 0 ? (
@@ -232,7 +362,7 @@ export function UsersPermissionsPage() {
               members.map((member) => (
                 <TableRow key={member.id}>
                   <TableCell className="font-mono text-xs">{member.user_id}</TableCell>
-                  <TableCell className="capitalize">{member.role.replace('_', ' ')}</TableCell>
+                  <TableCell className="capitalize">{member.role.replace("_", " ")}</TableCell>
                   <TableCell>{statusLabels[member.status] || member.status}</TableCell>
                   <TableCell className="text-right">
                     {member.status === "active" ? (

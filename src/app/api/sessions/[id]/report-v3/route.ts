@@ -18,6 +18,8 @@ async function getServerClient() {
 	)
 }
 
+const MAX_PENDING_PER_USER = Number(process.env.REPORT_V3_MAX_PENDING_PER_USER ?? 5)
+
 export async function GET(
 	request: NextRequest,
 	{ params }: { params: Promise<{ id: string }> }
@@ -46,6 +48,24 @@ export async function POST(
 		const { data: { user } } = await supabase.auth.getUser()
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 		const { id } = await params
+
+		// Lightweight backpressure: cap queued+running reports per user to avoid overload
+		if (MAX_PENDING_PER_USER > 0) {
+			try {
+				const { count, error: countError } = await (supabase as any)
+					.from('session_reports_v3')
+					.select('session_id', { count: 'exact', head: true })
+					.in('status', ['queued', 'running'])
+				if (!countError && typeof count === 'number' && count >= MAX_PENDING_PER_USER) {
+					return NextResponse.json(
+						{ error: 'Too many pending reports for this user. Please wait for existing reports to complete.' },
+						{ status: 429 }
+					)
+				}
+			} catch (e) {
+				console.error('Report V3 backpressure check failed (non-fatal):', e)
+			}
+		}
 
 		// Idempotency: if already running or ready, accept without enqueuing duplicate work
 		const repo = new ReportsV3Repository(supabase as any)

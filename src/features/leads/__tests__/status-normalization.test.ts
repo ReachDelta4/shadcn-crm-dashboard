@@ -5,6 +5,7 @@ import {
   MODE_TARGET_STATUS,
   shouldAdvanceToQualified,
   isForwardTransition,
+  mapBulkStatusToCanonical,
 } from '@/features/leads/status-utils'
 
 describe('Lead status canonicalization', () => {
@@ -41,5 +42,15 @@ describe('Lead status canonicalization', () => {
     expect(shouldAdvanceToQualified('disqualified')).toBe(false)
     expect(isForwardTransition('new', 'qualified')).toBe(true)
     expect(isForwardTransition('qualified', 'contacted')).toBe(false)
+  })
+
+  it('maps bulk UI statuses to canonical lifecycle targets', () => {
+    expect(mapBulkStatusToCanonical('new')).toBe('new')
+    expect(mapBulkStatusToCanonical('contacted')).toBe('contacted')
+    expect(mapBulkStatusToCanonical('qualified')).toBe('qualified')
+    expect(mapBulkStatusToCanonical('proposal_negotiation')).toBe('qualified')
+    expect(mapBulkStatusToCanonical('won')).toBe('converted')
+    expect(mapBulkStatusToCanonical('lost')).toBe('disqualified')
+    expect(mapBulkStatusToCanonical('unknown')).toBeNull()
   })
 })

@@ -90,7 +90,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           idempotency_key: parsed.idempotency_key || null,
           metadata: parsed.metadata || null,
       })
-      await (new LeadsRepository(supabase as any)).update(leadId, { status: parsed.target_status as any }, scope.userId)
+      await (new LeadsRepository(supabase as any)).update(leadId, { status: parsed.target_status as any }, scope.userId, scope.allowedOwnerIds)
     })
 
 		// Send notification (best-effort)

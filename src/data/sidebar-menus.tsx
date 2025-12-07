@@ -150,6 +150,21 @@ export const sidebarMenus = {
         },
       ],
     },
+    {
+      title: "Manage Team",
+      url: "/dashboard/settings/users",
+      icon: Users,
+      items: [
+        {
+          title: "Team Directory",
+          url: "/dashboard/settings/team",
+        },
+        {
+          title: "Users & Permissions",
+          url: "/dashboard/settings/users",
+        },
+      ],
+    },
     // Financials section removed; Pending moved under Invoices
     {
       title: "Settings",
@@ -159,10 +174,6 @@ export const sidebarMenus = {
         {
           title: "General",
           url: "/dashboard/settings/general",
-        },
-        {
-          title: "Users & Permissions",
-          url: "/dashboard/settings/users",
         },
         {
           title: "Integrations",

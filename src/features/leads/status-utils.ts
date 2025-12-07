@@ -36,3 +36,18 @@ export function isForwardTransition(
   }
   return targetIdx >= currentIdx;
 }
+
+const BULK_STATUS_MAP: Record<string, LeadStatus> = {
+  proposal_negotiation: "qualified",
+  won: MODE_TARGET_STATUS.won,
+  lost: "disqualified",
+};
+
+export function mapBulkStatusToCanonical(status: string): LeadStatus | null {
+  const mapped = BULK_STATUS_MAP[status];
+  if (mapped) return mapped;
+  if (STATUS_SEQUENCE.includes(status as LeadStatus)) {
+    return status as LeadStatus;
+  }
+  return null;
+}

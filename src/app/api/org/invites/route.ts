@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
     const cap = willExceedSeatLimit({ role: payload.role as OrgRole, limits, usage });
     if (!cap.allowed) return NextResponse.json({ error: cap.reason || "Seat limit reached" }, { status: 409 });
 
+    // 1) Persist invite in org-scoped table
     const { data, error } = await supabaseAdmin
       .from("invites")
       .insert({
@@ -107,6 +108,22 @@ export async function POST(request: NextRequest) {
       .select("id, token")
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // 2) Ask Supabase Auth to send the email invite with a magic link
+    try {
+      const origin = request.headers.get("origin") || process.env.SALESY_CRM_URL || undefined;
+      if (!origin) {
+        console.error("[org/invites] Missing origin/SALESY_CRM_URL for redirect");
+      } else {
+        const base = origin.replace(/\/+$/, "");
+        const redirectTo = `${base}/org/invite/${token}`;
+        // Use service-role client so we can send project-managed invite emails
+        await (supabaseAdmin as any).auth.admin.inviteUserByEmail(email, { redirectTo });
+      }
+    } catch (e) {
+      console.error("[org/invites] Supabase inviteUserByEmail failed", e);
+      return NextResponse.json({ error: "Failed to send invite email" }, { status: 502 });
+    }
 
     return NextResponse.json({ id: data?.id, token: data?.token }, { status: 201 });
   } catch (error) {
