@@ -3,15 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type PageProps = {
-  params: {
-    token: string;
-  };
-};
-
 type InviteStatus = "idle" | "submitting" | "success" | "error";
 
-export default function OrgInviteAcceptPage({ params }: PageProps) {
+export default function OrgInviteAcceptPage({ params }: any) {
   const router = useRouter();
   const [status, setStatus] = useState<InviteStatus>("idle");
   const [message, setMessage] = useState<string>("");
@@ -98,4 +92,3 @@ export default function OrgInviteAcceptPage({ params }: PageProps) {
     </main>
   );
 }
-
