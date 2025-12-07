@@ -95,32 +95,33 @@ function SpotlightCard({ children, className = "" }: { children: React.ReactNode
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
-      className={cn(
-        "group relative overflow-hidden rounded-xl border border-border/50 bg-background/50 hover:border-primary/50 transition-colors duration-300",
-        className
-      )}
     >
-      <div className="absolute inset-0 z-0 bg-transparent transition-opacity duration-500 group-hover:opacity-100 opacity-0"
-        style={{
-          background: "radial-gradient(600px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(var(--primary-rgb), 0.15), transparent 40%)"
-        }}
-      />
       <div
-        className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-        onMouseMove={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
-          e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
-
-          // Also set on parent for the gradient above if needed, but here we can just do it inline
-          const parent = e.currentTarget.parentElement;
-          if (parent) {
-            parent.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
-            parent.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
-          }
-        }}
-      />
-      {children}
+        className={cn(
+          "group relative overflow-hidden rounded-xl border border-border/50 bg-background/50 hover:border-primary/50 transition-colors duration-300",
+          className
+        )}
+      >
+        <div
+          className="absolute inset-0 z-0 bg-transparent transition-opacity duration-500 group-hover:opacity-100 opacity-0"
+          style={{
+            background:
+              "radial-gradient(600px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(var(--primary-rgb), 0.15), transparent 40%)",
+          }}
+        />
+        <div
+          className="absolute inset-0 z-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+          onMouseMove={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const container = e.currentTarget.parentElement as HTMLElement | null;
+            if (container) {
+              container.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
+              container.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
+            }
+          }}
+        />
+        {children}
+      </div>
     </motion.div>
   );
 }

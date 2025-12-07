@@ -5,6 +5,9 @@ import Link from "next/link";
 import { ArrowRight, LineChart, TrendingUp, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
+const MotionDiv: any = motion.div;
+const MotionP: any = motion.p;
+
 // Internal imports
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -102,11 +105,13 @@ export function Hero() {
             id="home"
             aria-labelledby="hero-heading"
         >
-            {/* Background elements */}
+            {/* Background grid */}
             <div
                 className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"
                 aria-hidden="true"
             ></div>
+
+            {/* Animated background glows */}
             <motion.div
                 animate={{
                     scale: [1, 1.2, 1],
@@ -117,9 +122,12 @@ export function Hero() {
                     repeat: Infinity,
                     ease: "easeInOut",
                 }}
-                className="absolute top-0 right-0 -z-10 h-64 w-64 rounded-full bg-yellow-400/20 blur-3xl md:h-96 md:w-96"
-                aria-hidden="true"
-            ></motion.div>
+            >
+                <div
+                    className="absolute top-0 right-0 -z-10 h-64 w-64 rounded-full bg-yellow-400/20 blur-3xl md:h-96 md:w-96"
+                    aria-hidden="true"
+                />
+            </motion.div>
             <motion.div
                 animate={{
                     scale: [1, 1.1, 1],
@@ -132,12 +140,16 @@ export function Hero() {
                     ease: "easeInOut",
                     delay: 1,
                 }}
-                className="bg-primary/20 absolute bottom-16 left-0 -z-10 h-64 w-64 rounded-full blur-3xl md:h-96 md:w-96"
-                aria-hidden="true"
-            ></motion.div>
+            >
+                <div
+                    className="bg-primary/20 absolute bottom-16 left-0 -z-10 h-64 w-64 rounded-full blur-3xl md:h-96 md:w-96"
+                    aria-hidden="true"
+                />
+            </motion.div>
 
+            {/* Main content */}
             <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 py-32 sm:px-6 sm:py-40 md:min-h-screen lg:min-h-screen lg:px-8">
-                <motion.div
+                <MotionDiv
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, ease: "easeOut" }}
@@ -147,18 +159,18 @@ export function Hero() {
 
                     <HeroTitle />
 
-                    <motion.p
+                    <MotionP
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4, duration: 0.8 }}
                         className="text-muted-foreground mt-8 max-w-2xl text-center text-lg"
                     >
-                        Live guidance, instant signals, and forensic post‑call audits.
+                        Live guidance, instant signals, and forensic post-call audits.
                         The only AI that attaches to your calls and closes deals for you.
-                    </motion.p>
+                    </MotionP>
 
                     <div className="relative mt-12 flex flex-col gap-5 sm:flex-row sm:gap-6">
-                        {/* Decorative elements around buttons */}
+                        {/* Decorative corners around buttons */}
                         <div
                             className="border-primary/30 absolute -top-4 -left-4 h-4 w-4 border-t-2 border-l-2"
                             aria-hidden="true"
@@ -178,17 +190,17 @@ export function Hero() {
                         <CTAButton variant="outline">BOOK A DEMO</CTAButton>
                     </div>
 
-                    <motion.p
+                    <MotionP
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.8, duration: 1 }}
                         className="text-muted-foreground mt-4 text-sm"
                     >
-                        Latest Version v0.2.4 • Windows 10/11
-                    </motion.p>
+                        Latest Version v0.2.4 · Windows 10/11
+                    </MotionP>
 
                     {/* Stats bar */}
-                    <motion.div
+                    <MotionDiv
                         initial={{ opacity: 0, y: 40 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 1, duration: 0.8 }}
@@ -228,8 +240,8 @@ export function Hero() {
                                 Companies onboarded
                             </p>
                         </div>
-                    </motion.div>
-                </motion.div>
+                    </MotionDiv>
+                </MotionDiv>
             </div>
         </section>
     );

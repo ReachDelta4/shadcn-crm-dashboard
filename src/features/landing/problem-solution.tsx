@@ -3,6 +3,8 @@
 import { Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 
+const MotionDiv: any = motion.div;
+
 export function ProblemSolution() {
     return (
         <section className="bg-muted/30 relative py-24 sm:py-32">
@@ -19,7 +21,7 @@ export function ProblemSolution() {
 
                 <div className="mx-auto mt-16 grid max-w-lg grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-2">
                     {/* The Hard Way */}
-                    <motion.div
+                    <MotionDiv
                         initial={{ opacity: 0, x: -50 }}
                         whileInView={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.6 }}
@@ -46,7 +48,7 @@ export function ProblemSolution() {
                                 </li>
                             ))}
                         </ul>
-                    </motion.div>
+                    </MotionDiv>
 
                     {/* The Salesy Way */}
                     <div className="rounded-3xl border border-primary/20 bg-background p-8 ring-1 ring-primary/20 shadow-2xl xl:p-10 relative overflow-hidden">
