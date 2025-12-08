@@ -6,6 +6,7 @@ import { LeadStatusTransitionsRepository } from '@/server/repositories/lead-stat
 import { NotificationService } from '@/server/services/notifications/notification-service'
 import { flags } from '@/server/config/flags'
 import { isTransitionAllowed, validateStatus } from '@/server/services/lifecycle/transition-matrix'
+import { logLeadTransition, logLeadError } from '@/server/services/logging/lead-logger'
 import { withIdempotency } from '@/server/utils/idempotency'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -51,16 +52,59 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 			{ cookies: { getAll() { return cookieStore.getAll() }, setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } } }
 		)
 		const leadsRepo = new LeadsRepository(supabase as any)
-		const lead = await leadsRepo.getById(leadId, scope.userId)
-		if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+		const lead = await leadsRepo.getById(leadId, scope.userId, scope.allowedOwnerIds)
+		if (!lead) {
+			logLeadError({
+				operation: 'single_transition',
+				leadId,
+				userId: scope.userId,
+				orgId: scope.orgId ?? null,
+				role: scope.role,
+				targetStatus: parsed.target_status,
+				source: 'api.leads.transition',
+				code: 'lead_not_found',
+				error: new Error('Lead not found'),
+			})
+			return NextResponse.json({ error: 'Lead not found', code: 'lead_not_found' }, { status: 404 })
+		}
 
 		if (parsed.override && !canOverrideLifecycle(scope.role)) {
-			return NextResponse.json({ error: 'Override not permitted for this role' }, { status: 403 })
+			logLeadError({
+				operation: 'single_transition',
+				leadId,
+				userId: scope.userId,
+				orgId: scope.orgId ?? null,
+				role: scope.role,
+				currentStatus: (lead as any).status || null,
+				targetStatus: parsed.target_status,
+				source: 'api.leads.transition',
+				code: 'lifecycle_override_forbidden',
+				error: new Error('Override not permitted for this role'),
+			})
+			return NextResponse.json(
+				{ error: 'Override not permitted for this role', code: 'lifecycle_override_forbidden' },
+				{ status: 403 },
+			)
 		}
 
 		// Validate target status
 		if (!validateStatus(parsed.target_status)) {
-			return NextResponse.json({ error: 'Invalid target status' }, { status: 400 })
+			logLeadError({
+				operation: 'single_transition',
+				leadId,
+				userId: scope.userId,
+				orgId: scope.orgId ?? null,
+				role: scope.role,
+				currentStatus: (lead as any).status || null,
+				targetStatus: parsed.target_status,
+				source: 'api.leads.transition',
+				code: 'invalid_target_status',
+				error: new Error('Invalid target status'),
+			})
+			return NextResponse.json(
+				{ error: 'Invalid target status', code: 'invalid_target_status' },
+				{ status: 400 },
+			)
 		}
 
 		// Enforce lifecycle rules unless override
@@ -68,7 +112,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 		const allowed = isTransitionAllowed(currentStatus, parsed.target_status as any)
 		if (!allowed && !parsed.override) {
 			if (flags.lifecycleEnforcement === 'enforce') {
-				return NextResponse.json({ error: 'Transition not allowed by lifecycle rules' }, { status: 409 })
+				logLeadError({
+					operation: 'single_transition',
+					leadId,
+					userId: scope.userId,
+					orgId: scope.orgId ?? null,
+					role: scope.role,
+					currentStatus,
+					targetStatus: parsed.target_status,
+					source: 'api.leads.transition',
+					code: 'lead_transition_not_allowed',
+					error: new Error('Transition not allowed by lifecycle rules'),
+				})
+				return NextResponse.json(
+					{ error: 'Transition not allowed by lifecycle rules', code: 'lead_transition_not_allowed' },
+					{ status: 409 },
+				)
 			} else if (flags.lifecycleEnforcement === 'log_only') {
 				console.warn(`[lifecycle] Disallowed transition (log_only): ${leadId} ${currentStatus} -> ${parsed.target_status}`)
 			}
@@ -90,8 +149,24 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           idempotency_key: parsed.idempotency_key || null,
           metadata: parsed.metadata || null,
       })
-      await (new LeadsRepository(supabase as any)).update(leadId, { status: parsed.target_status as any }, scope.userId, scope.allowedOwnerIds)
+      await (new LeadsRepository(supabase as any)).update(
+        leadId,
+        { status: parsed.target_status as any },
+        scope.userId,
+        scope.allowedOwnerIds,
+      )
     })
+
+		logLeadTransition({
+			operation: 'single_transition',
+			leadId,
+			userId: scope.userId,
+			orgId: scope.orgId ?? null,
+			role: scope.role,
+			currentStatus,
+			targetStatus: parsed.target_status,
+			source: 'api.leads.transition',
+		})
 
 		// Send notification (best-effort)
 		const notifService = new NotificationService(supabase)
@@ -106,8 +181,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
 		return NextResponse.json({ success: true })
 	} catch (error) {
-		console.error('[lead transition] error:', error)
-		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+		logLeadError({
+			operation: 'single_transition',
+			source: 'api.leads.transition',
+			code: error instanceof z.ZodError ? 'validation_failed' : 'internal_error',
+			error,
+		})
+		if (error instanceof z.ZodError) {
+			return NextResponse.json(
+				{ error: 'Validation failed', code: 'validation_failed', details: error.errors },
+				{ status: 400 },
+			)
+		}
+		return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
 	}
 }

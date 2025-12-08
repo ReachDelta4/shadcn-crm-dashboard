@@ -5,7 +5,11 @@ import type { ActivityLog } from "@/features/dashboard/pages/activity-logs/data/
 
 const baseKpis: RevenueKpis = {
   realized_total_minor: 0,
+  realized_net_revenue_minor: 0,
+  realized_tax_minor: 0,
   pending_total_minor: 0,
+  pending_net_revenue_minor: 0,
+  pending_tax_minor: 0,
   draft_total_minor: 0,
   lead_potential_minor: 0,
   gross_profit_minor: 0,
@@ -124,4 +128,3 @@ describe("computeOverviewSummary", () => {
     expect(summary.metrics.customerRetentionRatePercent).toBe(0);
   });
 });
-

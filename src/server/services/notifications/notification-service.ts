@@ -52,18 +52,84 @@ export function setNotificationThrottleStore(store: NotificationThrottleStore) {
 export class NotificationService {
 	constructor(private readonly client: SupabaseClient) {}
 
+	private async shouldSend(payload: NotificationPayload): Promise<boolean> {
+		const entityKey = payload.entity_id || 'global'
+		const key = `${payload.user_id}:${payload.type}:${entityKey}`
+		const now = Date.now()
+		const lastSent = throttleStore.get(key)
+
+		// Fast in-memory check first
+		if (lastSent && (now - lastSent) < flags.notificationsThrottleMs) {
+			console.log(`[notification] Throttled (memory): ${key}`)
+			return false
+		}
+
+		// DB-backed throttle for cross-process safety
+		try {
+			const dbEntityId = entityKey
+
+			// Read last_sent_at for this key
+			const { data, error } = await this.client
+				.from('notification_throttle')
+				.select('last_sent_at')
+				.eq('user_id', payload.user_id)
+				.eq('type', payload.type)
+				.eq('entity_id', dbEntityId)
+				.maybeSingle()
+
+			if (error) {
+				console.error('[notification] throttle select failed:', error)
+				// Fall back to in-memory decision only
+				throttleStore.set(key, now)
+				return true
+			}
+
+			if (data?.last_sent_at) {
+				const lastDb = new Date(data.last_sent_at).getTime()
+				if ((now - lastDb) < flags.notificationsThrottleMs) {
+					console.log(`[notification] Throttled (db): ${key}`)
+					throttleStore.set(key, lastDb)
+					return false
+				}
+			}
+
+			// Not recently sent (or no record): record new send time
+			const { error: upsertError } = await this.client
+				.from('notification_throttle')
+				.upsert(
+					{
+						user_id: payload.user_id,
+						type: payload.type,
+						entity_id: dbEntityId,
+						last_sent_at: new Date(now).toISOString(),
+					},
+					{ onConflict: 'user_id,type,entity_id' },
+				)
+
+			if (upsertError) {
+				console.error('[notification] throttle upsert failed:', upsertError)
+				// Still allow send; DB throttle is best-effort
+				throttleStore.set(key, now)
+				return true
+			}
+
+			throttleStore.set(key, now)
+			return true
+		} catch (err) {
+			console.error('[notification] throttle db error:', err)
+			// Fail open but still update in-memory to avoid local floods
+			throttleStore.set(key, now)
+			return true
+		}
+	}
+
 	/**
 	 * Send notification with throttling
 	 */
 	async send(payload: NotificationPayload): Promise<void> {
-		// Throttle check
-		const throttleKey = `${payload.user_id}:${payload.type}:${payload.entity_id || 'global'}`
-		const lastSent = throttleStore.get(throttleKey)
-		const now = Date.now()
-		
-		if (lastSent && (now - lastSent) < flags.notificationsThrottleMs) {
-			console.log(`[notification] Throttled: ${throttleKey}`)
-			return
+		if (flags.notificationsThrottleMs > 0) {
+			const shouldSend = await this.shouldSend(payload)
+			if (!shouldSend) return
 		}
 
 		// Get user settings
@@ -85,9 +151,6 @@ export class NotificationService {
 		}
 
 		await Promise.allSettled(promises)
-
-		// Update throttle cache
-		throttleStore.set(throttleKey, now)
 	}
 
 	/**

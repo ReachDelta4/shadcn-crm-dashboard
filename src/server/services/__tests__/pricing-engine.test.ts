@@ -55,6 +55,39 @@ describe("pricing engine", () => {
     expect(calc.total_tax_minor).toBe(16_200);
   });
 
+  it("computes margin excluding tax (tax is pass-through)", () => {
+    const product = createProduct({
+      id: "prod_margin",
+      price_minor: 100_000, // 1000.00
+      tax_rate_bp: 1_800, // 18%
+      cogs_type: "percent",
+      cogs_value: 4_000, // 40%
+    });
+
+    const calc = calculateInvoice(
+      [product],
+      [
+        {
+          product_id: "prod_margin",
+          quantity: 1,
+        } satisfies LineItemInput,
+      ],
+    );
+
+    const line = calc.lines[0];
+    // Subtotal = 100000, tax = 18000, COGS = 40000
+    expect(line.subtotal_minor).toBe(100_000);
+    expect(line.tax_minor).toBe(18_000);
+    expect(line.cogs_minor).toBe(40_000);
+
+    // Margin should be net-of-tax: (subtotal - COGS)
+    expect(line.margin_minor).toBe(60_000);
+
+    // Invoice-level totals remain tax-inclusive for amount
+    expect(calc.total_minor).toBe(118_000);
+    expect(calc.total_margin_minor).toBe(60_000);
+  });
+
   it("generates payment schedules honoring down payment and installments", () => {
     const plan: ProductPaymentPlan = {
       id: "plan_1",

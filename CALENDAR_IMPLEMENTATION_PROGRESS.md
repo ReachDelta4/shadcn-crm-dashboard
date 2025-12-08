@@ -49,7 +49,7 @@
 ### 2.1 Reusable Components
 - ✅ Created `ProductPicker` component
   - Search with 300ms debounce
-  - Displays product name, price, SKU, and recurring interval
+  - Displays product name, price, and recurring interval (SKU is stored but hidden)
   - Clean Shadcn Command/Popover UI
   
 - ✅ Created `PaymentPlanPicker` component

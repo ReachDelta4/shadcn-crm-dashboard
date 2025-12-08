@@ -26,6 +26,7 @@ export interface CustomerListOptions {
 	page?: number
 	pageSize?: number
 	userId: string
+	ownerIds?: string[] // Optional scope-aware owner list; [] means no owner filter (god scope)
 }
 
 export class CustomersRepository {
@@ -40,12 +41,14 @@ export class CustomersRepository {
 	}
 
 	async list(options: CustomerListOptions) {
-		const { filters = {}, sort = 'date_joined', direction = 'desc', page = 0, pageSize = 10, userId } = options
+		const { filters = {}, sort = 'date_joined', direction = 'desc', page = 0, pageSize = 10, userId, ownerIds } = options
+
+		const effectiveOwnerIds = ownerIds === undefined ? [userId] : ownerIds
 		
 		let query = this.client
 			.from('customers')
 			.select('*', { count: 'estimated' })
-			.eq('owner_id', userId)
+			// owner filter applied after base filters based on effectiveOwnerIds
 
 		// Apply filters
 		if (filters.search) {
@@ -66,6 +69,11 @@ export class CustomersRepository {
 
 		// Apply sorting
 		query = query.order(sort, { ascending: direction === 'asc' })
+
+		// Apply owner filter last
+		if (effectiveOwnerIds && effectiveOwnerIds.length > 0) {
+			query = query.in('owner_id', effectiveOwnerIds)
+		}
 
 		// Apply pagination
 		const from = page * pageSize

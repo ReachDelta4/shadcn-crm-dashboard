@@ -26,6 +26,7 @@ export interface OrderListOptions {
 	page?: number
 	pageSize?: number
 	userId: string
+	ownerIds?: string[] // Optional scope-aware owner list; [] means no owner filter (god scope)
 }
 
 export class OrdersRepository {
@@ -40,12 +41,14 @@ export class OrdersRepository {
 	}
 
 	async list(options: OrderListOptions) {
-		const { filters = {}, sort = 'date', direction = 'desc', page = 0, pageSize = 10, userId } = options
+		const { filters = {}, sort = 'date', direction = 'desc', page = 0, pageSize = 10, userId, ownerIds } = options
+
+		const effectiveOwnerIds = ownerIds === undefined ? [userId] : ownerIds
 
 		let query = this.client
 			.from('orders')
 			.select('*', { count: 'exact' })
-			.eq('owner_id', userId)
+			// owner filter applied after base filters based on effectiveOwnerIds
 
 		if (filters.search) {
 			query = query.or(`order_number.ilike.%${filters.search}%,customer_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`)
@@ -60,6 +63,11 @@ export class OrdersRepository {
 		const from = page * pageSize
 		const to = from + pageSize - 1
 		query = query.range(from, to)
+
+		// Apply owner filter last
+		if (effectiveOwnerIds && effectiveOwnerIds.length > 0) {
+			query = query.in('owner_id', effectiveOwnerIds)
+		}
 
 		const { data, error, count } = await query
 		if (error) throw new Error(`Failed to fetch orders: ${error.message}`)

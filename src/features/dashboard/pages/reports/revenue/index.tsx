@@ -12,7 +12,11 @@ import { fetchRevenueReport, RevenueData, RevenueKpis } from "./query";
 
 const emptyKpis: RevenueKpis = {
   realized_total_minor: 0,
+  realized_net_revenue_minor: 0,
+  realized_tax_minor: 0,
   pending_total_minor: 0,
+   pending_net_revenue_minor: 0,
+   pending_tax_minor: 0,
   draft_total_minor: 0,
   lead_potential_minor: 0,
   gross_profit_minor: 0,
@@ -75,7 +79,16 @@ export function RevenueReportPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <KpiCard title="Total Revenue" value={formatCurrency(kpis.realized_total_minor)} description="Paid invoices in range" />
+        <KpiCard
+          title="Total Revenue"
+          value={formatCurrency(kpis.realized_total_minor)}
+          description="Realized revenue (gross, incl. tax)"
+        />
+        <KpiCard
+          title="Tax Collected"
+          value={formatCurrency(kpis.realized_tax_minor)}
+          description="Recognized tax on realized revenue"
+        />
         <KpiCard title="Gross Profit" value={formatCurrency(kpis.gross_profit_minor)} description="Revenue - COGS" />
         <KpiCard title="Gross Margin" value={`${kpis.gross_margin_percent.toFixed(1)}%`} description="Profit / Revenue" />
         <KpiCard title="Pending Revenue" value={formatCurrency(kpis.pending_total_minor)} description="Sent/Pending/Overdue" />

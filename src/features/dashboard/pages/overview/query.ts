@@ -114,14 +114,16 @@ export function computeOverviewSummary(input: OverviewInput): OverviewSummary {
       ? customerCounts.total
       : customerCounts.active + customerCounts.churned;
 
-  const realized = revenueKpis.realized_total_minor || 0;
+  const realizedGross = revenueKpis.realized_total_minor || 0;
+  const realizedTax = revenueKpis.realized_tax_minor || 0;
+  const realizedNet = Math.max(0, realizedGross - realizedTax);
   const grossProfit = revenueKpis.gross_profit_minor || 0;
-  const cogsMinor = Math.max(0, realized - grossProfit);
+  const cogsMinor = Math.max(0, realizedNet - grossProfit);
 
   const safeCustomerTotal = baseCustomerTotal > 0 ? baseCustomerTotal : 1;
 
   const customerLifetimeValueMinor = Math.floor(
-    realized / safeCustomerTotal,
+    realizedNet / safeCustomerTotal,
   );
 
   const customerAcquisitionCostMinor = Math.floor(
@@ -157,4 +159,3 @@ export function computeOverviewSummary(input: OverviewInput): OverviewSummary {
     recentActivity: recent,
   };
 }
-

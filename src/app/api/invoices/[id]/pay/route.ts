@@ -37,12 +37,17 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (schErr) return NextResponse.json({ error: 'Failed to load schedules' }, { status: 500 })
 
     let paidCount = 0
+    let invoicePaid = false
     const when = new Date().toISOString()
     for (const s of (schedules || [])) {
-      const { error: rpcErr } = await (supabase as any)
+      const { data: rpcRes, error: rpcErr } = await (supabase as any)
         .rpc('mark_schedule_paid_cascade', { p_schedule_id: (s as any).id, p_paid_at: when })
-        .single()
-      if (!rpcErr) paidCount++
+      if (!rpcErr) {
+        paidCount++
+        if (rpcRes?.invoice_paid) {
+          invoicePaid = true
+        }
+      }
     }
 
     // If no schedules remain and none exist at all, allow paying onetime invoice directly
@@ -57,24 +62,25 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           .update({ status: 'paid', paid_at: when })
           .eq('id', id)
           .eq('owner_id', user.id)
+        invoicePaid = true
       }
     }
 
-    // Reload invoice status after cascade
-    const { data: latest, error: latestErr } = await (supabase as any)
-      .from('invoices')
-      .select('id, status, paid_at, customer_id, customer_name, email, lead_id')
-      .eq('id', id)
-      .eq('owner_id', user.id)
-      .single()
-    if (latestErr || !latest) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
     // Ensure paying customer exists and link invoice when invoice is paid (DB function is canonical)
-    if ((latest as any).status === 'paid') {
-      await (supabase as any).rpc('ensure_paying_customer_for_invoice', { p_invoice_id: id }).catch(() => {})
+    if (invoicePaid) {
+      try {
+        await (supabase as any).rpc('ensure_paying_customer_for_invoice', { p_invoice_id: id })
+      } catch {}
     }
 
-    return NextResponse.json({ success: true, paid_schedules: paidCount, invoice_status: (latest as any).status, paid_at: (latest as any).paid_at })
+    const finalStatus = invoicePaid ? 'paid' : (invoice as any).status
+
+    return NextResponse.json({
+      success: true,
+      paid_schedules: paidCount,
+      invoice_status: finalStatus,
+      paid_at: invoicePaid ? when : null,
+    })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Internal server error' }, { status: 500 })
   }

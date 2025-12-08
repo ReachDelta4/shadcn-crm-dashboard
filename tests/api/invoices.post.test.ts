@@ -185,6 +185,33 @@ describe('POST /api/invoices', () => {
     const payload = await res.json()
     expect(payload.id).toBe('existing_inv')
   })
+
+  it('maps invoices_status_check violations to 400 instead of 500', async () => {
+    ;(getUserAndScope as any).mockResolvedValueOnce({ userId: 'user_1', role: 'member', orgId: null })
+    ;(createServerClient as any).mockReturnValueOnce(makeSupabaseMock({ userId: 'user_1' }))
+
+    const { InvoicesRepository } = await import('@/server/repositories/invoices')
+    ;(InvoicesRepository as any).mockImplementation(() => ({
+      create: vi.fn().mockRejectedValue(
+        new Error(
+          'Failed to create invoice: new row for relation "invoices" violates check constraint "invoices_status_check"',
+        ),
+      ),
+    }))
+
+    const { POST } = await import('@/app/api/invoices/route')
+    const body = {
+      customer_name: 'Acme',
+      email: 'a@b.com',
+      status: 'sent',
+    }
+    const res = await POST(new Request('http://localhost/api/invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }) as any)
+    expect(res.status).toBe(400)
+    const payload = await res.json()
+    expect(payload.error).toMatch(/invoice status/i)
+  })
 })
-
-

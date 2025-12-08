@@ -60,7 +60,7 @@
 - [ ] Type to search for a product
 - [ ] Verify:
   - [ ] Search debounces (300ms delay)
-  - [ ] Results show product name, price, SKU
+- [ ] Results show product name and price
   - [ ] Recurring interval shown if applicable
   - [ ] Loading state displays while fetching
 - [ ] Select a product

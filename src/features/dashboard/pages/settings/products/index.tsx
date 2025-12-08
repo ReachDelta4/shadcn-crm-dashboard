@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
-import { Plus, Pencil, Search, Trash2, Settings } from "lucide-react";
+import { Plus, Pencil, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ManagePlansModal } from "@/features/dashboard/components/manage-plans-modal";
 
@@ -32,7 +32,12 @@ type Product = {
   active: boolean;
 };
 
-const DEFAULT_FORM: Partial<Product> & { price_major?: string; tax_rate_percent?: string; cogs_value_display?: string; discount_value_display?: string } = {
+const DEFAULT_FORM: Partial<Product> & {
+  price_major?: string;
+  tax_rate_percent?: string;
+  cogs_value_display?: string;
+  discount_value_display?: string;
+} = {
   name: "",
   sku: "",
   currency: "INR",
@@ -96,7 +101,7 @@ export function ProductsSettingsPage() {
       const data = await res.json();
       setProducts(data.data || data.products || data.items || []);
       setTotalPages(data.totalPages || 0);
-    } catch (e) {
+    } catch {
       toast.error("Failed to load products");
     } finally {
       setLoading(false);
@@ -125,14 +130,14 @@ export function ProductsSettingsPage() {
         p.cogs_type === "percent"
           ? bpToPercent(p.cogs_value || 0)
           : p.cogs_value != null
-            ? (p.cogs_value / 100).toFixed(2)
-            : "",
+          ? (p.cogs_value / 100).toFixed(2)
+          : "",
       discount_value_display:
         p.discount_type === "percent"
           ? bpToPercent(p.discount_value || 0)
           : p.discount_value != null
-            ? (p.discount_value / 100).toFixed(2)
-            : "",
+          ? (p.discount_value / 100).toFixed(2)
+          : "",
     });
     setModalOpen(true);
   }
@@ -141,24 +146,25 @@ export function ProductsSettingsPage() {
     try {
       const payload: any = {
         name: form.name,
+        // Keep sku in payload for backward compatibility, but UI hides it
         sku: (form.sku || "").trim() || undefined,
         currency: form.currency || "INR",
         price_minor: toMinor(form.price_major),
         tax_rate_bp: percentToBp(form.tax_rate_percent),
         cogs_type: form.cogs_type ?? null,
         cogs_value: form.cogs_value_display
-          ? (form.cogs_type === "percent"
-              ? percentToBp(form.cogs_value_display)
-              : toMinor(form.cogs_value_display))
+          ? form.cogs_type === "percent"
+            ? percentToBp(form.cogs_value_display)
+            : toMinor(form.cogs_value_display)
           : null,
         discount_type: form.discount_type ?? null,
         discount_value: form.discount_value_display
-          ? (form.discount_type === "percent"
-              ? percentToBp(form.discount_value_display)
-              : toMinor(form.discount_value_display))
+          ? form.discount_type === "percent"
+            ? percentToBp(form.discount_value_display)
+            : toMinor(form.discount_value_display)
           : null,
         recurring_interval: form.recurring_interval ?? null,
-        recurring_interval_days: form.recurring_interval === "custom_days" ? (form.recurring_interval_days || 1) : null,
+        recurring_interval_days: form.recurring_interval === "custom_days" ? form.recurring_interval_days || 1 : null,
         active: !!form.active,
       };
 
@@ -182,7 +188,7 @@ export function ProductsSettingsPage() {
       setModalOpen(false);
       setEditing(null);
       await fetchProducts();
-    } catch (e) {
+    } catch {
       toast.error("Failed to save product");
     }
   }
@@ -194,7 +200,7 @@ export function ProductsSettingsPage() {
       if (!res.ok) throw new Error(await res.text());
       toast.success("Product deleted");
       await fetchProducts();
-    } catch (e) {
+    } catch {
       toast.error("Failed to delete product");
     }
   }
@@ -232,10 +238,13 @@ export function ProductsSettingsPage() {
       }
     }
 
-    const profitMinor = totalMinor - cogsMinor;
-    const marginPct = totalMinor > 0 ? (profitMinor * 100) / totalMinor : 0;
+    // Net revenue excludes tax for margin calculation
+    const netRevenueMinor = afterDiscountMinor;
+    const profitMinor = netRevenueMinor - cogsMinor;
+    const marginPct = netRevenueMinor > 0 ? (profitMinor * 100) / netRevenueMinor : 0;
 
-    const fmt = (minor: number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency }).format((minor || 0) / 100);
+    const fmt = (minor: number) =>
+      new Intl.NumberFormat("en-IN", { style: "currency", currency }).format((minor || 0) / 100);
 
     return {
       productPrice: fmt(priceMinor),
@@ -246,7 +255,15 @@ export function ProductsSettingsPage() {
       profit: fmt(profitMinor),
       marginPct: `${marginPct.toFixed(2)}%`,
     };
-  }, [form.currency, form.price_major, form.tax_rate_percent, form.discount_type, form.discount_value_display, form.cogs_type, form.cogs_value_display]);
+  }, [
+    form.currency,
+    form.price_major,
+    form.tax_rate_percent,
+    form.discount_type,
+    form.discount_value_display,
+    form.cogs_type,
+    form.cogs_value_display,
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -296,30 +313,49 @@ export function ProductsSettingsPage() {
           ) : (
             <div className="divide-y">
               {products.map((p) => {
-                const price = new Intl.NumberFormat('en-IN', { style: 'currency', currency: p.currency || 'INR' }).format((p.price_minor || 0) / 100);
+                const price = new Intl.NumberFormat("en-IN", {
+                  style: "currency",
+                  currency: p.currency || "INR",
+                }).format((p.price_minor || 0) / 100);
                 const taxPct = (p.tax_rate_bp / 100).toFixed(2) + "%";
                 const cogs = p.cogs_type ? `${p.cogs_value}${p.cogs_type === "percent" ? "%" : ""}` : "—";
                 const discount = p.discount_type ? `${p.discount_value}${p.discount_type === "percent" ? "%" : ""}` : "—";
-                const recurring = p.recurring_interval ? (p.recurring_interval === "custom_days" ? `${p.recurring_interval_days} days` : p.recurring_interval) : "One-time";
+                const recurring = p.recurring_interval
+                  ? p.recurring_interval === "custom_days"
+                    ? `${p.recurring_interval_days} days`
+                    : p.recurring_interval
+                  : "One-time";
                 return (
                   <div key={p.id} className="flex items-center justify-between gap-3 p-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <div className="font-medium truncate max-w-[400px]">{p.name}</div>
-                        {!p.active && <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">inactive</span>}
+                        {!p.active && (
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px]">
+                            inactive
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate max-w-[500px]">
-                        SKU {p.sku || "—"} · {price} · Tax {taxPct} · COGS {cogs} · Discount {discount} · Recurring {recurring}
+                        {price} · Tax {taxPct} · COGS {cogs} · Discount {discount} · Recurring {recurring}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!p.recurring_interval && (
-                        <ManagePlansModal productId={p.id} productName={p.name} />
-                      )}
-                      <Button size="icon" variant="outline" onClick={() => openEdit(p)} aria-label={`Edit ${p.name}`}>
+                      {!p.recurring_interval && <ManagePlansModal productId={p.id} productName={p.name} />}
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => openEdit(p)}
+                        aria-label={`Edit ${p.name}`}
+                      >
                         <Pencil className="size-4" />
                       </Button>
-                      <Button size="icon" variant="destructive" onClick={() => deleteProduct(p)} aria-label={`Delete ${p.name}`}>
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        onClick={() => deleteProduct(p)}
+                        aria-label={`Delete ${p.name}`}
+                      >
                         <Trash2 className="size-4" />
                       </Button>
                     </div>
@@ -335,10 +371,20 @@ export function ProductsSettingsPage() {
               Page {page + 1} of {totalPages}
             </span>
             <div className="flex items-center gap-1">
-              <Button size="sm" variant="outline" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page <= 0}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+              >
                 Prev
               </Button>
-              <Button size="sm" variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={page + 1 >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
                 Next
               </Button>
             </div>
@@ -355,23 +401,36 @@ export function ProductsSettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Name</Label>
-              <Input value={form.name || ""} onChange={(e) => update("name", e.target.value)} placeholder="Product name" />
-            </div>
-            <div>
-              <Label>SKU</Label>
-              <Input value={form.sku || ""} onChange={(e) => update("sku", e.target.value)} placeholder="SKU" />
+              <Input
+                value={form.name || ""}
+                onChange={(e) => update("name", e.target.value)}
+                placeholder="Product name"
+              />
             </div>
             <div>
               <Label>Currency</Label>
-              <Input value={form.currency || "INR"} onChange={(e) => update("currency", e.target.value)} placeholder="INR" disabled />
+              <Input
+                value={form.currency || "INR"}
+                onChange={(e) => update("currency", e.target.value)}
+                placeholder="INR"
+                disabled
+              />
             </div>
             <div>
               <Label>Price</Label>
-              <Input value={form.price_major || ""} onChange={(e) => update("price_major", e.target.value)} placeholder="0.00" />
+              <Input
+                value={form.price_major || ""}
+                onChange={(e) => update("price_major", e.target.value)}
+                placeholder="0.00"
+              />
             </div>
             <div>
               <Label>Tax (%)</Label>
-              <Input value={form.tax_rate_percent || "0"} onChange={(e) => update("tax_rate_percent", e.target.value)} placeholder="0" />
+              <Input
+                value={form.tax_rate_percent || "0"}
+                onChange={(e) => update("tax_rate_percent", e.target.value)}
+                placeholder="0"
+              />
             </div>
             <div className="sm:col-span-2">
               <div className="grid grid-cols-2 gap-2 items-end">
@@ -382,9 +441,10 @@ export function ProductsSettingsPage() {
                     onValueChange={(v: any) => update("cogs_type", v === "none" ? null : v)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
+                      <SelectValue placeholder="Not specified" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
                       <SelectItem value="percent">Percent</SelectItem>
                       <SelectItem value="amount">Amount</SelectItem>
                     </SelectContent>
@@ -392,7 +452,11 @@ export function ProductsSettingsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>COGS Value</Label>
-                  <Input value={form.cogs_value_display || ""} onChange={(e) => update("cogs_value_display", e.target.value)} placeholder="0" />
+                  <Input
+                    value={form.cogs_value_display || ""}
+                    onChange={(e) => update("cogs_value_display", e.target.value)}
+                    placeholder="0"
+                  />
                 </div>
               </div>
             </div>
@@ -408,6 +472,7 @@ export function ProductsSettingsPage() {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">No Discount</SelectItem>
                       <SelectItem value="percent">Percent</SelectItem>
                       <SelectItem value="amount">Amount</SelectItem>
                     </SelectContent>
@@ -415,7 +480,12 @@ export function ProductsSettingsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label>Discount Value</Label>
-                  <Input value={form.discount_value_display || ""} onChange={(e) => update("discount_value_display", e.target.value)} placeholder="0" />
+                  <Input
+                    value={form.discount_value_display || ""}
+                    onChange={(e) => update("discount_value_display", e.target.value)}
+                    placeholder="0"
+                    disabled={!form.discount_type}
+                  />
                 </div>
               </div>
             </div>
@@ -444,7 +514,9 @@ export function ProductsSettingsPage() {
                 <Label>Custom Interval (days)</Label>
                 <Input
                   value={String(form.recurring_interval_days || "")}
-                  onChange={(e) => update("recurring_interval_days", Number(e.target.value) || 1)}
+                  onChange={(e) =>
+                    update("recurring_interval_days", (Number(e.target.value) || 1) as any)
+                  }
                   placeholder="30"
                 />
               </div>
@@ -469,13 +541,19 @@ export function ProductsSettingsPage() {
               <div className="text-muted-foreground font-medium">Total Price</div>
               <div className="text-right font-medium">{pricingPreview.total}</div>
               <div className="text-muted-foreground font-medium">Profit Margin</div>
-              <div className="text-right font-medium">{pricingPreview.marginPct} ({pricingPreview.profit})</div>
+              <div className="text-right font-medium">
+                {pricingPreview.marginPct} ({pricingPreview.profit})
+              </div>
             </div>
           </div>
 
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button onClick={saveProduct} disabled={!canSubmit}>{editing ? "Save Changes" : "Create Product"}</Button>
+            <Button variant="outline" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveProduct} disabled={!canSubmit}>
+              {editing ? "Save Changes" : "Create Product"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

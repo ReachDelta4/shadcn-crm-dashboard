@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { LeadStatusTransitionsRepository } from '@/server/repositories/lead-status-transitions'
+import { logLeadTransition, logLeadError } from '@/server/services/logging/lead-logger'
 
 async function getServerClient() {
 	const cookieStore = await cookies()
@@ -25,9 +26,28 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 		const { id: leadId } = await params
 		const repo = new LeadStatusTransitionsRepository(supabase as any)
 		const list = await repo.findByLeadId(leadId, 100)
-		return NextResponse.json({ transitions: list.map(t => ({ at: t.created_at, from: t.status_from, to: t.status_to, by: t.actor_id })) })
+		logLeadTransition({
+			operation: 'transitions_fetch',
+			leadId,
+			userId: user.id,
+			source: 'api.leads.transitions',
+		})
+		return NextResponse.json({
+			transitions: list.map(t => ({
+				at: t.created_at,
+				from: t.status_from,
+				to: t.status_to,
+				by: t.actor_id,
+			})),
+		})
 	} catch (e) {
-		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+		logLeadError({
+			operation: 'transitions_fetch',
+			source: 'api.leads.transitions',
+			code: 'internal_error',
+			error: e,
+		})
+		return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
 	}
 }
 

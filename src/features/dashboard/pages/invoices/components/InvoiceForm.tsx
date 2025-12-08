@@ -365,17 +365,17 @@ export function InvoiceForm({
                   </div>
                 </div>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  <div className="grid gap-2">
-                    <Label>Discount Type</Label>
-                    <Select value={item.discount_type || "none"} onValueChange={(v) => updateLine(idx, { discount_type: v === 'none' ? undefined : v as "percent" | "amount" })}>
-                      <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="percent">Percent</SelectItem>
-                        <SelectItem value="amount">Amount (minor)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="grid gap-2">
+                  <Label>Discount Type</Label>
+                  <Select value={item.discount_type || "none"} onValueChange={(v) => updateLine(idx, { discount_type: v === 'none' ? undefined : v as "percent" | "amount" })}>
+                    <SelectTrigger><SelectValue placeholder="No Discount" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Discount</SelectItem>
+                      <SelectItem value="percent">Percent</SelectItem>
+                      <SelectItem value="amount">Amount (minor)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                   <div className="grid gap-2">
                     <Label>Discount Value</Label>
                     <Input type="number" min={0} value={item.discount_value ?? ""}

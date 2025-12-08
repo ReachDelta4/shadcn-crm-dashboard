@@ -20,6 +20,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { sidebarMenus } from "@/data/sidebar-menus";
 import { useUser } from "@/hooks/use-user";
 import { useGodRole } from "@/hooks/use-god-role";
@@ -33,8 +34,9 @@ import { useGodRole } from "@/hooks/use-god-role";
  */
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { open } = useSidebar();
-  const { data: user } = useUser();
+  const { data: user, isLoading, isFetching } = useUser();
   const isGod = useGodRole();
+  const isUserLoading = isLoading || isFetching || !user;
 
   // Persist sidebar open state in localStorage
   React.useEffect(() => {
@@ -79,7 +81,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavSecondary items={sidebarMenus.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={user || sidebarMenus.user} />
+        {isUserLoading ? (
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <div className="flex items-center gap-2 px-2 py-1">
+                <Skeleton className="h-8 w-8 rounded-lg" />
+                <div className="flex-1 space-y-1">
+                  <Skeleton className="h-4 w-24 rounded-full" />
+                  <Skeleton className="h-3 w-32 rounded-full" />
+                </div>
+              </div>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        ) : (
+          <NavUser user={user!} />
+        )}
       </SidebarFooter>
     </Sidebar>
   );

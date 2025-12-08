@@ -10,7 +10,11 @@ export interface RevenueData {
 
 export interface RevenueKpis {
   realized_total_minor: number;
+  realized_net_revenue_minor: number;
+  realized_tax_minor: number;
   pending_total_minor: number;
+  pending_net_revenue_minor: number;
+  pending_tax_minor: number;
   draft_total_minor: number;
   lead_potential_minor: number;
   gross_profit_minor: number;
@@ -38,7 +42,11 @@ export function buildRevenueQueryParams(params: RevenueQueryParams) {
 export function normalizeRevenueResponse(response: any): RevenueResponseNormalized {
   const kpis: RevenueKpis = {
     realized_total_minor: response?.realized_total_minor ?? 0,
+    realized_net_revenue_minor: response?.realized_net_revenue_minor ?? 0,
+    realized_tax_minor: response?.realized_tax_minor ?? 0,
     pending_total_minor: response?.pending_total_minor ?? 0,
+    pending_net_revenue_minor: response?.pending_net_revenue_minor ?? 0,
+    pending_tax_minor: response?.pending_tax_minor ?? 0,
     draft_total_minor: response?.draft_total_minor ?? 0,
     lead_potential_minor: response?.lead_potential_minor ?? 0,
     gross_profit_minor: response?.gross_profit_minor ?? 0,

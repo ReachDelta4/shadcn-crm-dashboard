@@ -100,7 +100,13 @@ export async function GET(request: NextRequest) {
 		})
 		return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120', ...rateLimitHeaders(rl) } })
 	} catch (error) {
-		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		if (error instanceof z.ZodError) {
+			return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		}
+		const message = error instanceof Error ? error.message : String(error)
+		if (message.includes('invoices_status_check')) {
+			return NextResponse.json({ error: 'Invalid invoice status' }, { status: 400 })
+		}
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }
@@ -300,7 +306,13 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json(invoice, { status: 201, headers: rateLimitHeaders(rl) })
 	} catch (error) {
 		console.error('[invoices] POST error:', error)
-		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		if (error instanceof z.ZodError) {
+			return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		}
+		const message = error instanceof Error ? error.message : String(error)
+		if (message.includes('invoices_status_check')) {
+			return NextResponse.json({ error: 'Invalid invoice status' }, { status: 400 })
+		}
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }

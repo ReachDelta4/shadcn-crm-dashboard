@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/utils/supabase/client";
-import { sidebarMenus } from "@/data/sidebar-menus";
 
 type SidebarUser = {
   name: string;
@@ -13,13 +12,14 @@ type SidebarUser = {
 export function useUser() {
   const supabase = createClient();
 
-  return useQuery<SidebarUser>({
+  return useQuery<SidebarUser | null>({
     queryKey: ["user-session"],
     queryFn: async () => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) return sidebarMenus.user as SidebarUser;
+
+      if (!user) return null;
 
       const base: SidebarUser = {
         name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",

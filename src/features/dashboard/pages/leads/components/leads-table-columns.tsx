@@ -53,10 +53,19 @@ export const useLeadColumns = () => {
         cell: ({ row }) => <div>{row.getValue("company")}</div>,
       },
       {
+        accessorKey: "phone",
+        header: "Phone",
+        cell: ({ row }) => {
+          const phone = row.original.phone;
+          return <div>{phone || "—"}</div>;
+        },
+      },
+      {
         accessorKey: "date",
-        header: "Date",
+        header: "Created",
         cell: ({ row }) => format(new Date(row.getValue("date")), "PPp"),
       },
+      // TODO (phase 2): expose updated_at from API type and show as "Last Updated"
       {
         accessorKey: "value",
         header: "Potential Value",

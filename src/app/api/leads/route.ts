@@ -3,6 +3,8 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import { LeadsRepository } from '@/server/repositories/leads'
+import { getUserAndScope } from '@/server/auth/getUserAndScope'
+import { leadSourceValues } from '@/features/leads/constants'
 
 const leadCreateSchema = z.object({
 	lead_number: z.string().optional(),
@@ -13,7 +15,7 @@ const leadCreateSchema = z.object({
 	location: z.string().optional(),
 	value: z.coerce.number().min(0).default(0).optional(),
 	status: z.enum(['new','contacted','qualified','disqualified','converted']).default('new').optional(),
-	source: z.string().optional(),
+	source: z.enum(leadSourceValues as [string, ...string[]]).optional(),
 	date: z.string().optional(),
 })
 
@@ -49,8 +51,16 @@ async function getServerClient() {
 export async function GET(request: NextRequest) {
 	try {
 		const supabase = await getServerClient()
-		const { data: { user } } = await supabase.auth.getUser()
-		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+		let scope
+		try {
+			scope = await getUserAndScope()
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error)
+			if (message === 'Unauthorized') {
+				return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+			}
+			throw error
+		}
 		const { searchParams } = new URL(request.url)
 		const filters = leadFiltersSchema.parse({
 			search: searchParams.get('search'),
@@ -69,11 +79,16 @@ export async function GET(request: NextRequest) {
 			direction: filters.direction,
 			page: filters.page,
 			pageSize: filters.pageSize,
-			userId: user.id,
+			userId: scope.userId,
+			ownerIds: scope.allowedOwnerIds,
 		})
 		return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120' } })
 	} catch (error) {
 		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		const message = error instanceof Error ? error.message : String(error)
+		if (message.includes('leads_status_check')) {
+			return NextResponse.json({ error: 'Invalid lead status' }, { status: 400 })
+		}
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }
@@ -99,7 +114,13 @@ export async function POST(request: NextRequest) {
 		}).catch(() => {})
 		return NextResponse.json(lead, { status: 201 })
 	} catch (error) {
-		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		if (error instanceof z.ZodError) {
+			return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		}
+		const message = error instanceof Error ? error.message : String(error)
+		if (message.includes('leads_status_check')) {
+			return NextResponse.json({ error: 'Invalid lead status' }, { status: 400 })
+		}
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }

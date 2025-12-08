@@ -115,7 +115,7 @@ interface Product {
 - Searches products with 300ms debounce
 - Filters to active products only
 - Displays price in formatted currency
-- Shows SKU and recurring interval if present
+- Shows recurring interval if present (SKU is stored but not shown)
 - Keyboard navigation (arrow keys, enter to select)
 
 ---

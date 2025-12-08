@@ -1,5 +1,5 @@
 /*!**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** css ./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@19.1.1_react@19.1.1__react@19.1.1/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[3].use[1]!./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@19.1.1_react@19.1.1__react@19.1.1/node_modules/next/dist/build/webpack/loaders/next-font-loader/index.js??ruleSet[1].rules[13].oneOf[3].use[2]!./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@19.1.1_react@19.1.1__react@19.1.1/node_modules/next/font/local/target.css?{"path":"node_modules\\.pnpm\\geist@1.5.1_next@15.2.2_@playwright+test@1.57.0_react-dom@19.1.1_react@19.1.1__react@19.1.1_\\node_modules\\geist\\dist\\mono.js","import":"","arguments":[{"src":"./fonts/geist-mono/GeistMono-Variable.woff2","variable":"--font-geist-mono","adjustFontFallback":false,"fallback":["ui-monospace","SFMono-Regular","Roboto Mono","Menlo","Monaco","Liberation Mono","DejaVu Sans Mono","Courier New","monospace"],"weight":"100 900"}],"variableName":"GeistMono"} ***!
+  !*** css ./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[3].use[1]!./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/build/webpack/loaders/next-font-loader/index.js??ruleSet[1].rules[13].oneOf[3].use[2]!./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/font/local/target.css?{"path":"node_modules\\.pnpm\\geist@1.5.1_next@15.2.2_@playwright+test@1.57.0_react-dom@18.3.1_react@18.3.1__react@18.3.1_\\node_modules\\geist\\dist\\mono.js","import":"","arguments":[{"src":"./fonts/geist-mono/GeistMono-Variable.woff2","variable":"--font-geist-mono","adjustFontFallback":false,"fallback":["ui-monospace","SFMono-Regular","Roboto Mono","Menlo","Monaco","Liberation Mono","DejaVu Sans Mono","Courier New","monospace"],"weight":"100 900"}],"variableName":"GeistMono"} ***!
   \**********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
 @font-face {
 font-family: 'GeistMono';
@@ -11,7 +11,7 @@ font-weight: 100 900;
 }
 
 /*!***********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
-  !*** css ./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@19.1.1_react@19.1.1__react@19.1.1/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[2]!./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@19.1.1_react@19.1.1__react@19.1.1/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[3]!./src/app/globals.css ***!
+  !*** css ./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[2]!./node_modules/.pnpm/next@15.2.2_@playwright+test@1.57.0_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[13].oneOf[10].use[3]!./src/app/globals.css ***!
   \***********************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
 /*! tailwindcss v4.1.13 | MIT License | https://tailwindcss.com */
 @layer properties;
@@ -579,6 +579,9 @@ font-weight: 100 900;
   .z-\[1\] {
     z-index: 1;
   }
+  .z-\[6\] {
+    z-index: 6;
+  }
   .col-span-1 {
     grid-column: span 1 / span 1;
   }
@@ -590,9 +593,6 @@ font-weight: 100 900;
   }
   .row-start-1 {
     grid-row-start: 1;
-  }
-  .float-left {
-    float: left;
   }
   .\!container {
     width: 100% !important;
@@ -630,44 +630,17 @@ font-weight: 100 900;
       max-width: 96rem;
     }
   }
-  .m-1 {
-    margin: calc(var(--spacing) * 1);
-  }
-  .m-2 {
-    margin: calc(var(--spacing) * 2);
-  }
-  .m-3 {
-    margin: calc(var(--spacing) * 3);
-  }
-  .m-4 {
-    margin: calc(var(--spacing) * 4);
-  }
-  .m-5 {
-    margin: calc(var(--spacing) * 5);
-  }
   .-mx-1 {
     margin-inline: calc(var(--spacing) * -1);
   }
   .mx-0 {
     margin-inline: calc(var(--spacing) * 0);
   }
-  .mx-1 {
-    margin-inline: calc(var(--spacing) * 1);
-  }
   .mx-2 {
     margin-inline: calc(var(--spacing) * 2);
   }
-  .mx-3 {
-    margin-inline: calc(var(--spacing) * 3);
-  }
   .mx-3\.5 {
     margin-inline: calc(var(--spacing) * 3.5);
-  }
-  .mx-4 {
-    margin-inline: calc(var(--spacing) * 4);
-  }
-  .mx-5 {
-    margin-inline: calc(var(--spacing) * 5);
   }
   .mx-auto {
     margin-inline: auto;
@@ -681,14 +654,8 @@ font-weight: 100 900;
   .my-2 {
     margin-block: calc(var(--spacing) * 2);
   }
-  .my-3 {
-    margin-block: calc(var(--spacing) * 3);
-  }
   .my-4 {
     margin-block: calc(var(--spacing) * 4);
-  }
-  .my-5 {
-    margin-block: calc(var(--spacing) * 5);
   }
   .ms-4 {
     margin-inline-start: calc(var(--spacing) * 4);
@@ -750,12 +717,6 @@ font-weight: 100 900;
   .mr-3 {
     margin-right: calc(var(--spacing) * 3);
   }
-  .mr-4 {
-    margin-right: calc(var(--spacing) * 4);
-  }
-  .mr-5 {
-    margin-right: calc(var(--spacing) * 5);
-  }
   .mb-1 {
     margin-bottom: calc(var(--spacing) * 1);
   }
@@ -767,9 +728,6 @@ font-weight: 100 900;
   }
   .mb-4 {
     margin-bottom: calc(var(--spacing) * 4);
-  }
-  .mb-5 {
-    margin-bottom: calc(var(--spacing) * 5);
   }
   .mb-6 {
     margin-bottom: calc(var(--spacing) * 6);
@@ -797,9 +755,6 @@ font-weight: 100 900;
   }
   .ml-4 {
     margin-left: calc(var(--spacing) * 4);
-  }
-  .ml-5 {
-    margin-left: calc(var(--spacing) * 5);
   }
   .ml-auto {
     margin-left: auto;
@@ -893,6 +848,10 @@ font-weight: 100 900;
   }
   .aspect-video {
     aspect-ratio: var(--aspect-video);
+  }
+  .size-1 {
+    width: calc(var(--spacing) * 1);
+    height: calc(var(--spacing) * 1);
   }
   .size-2 {
     width: calc(var(--spacing) * 2);
@@ -2042,6 +2001,12 @@ font-weight: 100 900;
   .bg-\(--color-bg\) {
     background-color: var(--color-bg);
   }
+  .bg-\[\#02010A\] {
+    background-color: #02010A;
+  }
+  .bg-\[\#060010\] {
+    background-color: #060010;
+  }
   .bg-accent {
     background-color: var(--accent);
   }
@@ -2354,9 +2319,6 @@ font-weight: 100 900;
   .p-4 {
     padding: calc(var(--spacing) * 4);
   }
-  .p-5 {
-    padding: calc(var(--spacing) * 5);
-  }
   .p-6 {
     padding: calc(var(--spacing) * 6);
   }
@@ -2390,9 +2352,6 @@ font-weight: 100 900;
   .px-4 {
     padding-inline: calc(var(--spacing) * 4);
   }
-  .px-5 {
-    padding-inline: calc(var(--spacing) * 5);
-  }
   .px-6 {
     padding-inline: calc(var(--spacing) * 6);
   }
@@ -2416,9 +2375,6 @@ font-weight: 100 900;
   }
   .py-4 {
     padding-block: calc(var(--spacing) * 4);
-  }
-  .py-5 {
-    padding-block: calc(var(--spacing) * 5);
   }
   .py-6 {
     padding-block: calc(var(--spacing) * 6);
@@ -2465,23 +2421,11 @@ font-weight: 100 900;
   .pt-8 {
     padding-top: calc(var(--spacing) * 8);
   }
-  .pr-1 {
-    padding-right: calc(var(--spacing) * 1);
-  }
   .pr-2 {
     padding-right: calc(var(--spacing) * 2);
   }
   .pr-2\.5 {
     padding-right: calc(var(--spacing) * 2.5);
-  }
-  .pr-3 {
-    padding-right: calc(var(--spacing) * 3);
-  }
-  .pr-4 {
-    padding-right: calc(var(--spacing) * 4);
-  }
-  .pr-5 {
-    padding-right: calc(var(--spacing) * 5);
   }
   .pr-8 {
     padding-right: calc(var(--spacing) * 8);
@@ -2498,17 +2442,8 @@ font-weight: 100 900;
   .pb-4 {
     padding-bottom: calc(var(--spacing) * 4);
   }
-  .pb-5 {
-    padding-bottom: calc(var(--spacing) * 5);
-  }
-  .pl-1 {
-    padding-left: calc(var(--spacing) * 1);
-  }
   .pl-2 {
     padding-left: calc(var(--spacing) * 2);
-  }
-  .pl-3 {
-    padding-left: calc(var(--spacing) * 3);
   }
   .pl-4 {
     padding-left: calc(var(--spacing) * 4);
@@ -2714,9 +2649,6 @@ font-weight: 100 900;
   }
   .text-destructive {
     color: var(--destructive);
-  }
-  .text-emerald-500 {
-    color: var(--color-emerald-500);
   }
   .text-emerald-600 {
     color: var(--color-emerald-600);

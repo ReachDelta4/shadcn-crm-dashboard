@@ -176,7 +176,7 @@ export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChang
         const durationNumber = Number(durationMin)
         if (!Number.isFinite(durationNumber) || durationNumber <= 0) { toast.error('Invalid duration'); return }
         const { startUtc, endUtc } = computeUtcRange(schedDate, startTime, durationNumber, timezone)
-        const appointmentRes = await fetch(`/api/leads/${leadId}/appointments`, {
+        const appointmentRes = await fetch(`/api/leads/${leadId}/appointments/schedule-with-lifecycle`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -187,7 +187,6 @@ export function LeadTransitionDialog({ leadId, leadName, mode, open, onOpenChang
           }),
         })
         if (!appointmentRes.ok) throw new Error(await extractErrorMessage(appointmentRes))
-        await transitionLeadLenient(APPOINTMENT_TARGET_STATUS, 'Appointment saved, but lead status update failed')
         window.dispatchEvent(new Event('calendar:changed'))
       } else if (isInvoice) {
         const targetStatus = MODE_TARGET_STATUS[mode as TransitionMode]

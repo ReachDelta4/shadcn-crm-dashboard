@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/server/auth/getUserAndScope', () => ({ getUserAndScope: vi.fn().mockResolvedValue({ userId: 'u1', role: 'member' }) }))
+vi.mock('@/server/auth/getUserAndScope', () => ({
+  getUserAndScope: vi.fn().mockResolvedValue({
+    userId: 'u1',
+    role: 'member',
+    teamId: null,
+    orgId: 'org-1',
+    allowedOwnerIds: ['u1'],
+  }),
+}))
 
 // Flags control enforcement path
 vi.mock('@/server/config/flags', () => ({ flags: { lifecycleEnforcement: 'enforce', notificationsThrottleMs: 60_000 } }))
@@ -60,6 +68,8 @@ describe('POST /api/leads/[id]/transition', () => {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target_status: 'new' }),
     }) as any, { params: Promise.resolve({ id: 'lead_1' }) } as any)
     expect(res.status).toBe(409)
+    const json = await res.json()
+    expect(json.code).toBe('lead_transition_not_allowed')
   })
 })
 

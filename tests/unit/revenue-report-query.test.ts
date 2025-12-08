@@ -21,12 +21,18 @@ describe("revenue report query helpers", () => {
     const normalized = normalizeRevenueResponse({
       revenue: [{ period: "Mar", total_revenue_minor: 1200 }],
       pending_total_minor: 50,
+      pending_net_revenue_minor: 40,
+      pending_tax_minor: 10,
     });
 
     expect(normalized.revenue).toEqual([{ period: "Mar", total_revenue_minor: 1200 }]);
     expect(normalized.kpis).toMatchObject({
       realized_total_minor: 0,
+      realized_net_revenue_minor: 0,
+      realized_tax_minor: 0,
       pending_total_minor: 50,
+      pending_net_revenue_minor: 40,
+      pending_tax_minor: 10,
       draft_total_minor: 0,
       lead_potential_minor: 0,
       gross_profit_minor: 0,

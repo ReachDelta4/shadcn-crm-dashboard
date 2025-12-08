@@ -73,7 +73,13 @@ export async function GET(request: NextRequest) {
 		})
 		return NextResponse.json(result, { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120' } })
 	} catch (error) {
-		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		if (error instanceof z.ZodError) {
+			return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		}
+		const message = error instanceof Error ? error.message : String(error)
+		if (message.includes('orders_status_check')) {
+			return NextResponse.json({ error: 'Invalid order status' }, { status: 400 })
+		}
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }
@@ -89,7 +95,13 @@ export async function POST(request: NextRequest) {
 		const order = await repo.create(validated, user.id)
 		return NextResponse.json(order, { status: 201 })
 	} catch (error) {
-		if (error instanceof z.ZodError) return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		if (error instanceof z.ZodError) {
+			return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 })
+		}
+		const message = error instanceof Error ? error.message : String(error)
+		if (message.includes('orders_status_check')) {
+			return NextResponse.json({ error: 'Invalid order status' }, { status: 400 })
+		}
 		return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
 	}
 }

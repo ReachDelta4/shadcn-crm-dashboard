@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
-import { CustomersRepository, customersRepository } from '@/server/repositories/customers'
+import { CustomersRepository } from '@/server/repositories/customers'
+import { getUserAndScope } from '@/server/auth/getUserAndScope'
 
 // Input validation schemas
 const customerCreateSchema = z.object({
@@ -45,18 +46,10 @@ async function getServerClient() {
 	return supabase
 }
 
-async function getAuthenticatedUser(request: NextRequest) {
-	const supabase = await getServerClient()
-	const { data: { user }, error } = await supabase.auth.getUser()
-	if (error || !user) {
-		throw new Error('Unauthorized')
-	}
-	return { user, supabase }
-}
-
 export async function GET(request: NextRequest) {
 	try {
-		const { user, supabase } = await getAuthenticatedUser(request)
+		const supabase = await getServerClient()
+		const scope = await getUserAndScope()
 		const { searchParams } = new URL(request.url)
 		
 		const filters = customerFiltersSchema.parse({
@@ -82,7 +75,8 @@ export async function GET(request: NextRequest) {
 			direction: filters.direction,
 			page: filters.page,
 			pageSize: filters.pageSize,
-			userId: user.id,
+			userId: scope.userId,
+			ownerIds: scope.allowedOwnerIds,
 		})
 
 		return NextResponse.json(result)
@@ -100,6 +94,14 @@ export async function GET(request: NextRequest) {
 			)
 		}
 
+		const message = error instanceof Error ? error.message : String(error)
+		if (message.includes('customers_status_check')) {
+			return NextResponse.json(
+				{ error: 'Invalid customer status' },
+				{ status: 400 }
+			)
+		}
+
 		return NextResponse.json(
 			{ error: 'Internal server error' },
 			{ status: 500 }
@@ -109,7 +111,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	try {
-		const { user, supabase } = await getAuthenticatedUser(request)
+		const supabase = await getServerClient()
+		const { data: { user } } = await supabase.auth.getUser()
+		if (!user) {
+			return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+		}
 		const body = await request.json()
 		
 		const validatedData = customerCreateSchema.parse(body)
@@ -136,6 +142,14 @@ export async function POST(request: NextRequest) {
 		if (error instanceof z.ZodError) {
 			return NextResponse.json(
 				{ error: 'Validation failed', details: error.errors },
+				{ status: 400 }
+			)
+		}
+
+		const message = error instanceof Error ? error.message : String(error)
+		if (message.includes('customers_status_check')) {
+			return NextResponse.json(
+				{ error: 'Invalid customer status' },
 				{ status: 400 }
 			)
 		}

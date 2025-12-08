@@ -42,6 +42,16 @@ export class LeadsRepository {
 		this.client = client
 	}
 
+	/**
+	 * Create a new lead owned by the given user.
+	 *
+	 * Invariants (cross‑app):
+	 * - `owner_id` is always set to `userId` (Electron and CRM web).
+	 * - `status` defaults to `'new'` when not provided.
+	 * - `date` is set to the current UTC timestamp if omitted.
+	 * - `lead_number` is auto-generated (LEAD-<epoch-ms>) when not provided.
+	 * - `org_id` is populated at the DB layer via existing backfill/org mapping.
+	 */
 	async list(options: LeadListOptions) {
 		const { filters = {}, sort = 'date', direction = 'desc', page = 0, pageSize = 10, userId, ownerIds } = options
 		
@@ -154,7 +164,6 @@ export class LeadsRepository {
 }
 
 export const leadsRepository = new LeadsRepository()
-
 
 
 

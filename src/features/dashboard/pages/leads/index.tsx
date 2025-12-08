@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { Plus } from "lucide-react";
 import { useLeads } from "./hooks/use-leads";
 import { LeadsTable } from "./components/leads-table";
 import { LeadsFilters } from "./components/leads-filters";
@@ -11,6 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useViewParam } from "@/hooks/use-view-param";
 import { LeadsKanban } from "./components/leads-kanban";
 import { SavedViews } from "@/components/saved-views";
+import { EntityTableShell } from "@/features/dashboard/components/entity-table-shell";
 import type { Lead } from "@/features/dashboard/pages/leads/types/lead";
 
 export function LeadsPage({ initialLeads = [], initialCount = 0 }: { initialLeads?: Lead[]; initialCount?: number }) {
@@ -33,48 +32,61 @@ export function LeadsPage({ initialLeads = [], initialCount = 0 }: { initialLead
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Leads</h1>
-        <div className="flex items-center gap-2">
-          <SavedViews
-            entityKey="leads"
-            getParams={() => ({ filters, sorting, pagination, view })}
-            onApply={(params: any) => {
-              if (params.filters) updateFilters(params.filters);
-              if (params.sorting) handleSortingChange(params.sorting);
-              if (params.pagination) handlePaginationChange(params.pagination);
-              if (params.view) setView(params.view);
-            }}
-          />
-          <NewLeadDialog onCreated={refetch} />
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <LeadsFilters filters={filters} onFiltersChange={updateFilters} />
-        <Tabs value={view} onValueChange={(v) => setView(v as any)}>
-          <TabsList>
-            <TabsTrigger value="table">Table</TabsTrigger>
-            <TabsTrigger value="kanban">Kanban</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
-      {view === "table" && (
-        <div className="rounded-lg border bg-card">
-          <div className="p-3">
-            <LeadsTable
-              leads={leads}
-              totalRows={allLeads.length}
-              sorting={sorting}
-              onSort={handleSortingChange}
-              pagination={pagination}
-              onPaginationChange={handlePaginationChange}
-              pageCount={pageCount}
+      <EntityTableShell
+        title="Leads"
+        description="Manage your pipeline of prospects."
+        headerActions={
+          <>
+            <SavedViews
+              entityKey="leads"
+              getParams={() => ({ filters, sorting, pagination, view })}
+              onApply={(params: any) => {
+                if (params.filters) updateFilters(params.filters);
+                if (params.sorting) handleSortingChange(params.sorting);
+                if (params.pagination) handlePaginationChange(params.pagination);
+                if (params.view) setView(params.view);
+              }}
             />
-          </div>
-        </div>
-      )}
+            <NewLeadDialog onCreated={refetch} />
+          </>
+        }
+        table={
+          view === "table" ? (
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-3">
+                <LeadsFilters filters={filters} onFiltersChange={updateFilters} />
+                <Tabs value={view} onValueChange={(v) => setView(v as any)}>
+                  <TabsList>
+                    <TabsTrigger value="table">Table</TabsTrigger>
+                    <TabsTrigger value="kanban">Kanban</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+              <LeadsTable
+                leads={leads}
+                totalRows={allLeads.length}
+                sorting={sorting}
+                onSort={handleSortingChange}
+                pagination={pagination}
+                onPaginationChange={handlePaginationChange}
+                pageCount={pageCount}
+              />
+            </div>
+          ) : (
+            <div className="p-3">
+              <Tabs value={view} onValueChange={(v) => setView(v as any)}>
+                <TabsList>
+                  <TabsTrigger value="table">Table</TabsTrigger>
+                  <TabsTrigger value="kanban">Kanban</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="mt-4 rounded-lg border bg-card p-3">
+                <LeadsKanban leads={allLeads} onStatusChanged={refetch} />
+              </div>
+            </div>
+          )
+        }
+      />
 
       {view === "kanban" && (
         <div className="rounded-lg border bg-card p-3">

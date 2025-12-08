@@ -82,6 +82,9 @@ export function calculateLineItem(
 	const tax = Math.floor((afterDiscount * product.tax_rate_bp) / 10000)
 	const total = afterDiscount + tax
 
+	// Net revenue excludes tax (tax is pass-through)
+	const netRevenue = afterDiscount
+
 	// Calculate COGS
 	let cogs = 0
 	if (product.cogs_type && product.cogs_value) {
@@ -92,7 +95,7 @@ export function calculateLineItem(
 		}
 	}
 
-	const margin = total - cogs
+	const margin = netRevenue - cogs
 
 	return {
 		product_id: product.id,
@@ -283,5 +286,4 @@ function calculateMaxCycles(intervalType: string, horizonMonths: number): number
 			return horizonMonths // fallback
 	}
 }
-
 

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/shared/date-picker";
+import { LEAD_SOURCES, leadSourceValues } from "@/features/leads/constants";
 
 const schema = z.object({
   full_name: z.string().min(1, "Name is required"),
@@ -29,7 +30,7 @@ const schema = z.object({
     "disqualified",
     "converted",
   ]).default("new"),
-  source: z.string().optional(),
+  source: z.enum(leadSourceValues as [string, ...string[]]).optional(),
 });
 
 export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
@@ -39,7 +40,7 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
   const [status, setStatus] = useState<
     "new" | "contacted" | "qualified" | "disqualified" | "converted"
   >("new");
-  const [source, setSource] = useState("");
+  const [source, setSource] = useState<string | undefined>(undefined);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
@@ -87,7 +88,24 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
           <Input placeholder="Phone" value={phone} onChange={e=>setPhone(e.target.value)} />
           <Input placeholder="Company" value={company} onChange={e=>setCompany(e.target.value)} />
           <Input placeholder="Potential Value" type="number" min={0} value={potentialValue} onChange={e=>setPotentialValue(e.target.value)} />
-          <Input placeholder="Source" value={source} onChange={e=>setSource(e.target.value)} />
+          <div className="grid gap-2">
+            <label className="text-sm">Source</label>
+            <Select
+              value={source}
+              onValueChange={(v) => setSource(v as any)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select source" />
+              </SelectTrigger>
+              <SelectContent>
+                {LEAD_SOURCES.map(s => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid gap-2">
             <label className="text-sm">Status</label>
             <Select value={status} onValueChange={(v: any) => setStatus(v)}>
@@ -111,7 +129,6 @@ export function NewLeadDialog({ onCreated }: { onCreated?: () => void }) {
     </Dialog>
   );
 }
-
 
 
 

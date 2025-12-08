@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { PasswordField } from "@/components/ui/password-field";
+import Particles from "@/components/Particles";
 import { createClient } from "@/utils/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -53,8 +55,20 @@ function GodLoginContent() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto flex max-w-md flex-col gap-6 px-4 py-10">
+    <div className="min-h-screen relative overflow-hidden bg-[#02010A]">
+      <div className="absolute inset-0">
+        <Particles
+          particleColors={["#ffffff", "#ffffff"]}
+          particleCount={200}
+          particleSpread={10}
+          speed={0.1}
+          particleBaseSize={100}
+          moveParticlesOnHover={true}
+          alphaParticles={false}
+          disableRotation={false}
+        />
+      </div>
+      <div className="relative z-[6] mx-auto flex max-w-md flex-col gap-6 px-4 py-10">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ShieldCheck className="h-4 w-4" aria-hidden />
           <span>God Admin Login</span>
@@ -80,17 +94,15 @@ function GodLoginContent() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="god-password">Password</Label>
-                <Input
-                  id="god-password"
-                  type="password"
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
+              <PasswordField
+                id="god-password"
+                label="Password"
+                value={password}
+                onChange={setPassword}
+                placeholder="Enter password"
+                autoComplete="current-password"
+                required
+              />
               {error ? (
                 <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {error}

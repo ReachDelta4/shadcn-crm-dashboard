@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordField } from "@/components/ui/password-field";
+import Particles from "@/components/Particles";
 import { createClient } from "@/utils/supabase/client";
 
 const schema = z
@@ -163,9 +165,25 @@ function LoginPageContent() {
     router.replace(redirect);
   }
 
+  const isSignup = mode === "signup";
+
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen relative overflow-hidden bg-[#02010A] flex items-center justify-center p-4">
+      <div className="absolute inset-0">
+        <Particles
+          particleColors={["#ffffff", "#ffffff"]}
+          particleCount={200}
+          particleSpread={10}
+          speed={0.1}
+          particleBaseSize={100}
+          moveParticlesOnHover={true}
+          alphaParticles={false}
+          disableRotation={false}
+        />
+      </div>
+      <Card
+        className="relative z-[6] w-full max-w-md"
+      >
         <CardHeader>
           <CardTitle className="text-center">{mode === "login" ? "Welcome back" : "Create your account"}</CardTitle>
         </CardHeader>
@@ -175,15 +193,25 @@ function LoginPageContent() {
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-            </div>
+            <PasswordField
+              id="password"
+              label="Password"
+              value={password}
+              onChange={setPassword}
+              placeholder="Enter your password"
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
+              required
+            />
             {mode === "signup" && (
-              <div className="space-y-2">
-                <Label htmlFor="confirm">Confirm Password</Label>
-                <Input id="confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
-              </div>
+              <PasswordField
+                id="confirm"
+                label="Confirm Password"
+                value={confirm}
+                onChange={setConfirm}
+                placeholder="Re-enter your password"
+                autoComplete="new-password"
+                required
+              />
             )}
             {error && <div className="text-sm text-red-600" role="alert">{error}</div>}
             <Button type="submit" className="w-full" disabled={pending}>
