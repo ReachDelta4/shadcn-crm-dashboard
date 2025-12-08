@@ -39,22 +39,31 @@ export const useCustomerColumns = () => {
       {
         accessorKey: "company",
         header: "Company",
-        cell: ({ row }) => <div>{row.getValue("company") || "—"}</div>,
+        cell: ({ row }) => <div>{row.getValue("company") || "-"}</div>,
       },
       {
         accessorKey: "phone",
         header: "Phone",
-        cell: ({ row }) => <div>{row.getValue("phone") || "—"}</div>,
+        cell: ({ row }) => <div>{row.getValue("phone") || "-"}</div>,
       },
       {
         accessorKey: "location",
         header: "Location",
-        cell: ({ row }) => <div>{row.getValue("location") || "—"}</div>,
+        cell: ({ row }) => <div>{row.getValue("location") || "-"}</div>,
       },
       {
         accessorKey: "dateJoined",
         header: "Date Joined",
         cell: ({ row }) => format(new Date(row.getValue("dateJoined")), "PP"),
+      },
+      {
+        accessorKey: "updatedAt",
+        header: "Last Updated",
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {format(new Date(row.original.updatedAt), "PP")}
+          </span>
+        ),
       },
       {
         accessorKey: "status",
@@ -69,6 +78,21 @@ export const useCustomerColumns = () => {
         },
       },
       {
+        id: "notes",
+        header: "Notes",
+        cell: ({ row }) => {
+          const subjectId = row.original.subjectId ?? null;
+          if (!subjectId) {
+            return <span className="text-xs text-muted-foreground">None</span>;
+          }
+          return (
+            <span className="text-xs text-primary">
+              Linked
+            </span>
+          );
+        },
+      },
+      {
         id: "actions",
         header: "",
         cell: ({ row }) => <CustomerActionsDropdown customer={row.original} />,
@@ -76,4 +100,5 @@ export const useCustomerColumns = () => {
     ],
     []
   );
-}; 
+};
+

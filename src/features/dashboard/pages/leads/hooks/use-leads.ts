@@ -66,6 +66,7 @@ export function mapLeadRecord(raw: any): Lead {
   return {
     id: raw?.id || "",
     leadNumber: raw?.lead_number || raw?.leadNumber || "",
+    subjectId: raw?.subject_id ?? raw?.subjectId ?? null,
     fullName: raw?.full_name || raw?.fullName || "",
     email: raw?.email || "",
     phone: raw?.phone || "",
@@ -73,6 +74,7 @@ export function mapLeadRecord(raw: any): Lead {
     value: normalizeNumber(raw?.value),
     status,
     date: raw?.date || fallbackDate,
+    updatedAt: raw?.updated_at || raw?.updatedAt || raw?.date || fallbackDate,
     source: raw?.source || "unknown",
   };
 }

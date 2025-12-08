@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatINRMinor } from "@/utils/currency";
 import type { Customer } from "@/features/dashboard/pages/customers/types/customer";
+import { LeadNotesPanel } from "@/features/dashboard/pages/leads/components/lead-notes-panel";
 
 interface ViewCustomerDialogProps {
   customer: Customer;
@@ -184,6 +185,13 @@ export function ViewCustomerDialog({ customer, open, onOpenChange }: ViewCustome
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Notes</CardTitle></CardHeader>
+              <CardContent>
+                <LeadNotesPanel subjectId={customer.subjectId ?? null} />
               </CardContent>
             </Card>
 

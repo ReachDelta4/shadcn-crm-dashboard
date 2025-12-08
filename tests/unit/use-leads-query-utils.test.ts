@@ -38,25 +38,27 @@ describe("useLeads query helpers", () => {
       id: "lead-123",
       lead_number: "L-123",
       full_name: "Jane Smith",
+      subject_id: "subj-1",
       email: "jane@example.com",
       value: "999",
       status: "contacted",
       date: "2024-02-02T10:00:00Z",
+      updated_at: "2024-02-03T10:00:00Z",
       source: "referral",
     });
 
-    expect(normalized).toEqual({
-      id: "lead-123",
-      leadNumber: "L-123",
-      fullName: "Jane Smith",
-      email: "jane@example.com",
-      phone: "",
-      company: "",
-      value: 999,
-      status: "contacted",
-      date: "2024-02-02T10:00:00Z",
-      source: "referral",
-    });
+    expect(normalized.id).toBe("lead-123");
+    expect(normalized.leadNumber).toBe("L-123");
+    expect(normalized.fullName).toBe("Jane Smith");
+    expect(normalized.email).toBe("jane@example.com");
+    expect(normalized.phone).toBe("");
+    expect(normalized.company).toBe("");
+    expect(normalized.value).toBe(999);
+    expect(normalized.status).toBe("contacted");
+    expect(normalized.date).toBe("2024-02-02T10:00:00Z");
+    expect(normalized.updatedAt).toBe("2024-02-03T10:00:00Z");
+    expect(normalized.subjectId).toBe("subj-1");
+    expect(normalized.source).toBe("referral");
   });
 
   it("mapLeadRecord falls back to defaults when data is incomplete", () => {

@@ -82,9 +82,12 @@ export function useCustomers({ initialCustomers = [], initialCount = 0 }: UseCus
     // If it's already a Customer object (from initialData), return it
     if (customer.customerNumber !== undefined && customer.fullName !== undefined) return customer;
 
+    const nowIso = new Date().toISOString();
+
     return {
       id: customer.id || '',
       customerNumber: customer.customer_number || customer.customerNumber || '',
+      subjectId: customer.subject_id ?? customer.subjectId ?? null,
       fullName: customer.full_name || customer.fullName || '',
       email: customer.email || '',
       phone: customer.phone || '',
@@ -92,9 +95,9 @@ export function useCustomers({ initialCustomers = [], initialCount = 0 }: UseCus
       location: customer.location || '',
       // Preserve exact status from API; allow 'churned'
       status: (customer.status || 'pending') as 'active' | 'inactive' | 'pending' | 'churned',
-      dateJoined: customer.date_joined || customer.dateJoined || new Date().toISOString(),
-      createdAt: customer.created_at || customer.createdAt || new Date().toISOString(),
-      updatedAt: customer.updated_at || customer.updatedAt || new Date().toISOString(),
+      dateJoined: customer.date_joined || customer.dateJoined || nowIso,
+      createdAt: customer.created_at || customer.createdAt || nowIso,
+      updatedAt: customer.updated_at || customer.updatedAt || nowIso,
     };
   });
 

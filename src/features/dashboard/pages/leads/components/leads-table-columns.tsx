@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { Lead, LeadStatus } from "@/features/dashboard/pages/leads/types/lead";
 import { formatINRMajor } from "@/utils/currency";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { LeadActionsDropdown } from "./leads-actions-dropdown";
 
 function canonicalize(status: LeadStatus): LeadStatus {
-  return status
+  return status;
 }
 
 export const statusColors: Record<string, string> = {
@@ -42,7 +43,9 @@ export const useLeadColumns = () => {
               {row.original.email}
             </span>
             {row.original.phone ? (
-              <span className="text-xs text-muted-foreground">{row.original.phone}</span>
+              <span className="text-xs text-muted-foreground">
+                {row.original.phone}
+              </span>
             ) : null}
           </div>
         ),
@@ -65,7 +68,18 @@ export const useLeadColumns = () => {
         header: "Created",
         cell: ({ row }) => format(new Date(row.getValue("date")), "PPp"),
       },
-      // TODO (phase 2): expose updated_at from API type and show as "Last Updated"
+      {
+        accessorKey: "updatedAt",
+        header: "Last Updated",
+        cell: ({ row }) =>
+          row.original.updatedAt ? (
+            <span className="text-xs text-muted-foreground">
+              {format(new Date(row.original.updatedAt), "PPp")}
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
+      },
       {
         accessorKey: "value",
         header: "Potential Value",
@@ -75,10 +89,14 @@ export const useLeadColumns = () => {
         accessorKey: "status",
         header: "Status",
         cell: ({ row }) => {
-          const canonical = canonicalize(row.original.status)
+          const canonical = canonicalize(row.original.status);
           return (
             <div className="flex items-center gap-2">
-              <Badge className={statusColors[canonical] || "bg-gray-100 text-gray-700"}>
+              <Badge
+                className={
+                  statusColors[canonical] || "bg-gray-100 text-gray-700"
+                }
+              >
                 {canonical.charAt(0).toUpperCase() + canonical.slice(1)}
               </Badge>
             </div>
@@ -93,10 +111,29 @@ export const useLeadColumns = () => {
           const source = row.getValue("source") as string;
           return (
             <div>
-              {source.split("_").map(word => 
-                word.charAt(0).toUpperCase() + word.slice(1)
-              ).join(" ")}
+              {source
+                .split("_")
+                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(" ")}
             </div>
+          );
+        },
+      },
+      {
+        id: "notes",
+        header: "Notes",
+        cell: ({ row }) => {
+          const subjectId = row.original.subjectId;
+          if (!subjectId) {
+            return <span className="text-xs text-muted-foreground">None</span>;
+          }
+          return (
+            <Link
+              href={`/dashboard/leads/${row.original.id}#notes`}
+              className="text-xs text-primary hover:underline"
+            >
+              View
+            </Link>
           );
         },
       },
@@ -108,4 +145,5 @@ export const useLeadColumns = () => {
     ],
     []
   );
-}; 
+};
+

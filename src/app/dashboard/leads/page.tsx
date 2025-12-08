@@ -30,6 +30,7 @@ export default async function Page() {
     initialLeads = (result.data || []).map((lead: any) => ({
       id: lead.id || '',
       leadNumber: lead.lead_number || '',
+      subjectId: lead.subject_id ?? null,
       fullName: lead.full_name || '',
       email: lead.email || '',
       phone: lead.phone || '',
@@ -37,6 +38,7 @@ export default async function Page() {
       value: typeof lead.value === 'number' ? lead.value : 0,
       status: lead.status || 'new',
       date: lead.date || new Date().toISOString(),
+      updatedAt: lead.updated_at || lead.date || new Date().toISOString(),
       source: lead.source || 'unknown',
     }));
     initialCount = result.count || 0;
