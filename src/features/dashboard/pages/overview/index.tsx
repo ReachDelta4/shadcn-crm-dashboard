@@ -30,6 +30,7 @@ import {
   computeOverviewSummary,
   type OverviewSummary,
 } from "./query";
+import type { RevenueKpis } from "@/features/dashboard/pages/reports/revenue/query";
 
 interface LeadsPageResponse {
   data: Array<{ status?: string | null; source?: string | null }>;
@@ -111,7 +112,7 @@ async function fetchRecentActivity(): Promise<OverviewSummary["recentActivity"]>
   }));
 }
 
-async function fetchRevenueKpis(rangeDays: number) {
+async function fetchRevenueKpis(rangeDays: number): Promise<RevenueKpis> {
   const from = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
   const params = new URLSearchParams({
     groupBy: "month",
@@ -124,7 +125,11 @@ async function fetchRevenueKpis(rangeDays: number) {
   const json = await res.json();
   return {
     realized_total_minor: json?.realized_total_minor ?? 0,
+    realized_net_revenue_minor: json?.realized_net_revenue_minor ?? 0,
+    realized_tax_minor: json?.realized_tax_minor ?? 0,
     pending_total_minor: json?.pending_total_minor ?? 0,
+    pending_net_revenue_minor: json?.pending_net_revenue_minor ?? 0,
+    pending_tax_minor: json?.pending_tax_minor ?? 0,
     draft_total_minor: json?.draft_total_minor ?? 0,
     lead_potential_minor: json?.lead_potential_minor ?? 0,
     gross_profit_minor: json?.gross_profit_minor ?? 0,
