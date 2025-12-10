@@ -1,5 +1,10 @@
 import crypto from 'crypto'
 
+export function isDeviceAuthEnabled(): boolean {
+  const raw = process.env.DEVICE_CODE_ENC_KEY || ''
+  return !!raw.trim()
+}
+
 function getKey(): Buffer {
   const raw = process.env.DEVICE_CODE_ENC_KEY || ''
   if (!raw) throw new Error('DEVICE_CODE_ENC_KEY is not set')

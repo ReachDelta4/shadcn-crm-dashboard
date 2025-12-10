@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
+import { ViewInvoiceDialog } from "./view-invoice-dialog";
 
 interface InvoiceActionsProps {
   invoice: Invoice;
@@ -31,11 +32,11 @@ interface InvoiceActionsProps {
 
 export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
   const router = useRouter();
+  const [openView, setOpenView] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const handleViewDetails = () => {
-    // Implement view details functionality
-    console.log("View invoice details", invoice.invoiceNumber);
+    setOpenView(true);
   };
 
   const handleEditInvoice = () => setOpenEdit(true);
@@ -154,7 +155,13 @@ export function InvoiceActionsDropdown({ invoice }: InvoiceActionsProps) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      <EditInvoiceDialog invoice={invoice} open={openEdit} onOpenChange={setOpenEdit} onSaved={() => router.refresh()} />
+      <ViewInvoiceDialog invoice={invoice} open={openView} onOpenChange={setOpenView} />
+      <EditInvoiceDialog
+        invoice={invoice}
+        open={openEdit}
+        onOpenChange={setOpenEdit}
+        onSaved={() => router.refresh()}
+      />
     </div>
   );
 } 

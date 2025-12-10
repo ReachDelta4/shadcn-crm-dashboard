@@ -268,6 +268,7 @@ const Particles = ({
     cameraDistance,
     disableRotation,
     pixelRatio,
+    particleColors,
   ]);
 
   return (
@@ -279,4 +280,3 @@ const Particles = ({
 };
 
 export default Particles;
-

@@ -8,6 +8,12 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { buildLeadCreationIdempotencyKey } from "@/features/leads/status-utils";
+import { NoteField } from "@/features/dashboard/components/note-field";
+import { createSubjectNoteIfPresent } from "@/features/dashboard/utils/subject-notes";
+import { toast } from "sonner";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { isValidPhoneNumber } from "react-phone-number-input";
 
 const schema = z.object({
   customer_name: z.string().min(1, "Customer name is required"),
@@ -33,6 +39,9 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
   const [pending, startTransition] = useTransition();
   const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string; phone?: string }>>([]);
   const [leadId, setLeadId] = useState<string | undefined>(undefined);
+  const [note, setNote] = useState("");
+  const phoneIsValid = phone ? isValidPhoneNumber(phone) : false;
+  const [submitting, setSubmitting] = useState(false);
 
   async function loadLeads() {
     try {
@@ -52,6 +61,7 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
     setStatus("pending");
     setError(null);
     setLeadId(undefined);
+    setNote("");
   }
 
   async function ensureLeadIdIfNeeded(): Promise<string | undefined> {
@@ -62,8 +72,29 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
       full_name: customerName.trim(),
       email: email.trim(),
       phone: phone.trim() || undefined,
+      company: undefined as string | undefined,
     };
-    const create = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+    const headerKey =
+      buildLeadCreationIdempotencyKey({
+        fullName: payload.full_name,
+        email: payload.email,
+        phone: payload.phone,
+        company: payload.company,
+      }) ?? undefined;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (headerKey) {
+      headers["Idempotency-Key"] = headerKey;
+    }
+
+    const create = await fetch("/api/leads", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
     if (!create.ok) {
       const body = await create.json().catch(() => ({}));
       throw new Error(body?.error || 'Failed to create lead');
@@ -75,6 +106,7 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (submitting || pending) return;
 
     // Validate base inputs first
     const parsed = schema.safeParse({
@@ -91,12 +123,18 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
       return;
     }
 
+    if (!leadId) {
+      if (!phone.trim()) { setError("Phone number is required."); return; }
+      if (!phoneIsValid) { setError("Enter a valid phone number."); return; }
+    }
+
     // Guard: when linked to a lead, required fields must exist (e.g., email)
     if (leadId && !email.trim()) {
       setError('Linked lead is missing an email. Please edit the lead or unlink and create a new lead.');
       return;
     }
 
+    setSubmitting(true);
     startTransition(async () => {
       try {
         // Ensure we have a lead id when user selected "No lead"
@@ -113,11 +151,28 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body?.error || "Failed to create order");
         }
+        const order = await res.json().catch(() => null);
+        if (note.trim()) {
+          const noteResult = await createSubjectNoteIfPresent(note, {
+            subjectId: order?.subject_id ?? order?.subjectId ?? null,
+            customerId: order?.customer_id ?? order?.customerId ?? null,
+            leadId: order?.lead_id ?? order?.leadId ?? finalLeadId,
+          });
+          if (!noteResult.posted && noteResult.reason !== "empty") {
+            toast.warning(
+              noteResult.reason === "missing-subject"
+                ? "Order created, but notes need a subject to save."
+                : "Order created, but note could not be saved.",
+            );
+          }
+        }
         onCreated?.();
         setOpen(false);
         resetForm();
       } catch (err: any) {
         setError(typeof err?.message === "string" ? err.message : "Failed to create order");
+      } finally {
+        setSubmitting(false);
       }
     });
   }
@@ -173,7 +228,15 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} readOnly={isLinked} />
+            <PhoneInput
+              id="phone"
+              value={phone}
+              defaultCountry="IN"
+              onChange={(v) => setPhone((v as string) || "")}
+              placeholder="Enter phone number"
+              disabled={isLinked}
+            />
+            {!leadId && phone && !phoneIsValid && <p className="text-xs text-destructive">Enter a valid phone number.</p>}
           </div>
           <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
             <div className="grid gap-2">
@@ -196,31 +259,21 @@ export function NewOrderDialog({ onCreated }: NewOrderDialogProps) {
             </div>
           </div>
 
+          <NoteField value={note} onChange={setNote} />
+
           {error && <div className="text-sm text-red-600" role="alert">{error}</div>}
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline" disabled={pending || submitting}>Cancel</Button>
             </DialogClose>
-            <Button type="submit" disabled={pending}>{pending ? "Creating…" : "Create"}</Button>
+            <Button type="submit" disabled={pending || submitting}>{pending || submitting ? "Creating..." : "Create"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

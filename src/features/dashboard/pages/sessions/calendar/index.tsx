@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,12 +9,25 @@ import * as React from "react";
 import { useAppointments } from "@/features/calendar/hooks/use-appointments";
 import { startOfMonth, endOfMonth, startOfDay, endOfDay, format, parseISO, isSameDay, startOfWeek, endOfWeek } from "date-fns";
 import type { CalendarEvent } from "@/features/calendar/lib/normalize";
-import { SpeedDialNewSession } from "./components/SpeedDialNewSession";
-import { EventDetailsDrawer } from "@/features/calendar/components/EventDetailsDrawer";
 import { toast } from "sonner";
-import { CalendarShell } from "@/features/calendar/components/CalendarShell";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import type { DateRange } from "react-day-picker";
+import { debounce } from "@/utils/timing/debounce";
+
+const CalendarShell = dynamic(
+  () => import("@/features/calendar/components/CalendarShell").then(m => m.CalendarShell),
+  { ssr: false, loading: () => <Skeleton className="h-[420px] w-full" /> },
+);
+
+const SpeedDialNewSession = dynamic(
+  () => import("./components/SpeedDialNewSession").then(m => m.SpeedDialNewSession),
+  { ssr: false },
+);
+
+const EventDetailsDrawer = dynamic(
+  () => import("@/features/calendar/components/EventDetailsDrawer").then(m => m.EventDetailsDrawer),
+  { ssr: false },
+);
 
 const ENABLE_EXPERIMENTAL_VIEWS = false;
 
@@ -30,6 +44,7 @@ export function SessionsCalendarPage() {
   const [activeEvent, setActiveEvent] = React.useState<CalendarEvent | null>(null);
   const [showAppointments, setShowAppointments] = React.useState(true);
   const [showFinancials, setShowFinancials] = React.useState(true);
+  const [appointmentsEnabled, setAppointmentsEnabled] = React.useState(true);
   
   // Calculate date range based on current view
   const dateRange = React.useMemo(() => {
@@ -55,49 +70,67 @@ export function SessionsCalendarPage() {
   const { events: apptEvents, loading, error } = useAppointments({
     from: dateRange.from,
     to: dateRange.to,
+    enabled: appointmentsEnabled,
   });
+
+  const fetchEvents = React.useCallback(
+    async (options: { signal?: AbortSignal; withCacheBust?: boolean } = {}) => {
+      const { signal, withCacheBust } = options;
+      try {
+        const params = new URLSearchParams();
+        if (dateRange.from) params.set("from", dateRange.from);
+        if (dateRange.to) params.set("to", dateRange.to);
+        if (withCacheBust) params.set("_t", String(Date.now()));
+
+        const res = await fetch(`/api/calendar/events?${params.toString()}`, {
+          signal,
+          cache: withCacheBust ? "no-store" : "force-cache",
+        });
+        if (!res.ok) {
+          setCombinedEvents(apptEvents || []);
+          setAppointmentsEnabled(true);
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        const list = Array.isArray(data?.events) ? data.events : [];
+        if (list.length > 0) {
+          setCombinedEvents(list);
+          setAppointmentsEnabled(false);
+        } else {
+          setCombinedEvents(apptEvents || []);
+          setAppointmentsEnabled(true);
+        }
+      } catch (err: any) {
+        if (err?.name === "AbortError") return;
+        toast.error("Failed to refresh calendar events; showing appointments only");
+        setCombinedEvents(apptEvents || []);
+        setAppointmentsEnabled(true);
+      }
+    },
+    [dateRange.from, dateRange.to, apptEvents],
+  );
 
   // Consolidated events with fallback to appointments
   React.useEffect(() => {
     const controller = new AbortController();
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(async () => {
-      try {
-        const params = new URLSearchParams();
-        if (dateRange.from) params.set('from', dateRange.from);
-        if (dateRange.to) params.set('to', dateRange.to);
-        params.set('_t', String(Date.now()));
-        const res = await fetch(`/api/calendar/events?${params.toString()}`, { signal: controller.signal, cache: 'no-store' });
-        if (!res.ok) { setCombinedEvents(apptEvents || []); return; }
-        const data = await res.json().catch(() => ({}));
-        const list = Array.isArray(data?.events) ? data.events : [];
-        setCombinedEvents(list.length > 0 ? list : (apptEvents || []));
-      } catch {
-        toast.error('Failed to refresh calendar events; showing appointments only');
-        setCombinedEvents(apptEvents || []);
-      }
+    debounceRef.current = window.setTimeout(() => {
+      fetchEvents({ signal: controller.signal, withCacheBust: false });
     }, 200);
-    return () => { controller.abort(); if (debounceRef.current) window.clearTimeout(debounceRef.current); };
-  }, [dateRange.from, dateRange.to, apptEvents]);
+    return () => {
+      controller.abort();
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    };
+  }, [fetchEvents]);
 
-  // Live refresh on calendar:changed (no-store + cache-buster)
+  // Live refresh on calendar:changed (cache-busted)
   React.useEffect(() => {
-    const handler = () => {
-      const params = new URLSearchParams();
-      if (dateRange.from) params.set('from', dateRange.from);
-      if (dateRange.to) params.set('to', dateRange.to);
-      params.set('_t', String(Date.now()));
-      fetch(`/api/calendar/events?${params.toString()}`, { cache: 'no-store' })
-        .then(r => r.ok ? r.json() : Promise.reject())
-        .then(data => {
-          const list = Array.isArray(data?.events) ? data.events : [];
-          setCombinedEvents(list.length > 0 ? list : (apptEvents || []));
-        })
-        .catch(() => setCombinedEvents(apptEvents || []));
-    }
-    window.addEventListener('calendar:changed', handler);
-    return () => window.removeEventListener('calendar:changed', handler);
-  }, [dateRange.from, dateRange.to, apptEvents]);
+    const handler = debounce(() => {
+      fetchEvents({ withCacheBust: true });
+    }, 200);
+    window.addEventListener("calendar:changed", handler);
+    return () => window.removeEventListener("calendar:changed", handler);
+  }, [fetchEvents]);
 
   // Get events for selected date (used in potential side panels)
   const eventsForDate = React.useMemo(() => {

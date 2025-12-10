@@ -5,12 +5,14 @@ import { z } from 'zod'
 import { LeadsRepository } from '@/server/repositories/leads'
 import { getUserAndScope } from '@/server/auth/getUserAndScope'
 import { leadSourceValues } from '@/features/leads/constants'
+import { withIdempotency } from '@/server/utils/idempotency'
+import { checkDuplicateContact } from '@/server/services/duplicate-contacts'
 
 const leadCreateSchema = z.object({
 	lead_number: z.string().optional(),
 	full_name: z.string().min(1, 'Full name is required'),
 	email: z.string().email('Valid email is required'),
-	phone: z.string().optional(),
+	phone: z.string().min(1, 'Phone is required'),
 	company: z.string().optional(),
 	location: z.string().optional(),
 	value: z.coerce.number().min(0).default(0).optional(),
@@ -96,22 +98,48 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
 	try {
 		const supabase = await getServerClient()
+		const scope = await getUserAndScope()
 		const { data: { user } } = await supabase.auth.getUser()
 		if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 		const body = await request.json()
 		const validated = leadCreateSchema.parse(body)
+
+		const dupResult = await checkDuplicateContact(supabase as any, {
+			email: validated.email,
+			phone: validated.phone,
+			orgId: scope.orgId ?? undefined,
+			ownerIds: scope.allowedOwnerIds,
+		})
+		if (dupResult.duplicateEmail || dupResult.duplicatePhone) {
+			return NextResponse.json({
+				error: dupResult.duplicateEmail ? 'Duplicate email' : 'Duplicate phone',
+				code: dupResult.duplicateEmail ? 'duplicate_email' : 'duplicate_phone',
+			}, { status: 409 })
+		}
+
 		const repo = new LeadsRepository(supabase)
-		// Status already validated as canonical; insert as provided or default to 'new'
-		const lead = await repo.create({ ...validated, status: validated.status || 'new' }, user.id)
-		// Log activity (best-effort)
-		import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
-			await logActivity(supabase as any, user.id, {
-				type: 'lead',
-				description: `Lead created: ${(lead as any).full_name}`,
-				entity: (lead as any).email,
-				details: { id: (lead as any).id }
-			})
-		}).catch(() => {})
+
+		const idempotencyKeyHeader = request.headers.get('Idempotency-Key') || null
+		const normalizedKey =
+			idempotencyKeyHeader &&
+			`${user.id}:lead:create:${validated.full_name.trim().toLowerCase()}:${validated.email.trim().toLowerCase()}:${(validated.company || '').trim().toLowerCase()}:${(validated.phone || '').trim()}`
+
+		const lead = await withIdempotency(normalizedKey, async () => {
+			const created = await repo.create({ ...validated, status: validated.status || 'new' }, user.id)
+
+			// Log activity (best-effort)
+			import('@/app/api/_lib/log-activity').then(async ({ logActivity }) => {
+				await logActivity(supabase as any, user.id, {
+					type: 'lead',
+					description: `Lead created: ${(created as any).full_name}`,
+					entity: (created as any).email,
+					details: { id: (created as any).id }
+				})
+			}).catch(() => {})
+
+			return created
+		})
+
 		return NextResponse.json(lead, { status: 201 })
 	} catch (error) {
 		if (error instanceof z.ZodError) {

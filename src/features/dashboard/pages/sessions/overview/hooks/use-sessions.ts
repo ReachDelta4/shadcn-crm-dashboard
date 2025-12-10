@@ -41,12 +41,13 @@ export interface SessionStats {
 
 // --- API Helpers ---
 
-async function fetchSessionsApi(
+export async function fetchSessionsApi(
 	filters: SessionFilters,
 	page: number,
 	pageSize: number,
 	sort: string,
-	direction: 'asc' | 'desc'
+	direction: 'asc' | 'desc',
+	signal?: AbortSignal
 ): Promise<SessionsResponse> {
 	const params = new URLSearchParams({
 		page: page.toString(),
@@ -61,7 +62,7 @@ async function fetchSessionsApi(
 	if (filters.dateFrom) params.append('dateFrom', filters.dateFrom)
 	if (filters.dateTo) params.append('dateTo', filters.dateTo)
 
-	const response = await fetch(`/api/sessions?${params}`)
+	const response = await fetch(`/api/sessions?${params}`, { signal })
 	if (!response.ok) throw new Error(`Failed to fetch sessions: ${response.statusText}`)
 	return response.json()
 }
@@ -76,14 +77,14 @@ async function createSessionApi(sessionData: Partial<Session>): Promise<Session>
 	return response.json()
 }
 
-async function fetchSessionStatsApi(): Promise<SessionStats> {
-	const response = await fetch('/api/sessions/stats')
+export async function fetchSessionStatsApi(signal?: AbortSignal): Promise<SessionStats> {
+	const response = await fetch('/api/sessions/stats', { signal })
 	if (!response.ok) throw new Error(`Failed to fetch session stats: ${response.statusText}`)
 	return response.json()
 }
 
-async function fetchSessionApi(id: string): Promise<Session> {
-	const response = await fetch(`/api/sessions/${id}`)
+export async function fetchSessionApi(id: string, signal?: AbortSignal): Promise<Session> {
+	const response = await fetch(`/api/sessions/${id}`, { signal })
 	if (!response.ok) {
 		if (response.status === 404) throw new Error('Session not found')
 		throw new Error(`Failed to fetch session: ${response.statusText}`)
@@ -120,7 +121,15 @@ export function useSessions(
 
 	const { data, isLoading, isError, error, refetch } = useQuery({
 		queryKey: ['sessions', { filters, page, pageSize, sort, direction }],
-		queryFn: () => fetchSessionsApi(filters, page, pageSize, sort, direction),
+		queryFn: ({ signal }) =>
+			fetchSessionsApi(
+				filters,
+				page,
+				pageSize,
+				sort,
+				direction,
+				signal as AbortSignal | undefined
+			),
 		placeholderData: keepPreviousData,
 	})
 
@@ -149,7 +158,7 @@ export function useSessions(
 export function useSessionStats() {
 	const { data, isLoading, isError, error, refetch } = useQuery({
 		queryKey: ['session-stats'],
-		queryFn: fetchSessionStatsApi
+		queryFn: ({ signal }) => fetchSessionStatsApi(signal as AbortSignal | undefined)
 	})
 
 	return {
@@ -165,7 +174,7 @@ export function useSession(id: string) {
 
 	const { data, isLoading, isError, error, refetch } = useQuery({
 		queryKey: ['session', id],
-		queryFn: () => fetchSessionApi(id),
+		queryFn: ({ signal }) => fetchSessionApi(id, signal as AbortSignal | undefined),
 		enabled: !!id
 	})
 

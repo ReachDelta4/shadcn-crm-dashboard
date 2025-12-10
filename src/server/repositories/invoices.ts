@@ -47,7 +47,10 @@ export class InvoicesRepository {
 
 		let query = this.client
 			.from('invoices')
-			.select('id, invoice_number, customer_name, email, phone, amount, status, date, due_date, items, payment_method', { count: 'estimated' })
+			.select(
+				'id, invoice_number, customer_id, customer_name, email, phone, amount, status, date, due_date, items, payment_method, created_at, updated_at',
+				{ count: 'estimated' },
+			)
 			// owner filter applied after base filters based on effectiveOwnerIds
 
 		if (filters.search) {
@@ -126,7 +129,6 @@ export class InvoicesRepository {
 }
 
 export const invoicesRepository = new InvoicesRepository()
-
 
 
 

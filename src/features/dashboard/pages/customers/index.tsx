@@ -1,13 +1,24 @@
 "use client";
 
-import Link from "next/link";
-import { Plus } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useCustomers } from "./hooks/use-customers";
-import { CustomersTable } from "./components/customers-table";
 import { CustomersFilters } from "./components/customers-filters";
 import { Button } from "@/components/ui/button";
-import { NewCustomerDialog } from "./components/new-customer-dialog";
 import { SavedViews } from "@/components/saved-views";
+import { EntityTableShell } from "@/features/dashboard/components/entity-table-shell";
+
+const CustomersTable = dynamic(
+  () => import("./components/customers-table").then((m) => m.CustomersTable),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-muted" />,
+  },
+);
+
+const NewCustomerDialog = dynamic(
+  () => import("./components/new-customer-dialog").then((m) => m.NewCustomerDialog),
+  { ssr: false },
+);
 
 export function CustomersPage() {
   const {
@@ -28,38 +39,40 @@ export function CustomersPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-        <div className="flex items-center gap-2">
-          <SavedViews
-            entityKey="customers"
-            getParams={() => ({ filters, sorting, pagination })}
-            onApply={(params: any) => {
-              if (params.filters) updateFilters(params.filters);
-              if (params.sorting) handleSortingChange(params.sorting);
-              if (params.pagination) handlePaginationChange(params.pagination);
-            }}
-          />
-          <NewCustomerDialog onCreated={refetch} />
-        </div>
-      </div>
-
-      <div className="rounded-lg border bg-card">
-        <div className="border-b p-4">
-          <CustomersFilters filters={filters} onFiltersChange={updateFilters} />
-        </div>
-        <div className="p-3">
-          <CustomersTable
-            customers={customers}
-            totalRows={allCustomers.length}
-            sorting={sorting}
-            onSort={handleSortingChange}
-            pagination={pagination}
-            onPaginationChange={handlePaginationChange}
-            pageCount={pageCount}
-          />
-        </div>
-      </div>
+      <EntityTableShell
+        title="Customers"
+        description="Manage your customer relationships and revenue."
+        headerActions={
+          <>
+            <SavedViews
+              entityKey="customers"
+              getParams={() => ({ filters, sorting, pagination })}
+              onApply={(params: any) => {
+                if (params.filters) updateFilters(params.filters);
+                if (params.sorting) handleSortingChange(params.sorting);
+                if (params.pagination) handlePaginationChange(params.pagination);
+              }}
+            />
+            <NewCustomerDialog onCreated={refetch} />
+          </>
+        }
+        table={
+          <div className="p-3">
+            <div className="border-b pb-3 mb-3">
+              <CustomersFilters filters={filters} onFiltersChange={updateFilters} />
+            </div>
+            <CustomersTable
+              customers={customers}
+              totalRows={allCustomers.length}
+              sorting={sorting}
+              onSort={handleSortingChange}
+              pagination={pagination}
+              onPaginationChange={handlePaginationChange}
+              pageCount={pageCount}
+            />
+          </div>
+        }
+      />
 
       {isEmpty && (
         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">
@@ -77,4 +90,4 @@ export function CustomersPage() {
       )}
     </div>
   );
-} 
+}

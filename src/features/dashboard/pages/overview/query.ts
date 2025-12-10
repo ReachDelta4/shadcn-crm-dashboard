@@ -1,4 +1,4 @@
-import type { ActivityLog } from "@/features/dashboard/pages/activity-logs/data/activity-logs-data";
+import type { ActivityLog } from "@/features/dashboard/pages/activity-logs/types";
 import type { RevenueKpis } from "@/features/dashboard/pages/reports/revenue/query";
 import type { LeadStatus } from "@/features/dashboard/pages/leads/types/lead";
 

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Invoice, InvoiceStatus } from "../types/invoice";
+import { buildLeadCreationIdempotencyKey } from "@/features/leads/status-utils";
 import { toast } from "sonner";
 
 interface EditInvoiceDialogProps {
@@ -29,6 +30,7 @@ export function EditInvoiceDialog({ invoice, open, onOpenChange, onSaved }: Edit
   const [error, setError] = useState<string | null>(null);
   const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string; phone?: string }>>([]);
   const [leadId, setLeadId] = useState<string | undefined>(undefined);
+  const [submitting, setSubmitting] = useState(false);
 
   function toLocalDateTimeInput(iso?: string | null): string {
     if (!iso) return "";
@@ -89,7 +91,26 @@ export function EditInvoiceDialog({ invoice, open, onOpenChange, onSaved }: Edit
       email: email.trim(),
       phone: phone.trim() || undefined,
     };
-    const create = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const headerKey =
+      buildLeadCreationIdempotencyKey({
+        fullName: payload.full_name,
+        email: payload.email,
+        phone: payload.phone,
+        company: undefined,
+      }) ?? undefined;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (headerKey) {
+      headers["Idempotency-Key"] = headerKey;
+    }
+
+    const create = await fetch("/api/leads", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
     if (!create.ok) {
       const body = await create.json().catch(() => ({}));
       throw new Error(body?.error || 'Failed to create lead');
@@ -100,6 +121,7 @@ export function EditInvoiceDialog({ invoice, open, onOpenChange, onSaved }: Edit
 
   function handleSave() {
     setError(null);
+    if (submitting || pending) return;
     if (leadId && !email.trim()) {
       setError('Linked lead is missing an email. Please edit the lead or unlink and create a new lead.');
       return;
@@ -113,6 +135,7 @@ export function EditInvoiceDialog({ invoice, open, onOpenChange, onSaved }: Edit
       due_date: dueDate ? new Date(dueDate).toISOString() : undefined,
       amount: Number(amount) || 0,
     };
+    setSubmitting(true);
     startTransition(async () => {
       try {
         // Ensure linkage according to selection
@@ -126,6 +149,8 @@ export function EditInvoiceDialog({ invoice, open, onOpenChange, onSaved }: Edit
       } catch (e: any) {
         setError(typeof e?.message === 'string' ? e.message : 'Failed to save invoice');
         toast.error('Failed to save invoice');
+      } finally {
+        setSubmitting(false);
       }
     });
   }
@@ -203,14 +228,10 @@ export function EditInvoiceDialog({ invoice, open, onOpenChange, onSaved }: Edit
         </div>
         {error && <div className="text-sm text-destructive bg-destructive/10 p-2 rounded mt-2">{error}</div>}
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={close}>Cancel</Button>
-          <Button onClick={handleSave} disabled={pending}>{pending ? 'Saving…' : 'Save'}</Button>
+          <Button variant="outline" onClick={close} disabled={pending || submitting}>Cancel</Button>
+          <Button onClick={handleSave} disabled={pending || submitting}>{pending || submitting ? 'Saving...' : 'Save'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-
-
-

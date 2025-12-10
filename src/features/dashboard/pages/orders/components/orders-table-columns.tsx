@@ -48,6 +48,30 @@ export const useOrderColumns = () => {
         cell: ({ row }) => format(new Date(row.getValue("date")), "PPp"),
       },
       {
+        accessorKey: "createdAt",
+        header: "Created",
+        cell: ({ row }) => {
+          const created = row.original.createdAt || row.original.date;
+          return (
+            <span className="text-xs text-muted-foreground">
+              {created ? format(new Date(created), "PPp") : "-"}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "updatedAt",
+        header: "Last Updated",
+        cell: ({ row }) => {
+          const updated = row.original.updatedAt || row.original.date;
+          return (
+            <span className="text-xs text-muted-foreground">
+              {updated ? format(new Date(updated), "PPp") : "-"}
+            </span>
+          );
+        },
+      },
+      {
         accessorKey: "amount",
         header: "Amount",
         cell: ({ row }) => formatCurrency(row.getValue("amount")),
@@ -77,6 +101,18 @@ export const useOrderColumns = () => {
         },
       },
       {
+        id: "notes",
+        header: "Notes",
+        cell: ({ row }) => {
+          const hasCustomer = row.original.customerId != null;
+          return (
+            <span className="text-xs text-muted-foreground">
+              {hasCustomer ? "Linked" : "None"}
+            </span>
+          );
+        },
+      },
+      {
         id: "actions",
         header: "",
         cell: ({ row }) => <OrderActionsDropdown order={row.original} />,
@@ -85,4 +121,3 @@ export const useOrderColumns = () => {
     []
   );
 };
-

@@ -23,6 +23,7 @@ export function EditCustomerDialog({ customer, open, onOpenChange, onSaved }: Ed
   const [status, setStatus] = useState<"active"|"inactive"|"pending"|"churned">("active");
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -38,6 +39,8 @@ export function EditCustomerDialog({ customer, open, onOpenChange, onSaved }: Ed
 
   function handleSave() {
     setError(null);
+    if (submitting || pending) return;
+    setSubmitting(true);
     startTransition(async () => {
       try {
         const payload: any = {
@@ -55,6 +58,8 @@ export function EditCustomerDialog({ customer, open, onOpenChange, onSaved }: Ed
       } catch (e: any) {
         setError(typeof e?.message === 'string' ? e.message : 'Failed to update customer');
         toast.error('Failed to update customer');
+      } finally {
+        setSubmitting(false);
       }
     });
   }
@@ -100,11 +105,10 @@ export function EditCustomerDialog({ customer, open, onOpenChange, onSaved }: Ed
         </div>
         {error && <div className="text-sm text-destructive bg-destructive/10 p-2 rounded mt-2">{error}</div>}
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={close}>Cancel</Button>
-          <Button onClick={handleSave} disabled={pending}>{pending ? 'Saving…' : 'Save'}</Button>
+          <Button variant="outline" onClick={close} disabled={pending || submitting}>Cancel</Button>
+          <Button onClick={handleSave} disabled={pending || submitting}>{pending || submitting ? 'Saving...' : 'Save'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-

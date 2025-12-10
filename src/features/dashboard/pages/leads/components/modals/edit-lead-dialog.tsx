@@ -35,6 +35,7 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [openTransition, setOpenTransition] = useState<null>(null)
+  const [submitting, setSubmitting] = useState(false);
 
   function reset() {
     setFullName(lead.fullName || "");
@@ -49,6 +50,7 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
 
   async function handleSave() {
     setError(null);
+    if (submitting || pending) return;
     const payload: any = {
       full_name: fullName.trim(),
       email: email.trim(),
@@ -59,6 +61,7 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
       source: source || undefined,
     };
 
+    setSubmitting(true);
     startTransition(async () => {
       try {
         const res = await fetch(`/api/leads/${lead.id}`, {
@@ -71,6 +74,8 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
         onOpenChange(false);
       } catch (e: any) {
         setError(typeof e?.message === "string" ? e.message : "Failed to save lead");
+      } finally {
+        setSubmitting(false);
       }
     });
   }
@@ -125,8 +130,8 @@ export function EditLeadDialog({ lead, open, onOpenChange, onSaved }: EditLeadDi
         {error && <div className="text-sm text-destructive bg-destructive/10 p-2 rounded mt-2">{error}</div>}
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={pending}>{pending ? "Saving…" : "Save Changes"}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending || submitting}>Cancel</Button>
+          <Button onClick={handleSave} disabled={pending || submitting}>{pending || submitting ? "Saving..." : "Save Changes"}</Button>
         </DialogFooter>
       </DialogContent>
       {/* Transition dialog removed in lifecycle v2 */}

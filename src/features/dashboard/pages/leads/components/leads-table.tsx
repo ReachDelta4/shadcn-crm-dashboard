@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+import { TableVirtuoso } from "react-virtuoso";
 import { Lead } from "@/features/dashboard/pages/leads/types/lead";
 import {
   Table,
@@ -59,43 +61,82 @@ export function LeadsTable({
     manualSorting: true,
   });
 
-  return (
-    <div className="space-y-4">
-      <Table>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <LeadsTableHeaderCell key={header.id} header={header} />
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
+  const rows = table.getRowModel().rows;
+
+  const Scroller = React.useMemo(() => {
+    const Comp = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+      (props, ref) => <div {...props} ref={ref} className="max-h-[70vh] min-h-[240px]" />,
+    );
+    Comp.displayName = "LeadsTableScroller";
+    return Comp;
+  }, []);
+
+  if (rows.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <LeadsTableHeaderCell key={header.id} header={header} />
                 ))}
               </TableRow>
-            ))
-          ) : (
+            ))}
+          </TableHeader>
+          <TableBody>
             <TableRow>
               <TableCell colSpan={columns.length} className="h-24 text-center">
                 No results.
               </TableCell>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableBody>
+        </Table>
+        <Separator />
+        <LeadsTablePagination table={table} totalRows={totalRows} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <TableVirtuoso
+        data={rows}
+        totalCount={rows.length}
+        computeItemKey={(_, row) => row.original.id}
+        style={{
+          height: Math.min(560, Math.max(240, rows.length * 56 + 72)),
+        }}
+        fixedHeaderContent={() => (
+          <TableRow>
+            {table.getHeaderGroups().flatMap((headerGroup) =>
+              headerGroup.headers.map((header) => (
+                <LeadsTableHeaderCell key={header.id} header={header} />
+              )),
+            )}
+          </TableRow>
+        )}
+        components={{
+          Scroller,
+          Table: (props) => <Table {...props} />,
+          TableHead: TableHeader as any,
+          TableRow,
+          TableBody,
+        }}
+        itemContent={(index, row) => (
+          <>
+            {row.getVisibleCells().map((cell) => (
+              <TableCell key={cell.id}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </TableCell>
+            ))}
+          </>
+        )}
+        className="rounded-md border"
+        overscan={8}
+      />
       <Separator />
       <LeadsTablePagination table={table} totalRows={totalRows} />
     </div>
   );
-} 
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,142 +26,31 @@ import {
 } from "lucide-react";
 import { formatINRMinor } from "@/utils/currency";
 import { formatRelativeDate } from "@/utils/date-formatter";
-import {
-  computeOverviewSummary,
-  type OverviewSummary,
-} from "./query";
-import type { RevenueKpis } from "@/features/dashboard/pages/reports/revenue/query";
+import { type OverviewSummary } from "./query";
+import { usePerfTimer } from "@/lib/perf";
 
-interface LeadsPageResponse {
-  data: Array<{ status?: string | null; source?: string | null }>;
-  count: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-interface CustomersPageResponse {
-  count: number;
-}
-
-async function fetchAllLeads(rangeDays: number): Promise<LeadsPageResponse["data"]> {
-  const pageSize = 100;
-  const leads: LeadsPageResponse["data"] = [];
-  let page = 0;
-  let totalPages = 1;
-
-  const fromIso = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
-
-  while (page < totalPages) {
-    const params = new URLSearchParams({
-      page: String(page),
-      pageSize: String(pageSize),
-      status: "all",
-      sort: "date",
-      direction: "desc",
-      dateFrom: fromIso,
-    });
-    const res = await fetch(`/api/leads?${params.toString()}`);
-    if (!res.ok) {
-      throw new Error(`Failed to fetch leads for overview: ${res.statusText}`);
-    }
-    const json = (await res.json()) as LeadsPageResponse;
-    leads.push(...(json?.data || []));
-    totalPages = json?.totalPages ?? 0;
-    page += 1;
-    if ((json?.data || []).length === 0) break;
-  }
-
-  return leads;
-}
-
-async function fetchCustomerCount(
-  status: "all" | "active" | "inactive" | "pending" | "churned",
+export async function fetchOverview(
   rangeDays: number,
-): Promise<number> {
-  const fromIso = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000).toISOString();
+  signal?: AbortSignal,
+): Promise<OverviewSummary> {
   const params = new URLSearchParams({
-    page: "0",
-    pageSize: "1",
-    status,
-    dateFrom: fromIso,
+    rangeDays: String(rangeDays),
   });
-  const res = await fetch(`/api/customers?${params.toString()}`);
+  const res = await fetch(`/api/dashboard/overview?${params.toString()}`, {
+    signal,
+  });
   if (!res.ok) {
-    throw new Error(`Failed to fetch customers for overview: ${res.statusText}`);
-  }
-  const json = (await res.json()) as CustomersPageResponse;
-  return json?.count ?? 0;
-}
-
-async function fetchRecentActivity(): Promise<OverviewSummary["recentActivity"]> {
-  const res = await fetch(`/api/activity-logs?direction=desc&page=0&pageSize=50`);
-  if (!res.ok) {
-    throw new Error(`Failed to load activity logs for overview: ${res.statusText}`);
+    throw new Error(`Failed to fetch overview summary: ${res.statusText}`);
   }
   const json = await res.json();
-  const rows = (json?.data || []) as any[];
-  return rows.map((row) => ({
-    id: row?.id || "",
-    type: (row?.type || "user") as any,
-    description: row?.description || "",
-    user: row?.user || "",
-    entity: row?.entity || undefined,
-    timestamp: row?.timestamp || new Date(0).toISOString(),
-    details: row?.details || undefined,
-  }));
-}
-
-async function fetchRevenueKpis(rangeDays: number): Promise<RevenueKpis> {
-  const from = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
-  const params = new URLSearchParams({
-    groupBy: "month",
-    from: from.toISOString(),
-  });
-  const res = await fetch(`/api/reports/revenue?${params.toString()}`);
-  if (!res.ok) {
-    throw new Error(`Failed to fetch revenue for overview: ${res.statusText}`);
-  }
-  const json = await res.json();
-  return {
-    realized_total_minor: json?.realized_total_minor ?? 0,
-    realized_net_revenue_minor: json?.realized_net_revenue_minor ?? 0,
-    realized_tax_minor: json?.realized_tax_minor ?? 0,
-    pending_total_minor: json?.pending_total_minor ?? 0,
-    pending_net_revenue_minor: json?.pending_net_revenue_minor ?? 0,
-    pending_tax_minor: json?.pending_tax_minor ?? 0,
-    draft_total_minor: json?.draft_total_minor ?? 0,
-    lead_potential_minor: json?.lead_potential_minor ?? 0,
-    gross_profit_minor: json?.gross_profit_minor ?? 0,
-    gross_margin_percent: json?.gross_margin_percent ?? 0,
-  };
-}
-
-async function fetchOverview(rangeDays: number): Promise<OverviewSummary> {
-  const [leads, revenueKpis, activeCount, churnedCount, totalCustomers, recentActivity] =
-    await Promise.all([
-      fetchAllLeads(rangeDays),
-      fetchRevenueKpis(rangeDays),
-      fetchCustomerCount("active", rangeDays),
-      fetchCustomerCount("churned", rangeDays),
-      fetchCustomerCount("all", rangeDays),
-      fetchRecentActivity(),
-    ]);
-
-  return computeOverviewSummary({
-    leads,
-    revenueKpis,
-    customerCounts: {
-      active: activeCount,
-      churned: churnedCount,
-      total: totalCustomers,
-    },
-    recentActivity,
-  });
+  return json as OverviewSummary;
 }
 
 export function OverviewPage() {
   const [rangeDays, setRangeDays] = useState<7 | 30>(30);
+  const perf = usePerfTimer("component:dashboard/overview", {
+    autoReadyTimeoutMs: 2500,
+  });
 
   const {
     data,
@@ -171,7 +60,7 @@ export function OverviewPage() {
     error: queryError,
   } = useQuery({
     queryKey: ["dashboard", "overview", rangeDays],
-    queryFn: () => fetchOverview(rangeDays),
+    queryFn: ({ signal }) => fetchOverview(rangeDays, signal as AbortSignal | undefined),
     placeholderData: keepPreviousData,
     staleTime: 60 * 1000,
   });
@@ -183,6 +72,23 @@ export function OverviewPage() {
 
   const loading = isLoading || isFetching;
   const errorMessage = isError ? (queryError as Error)?.message || "Failed to load overview" : null;
+
+  useEffect(() => {
+    if (!perf.enabled) return;
+    if (!loading) {
+      perf.markReady({
+        hasData: Boolean(summary),
+        rangeDays,
+      });
+    } else {
+      // Ensure we emit a timing even if data remains loading.
+      perf.markReady({
+        hasData: Boolean(summary),
+        rangeDays,
+        loadingFallback: true,
+      });
+    }
+  }, [loading, summary, rangeDays, perf]);
 
   return (
     <div className="flex flex-col gap-4 md:gap-6">

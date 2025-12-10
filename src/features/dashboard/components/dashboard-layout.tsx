@@ -11,7 +11,11 @@ import { AppSidebar } from "./sidebar/app-sidebar";
 import { DashboardHeader } from "./dashboard-header";
 import { Separator } from "@/components/ui/separator";
 import { DashboardSkeleton } from "./dashboard-skeleton";
-const QuickActionsDock = dynamic(() => import("./quick-actions-dock/QuickActionsDock").then(m => m.QuickActionsDock), { loading: () => null });
+import { Suspense } from "react";
+const QuickActionsDock = dynamic(
+  () => import("./quick-actions-dock/QuickActionsDock").then((m) => m.QuickActionsDock),
+  { ssr: false, loading: () => null },
+);
 
 /**
  * Props interface for DashboardLayoutWrapper component
@@ -40,11 +44,6 @@ function DashboardLayoutWrapper({ children }: Props) {
       : true
     : true;
 
-  // Show skeleton during initial client-side rendering
-  if (!isClient) {
-    return <DashboardSkeleton />;
-  }
-
   return (
     <SidebarProvider defaultOpen={isOpen}>
       <AppSidebar id="main-sidebar" />
@@ -58,7 +57,9 @@ function DashboardLayoutWrapper({ children }: Props) {
           className="flex-1 overflow-auto p-4"
           aria-label="Dashboard content"
         >
-          {children}
+          <Suspense fallback={<DashboardSkeleton />}>
+            {isClient ? children : <DashboardSkeleton />}
+          </Suspense>
         </div>
         <QuickActionsDock />
       </SidebarInset>

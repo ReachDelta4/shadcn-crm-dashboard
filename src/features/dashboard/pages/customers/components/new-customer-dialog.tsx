@@ -27,6 +27,9 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { NoteField } from "@/features/dashboard/components/note-field";
+import { createSubjectNoteIfPresent } from "@/features/dashboard/utils/subject-notes";
+import { toast } from "sonner";
 
 const schema = z.object({
   full_name: z.string().min(1, "Full name is required"),
@@ -60,6 +63,8 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
   const [selectedPlan, setSelectedPlan] = useState<PaymentPlan | null>(null);
   const [quantity, setQuantity] = useState<string>("1");
   const [unitPriceMinorOverride, setUnitPriceMinorOverride] = useState<string>("");
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   function resetForm() {
     setFullName("");
@@ -77,11 +82,13 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
     setSelectedPlan(null);
     setQuantity("1");
     setUnitPriceMinorOverride("");
+    setNote("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (submitting || pending) return;
 
     const parsed = schema.safeParse({
       full_name: fullName.trim(),
@@ -97,6 +104,7 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
       return;
     }
 
+    setSubmitting(true);
     startTransition(async () => {
       try {
         const res = await fetch("/api/customers", {
@@ -109,6 +117,19 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
           throw new Error(body?.error || "Failed to create customer");
         }
         const customer = await res.json().catch(() => null);
+        if (note.trim()) {
+          const noteResult = await createSubjectNoteIfPresent(note, {
+            subjectId: customer?.subject_id ?? customer?.subjectId ?? null,
+            customerId: customer?.id,
+          });
+          if (!noteResult.posted && noteResult.reason !== "empty") {
+            toast.warning(
+              noteResult.reason === "missing-subject"
+                ? "Customer created, but notes need a subject to save."
+                : "Customer created, but note could not be saved.",
+            );
+          }
+        }
         // Optionally create invoice
         if (createInvoice && selectedProduct) {
           const lineItems = [{
@@ -135,6 +156,8 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
         resetForm();
       } catch (err: any) {
         setError(typeof err?.message === "string" ? err.message : "Failed to create customer");
+      } finally {
+        setSubmitting(false);
       }
     });
   }
@@ -192,6 +215,8 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
             </Select>
           </div>
 
+          <NoteField value={note} onChange={setNote} />
+
           <Card>
             <CardHeader><CardTitle>Initial Invoice (optional)</CardTitle></CardHeader>
             <CardContent className="grid gap-3">
@@ -240,10 +265,10 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline" disabled={pending || submitting}>Cancel</Button>
             </DialogClose>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Creating…" : "Create"}
+            <Button type="submit" disabled={pending || submitting}>
+              {pending || submitting ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </form>
@@ -251,11 +276,6 @@ export function NewCustomerDialog({ onCreated }: NewCustomerDialogProps) {
     </Dialog>
   );
 }
-
-
-
-
-
 
 
 

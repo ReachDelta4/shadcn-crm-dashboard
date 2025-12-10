@@ -27,15 +27,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import {
-  Search,
-  Filter,
-  MoreHorizontal,
-  Calendar,
-  ArrowDownUp,
-  Download,
-} from "lucide-react";
-import type { ActivityLog } from "./data/activity-logs-data";
+import { Search, Filter, MoreHorizontal, Calendar, ArrowDownUp, Download } from "lucide-react";
+import type { ActivityLog } from "./types";
 import { formatRelativeDate } from "@/utils/date-formatter";
 import { fetchActivityLogs } from "./query";
 
@@ -62,7 +55,8 @@ export function ActivityLogsPage() {
     error: queryError,
   } = useQuery({
     queryKey: ["activity-logs", queryParams],
-    queryFn: () => fetchActivityLogs(queryParams),
+    queryFn: ({ signal }) =>
+      fetchActivityLogs(queryParams, signal as AbortSignal | undefined),
     placeholderData: keepPreviousData,
     staleTime: 2 * 60 * 1000,
   });

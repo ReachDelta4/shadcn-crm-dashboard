@@ -44,7 +44,8 @@ export function RevenueReportPage() {
     error: queryError,
   } = useQuery({
     queryKey: ["reports", "revenue", queryParams],
-    queryFn: () => fetchRevenueReport(queryParams),
+    queryFn: ({ signal }) =>
+      fetchRevenueReport(queryParams, signal as AbortSignal | undefined),
     placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   });

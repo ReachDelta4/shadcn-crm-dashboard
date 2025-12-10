@@ -1,16 +1,30 @@
 "use client";
 
+import React from "react";
+import dynamic from "next/dynamic";
 import { useLeads } from "./hooks/use-leads";
-import { LeadsTable } from "./components/leads-table";
 import { LeadsFilters } from "./components/leads-filters";
 import { Button } from "@/components/ui/button";
-import { NewLeadDialog } from "./components/new-lead-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useViewParam } from "@/hooks/use-view-param";
-import { LeadsKanban } from "./components/leads-kanban";
 import { SavedViews } from "@/components/saved-views";
 import { EntityTableShell } from "@/features/dashboard/components/entity-table-shell";
 import type { Lead } from "@/features/dashboard/pages/leads/types/lead";
+import { usePerfTimer } from "@/lib/perf";
+
+const LeadsTable = dynamic(() => import("./components/leads-table").then(m => m.LeadsTable), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-muted" />,
+});
+
+const LeadsKanban = dynamic(() => import("./components/leads-kanban").then(m => m.LeadsKanban), {
+  ssr: false,
+  loading: () => <div className="h-80 w-full animate-pulse rounded-lg bg-muted" />,
+});
+
+const NewLeadDialog = dynamic(() => import("./components/new-lead-dialog").then(m => m.NewLeadDialog), {
+  ssr: false,
+});
 
 export function LeadsPage({ initialLeads = [], initialCount = 0 }: { initialLeads?: Lead[]; initialCount?: number }) {
   const {
@@ -29,6 +43,25 @@ export function LeadsPage({ initialLeads = [], initialCount = 0 }: { initialLead
 
   const isEmpty = allLeads.length === 0;
   const { view, setView } = useViewParam("table");
+  const perf = usePerfTimer("component:dashboard/leads", {
+    autoReadyTimeoutMs: 3000,
+  });
+
+  React.useEffect(() => {
+    if (!perf.enabled) return;
+    if (!isEmpty || !leads || leads.length >= 0) {
+      perf.markReady({
+        totalLeads: allLeads.length,
+        view,
+      });
+    } else {
+      perf.markReady({
+        totalLeads: allLeads.length,
+        view,
+        loadingFallback: true,
+      });
+    }
+  }, [perf, allLeads.length, view, leads, isEmpty]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -87,12 +120,6 @@ export function LeadsPage({ initialLeads = [], initialCount = 0 }: { initialLead
           )
         }
       />
-
-      {view === "kanban" && (
-        <div className="rounded-lg border bg-card p-3">
-          <LeadsKanban leads={allLeads} onStatusChanged={refetch} />
-        </div>
-      )}
 
       {isEmpty && view === "table" && (
         <div className="flex min-h-[400px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center animate-in fade-in-50">

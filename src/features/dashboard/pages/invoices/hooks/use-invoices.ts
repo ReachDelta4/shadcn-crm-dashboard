@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { Invoice, InvoiceFilters } from "@/features/dashboard/pages/invoices/types/invoice";
+import { Invoice, InvoiceFilters, mapInvoiceRecord } from "@/features/dashboard/pages/invoices/types/invoice";
 import {
   SortingState,
   PaginationState,
   OnChangeFn,
 } from "@tanstack/react-table";
+import { debounce } from "@/utils/timing/debounce";
 
 interface UseInvoicesProps {
   initialInvoices?: Invoice[];
@@ -82,19 +83,9 @@ export function useInvoices({ initialInvoices = [], initialCount = 0 }: UseInvoi
       if (!response.ok) throw new Error(`Failed to fetch invoices: ${response.statusText}`);
       const result: ApiResponse = await response.json();
 
-      const transformed: Invoice[] = (result.data || []).map((invoice: any) => ({
-        id: invoice.id || '',
-        invoiceNumber: invoice.invoice_number || invoice.invoiceNumber || '',
-        customerName: invoice.customer_name || invoice.customerName || '',
-        email: invoice.email || '',
-        phone: invoice.phone || '',
-        amount: typeof invoice.amount === 'number' ? invoice.amount : 0,
-        status: (invoice.status || 'draft') as any,
-        date: invoice.date || new Date().toISOString(),
-        dueDate: invoice.due_date || invoice.dueDate || new Date().toISOString(),
-        items: typeof invoice.items === 'number' ? invoice.items : 0,
-        paymentMethod: invoice.payment_method || 'card',
-      }));
+      const transformed: Invoice[] = (result.data || []).map((invoice: any) =>
+        mapInvoiceRecord(invoice),
+      );
 
       setInvoices(transformed);
       setTotalCount(result.count || 0);
@@ -125,7 +116,9 @@ export function useInvoices({ initialInvoices = [], initialCount = 0 }: UseInvoi
 
   // Instant refresh on global events
   useEffect(() => {
-    const onChanged = () => { fetchInvoices(); };
+    const onChanged = debounce(() => {
+      fetchInvoices();
+    }, 150);
     window.addEventListener('invoices:changed', onChanged);
     return () => window.removeEventListener('invoices:changed', onChanged);
   }, [fetchInvoices]);

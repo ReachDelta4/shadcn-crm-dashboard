@@ -17,6 +17,53 @@ interface ApiResponse {
   count: number;
 }
 
+interface CustomersQueryInput {
+  pagination: PaginationState;
+  filters: CustomerFilters;
+  sorting: SortingState;
+  signal?: AbortSignal;
+}
+
+export async function fetchCustomersApi({
+  pagination,
+  filters,
+  sorting,
+  signal,
+}: CustomersQueryInput): Promise<ApiResponse> {
+  const params = new URLSearchParams({
+    page: pagination.pageIndex.toString(),
+    pageSize: pagination.pageSize.toString(),
+  });
+
+  const search = filters.search?.trim();
+  if (search) params.set('search', search);
+  if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+  if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
+  if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
+
+  // Convert TanStack sorting to API format
+  if (sorting.length > 0) {
+    const sort = sorting[0];
+    let sortField = sort.id;
+
+    // Map frontend field names to backend field names
+    if (sortField === 'dateJoined') sortField = 'date_joined';
+    if (sortField === 'fullName') sortField = 'full_name';
+    if (sortField === 'customerNumber') sortField = 'customer_number';
+
+    params.set('sort', sortField);
+    params.set('direction', sort.desc ? 'desc' : 'asc');
+  }
+
+  const response = await fetch(`/api/customers?${params}`, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch customers: ${response.statusText}`);
+  }
+
+  return response.json() as Promise<ApiResponse>;
+}
+
 export function useCustomers({ initialCustomers = [], initialCount = 0 }: UseCustomersProps = {}) {
   const [filters, setFilters] = useState<CustomerFilters>({
     status: "all",
@@ -36,43 +83,15 @@ export function useCustomers({ initialCustomers = [], initialCount = 0 }: UseCus
     pageSize: 10,
   });
 
-  const fetchCustomers = async () => {
-    const params = new URLSearchParams({
-      page: pagination.pageIndex.toString(),
-      pageSize: pagination.pageSize.toString(),
-    });
-
-    if (filters.search) params.set('search', filters.search);
-    if (filters.status && filters.status !== 'all') params.set('status', filters.status);
-    if (filters.dateRange.from) params.set('dateFrom', filters.dateRange.from.toISOString());
-    if (filters.dateRange.to) params.set('dateTo', filters.dateRange.to.toISOString());
-
-    // Convert TanStack sorting to API format
-    if (sorting.length > 0) {
-      const sort = sorting[0];
-      let sortField = sort.id;
-      
-      // Map frontend field names to backend field names
-      if (sortField === 'dateJoined') sortField = 'date_joined';
-      if (sortField === 'fullName') sortField = 'full_name';
-      if (sortField === 'customerNumber') sortField = 'customer_number';
-      
-      params.set('sort', sortField);
-      params.set('direction', sort.desc ? 'desc' : 'asc');
-    }
-
-    const response = await fetch(`/api/customers?${params}`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch customers: ${response.statusText}`);
-    }
-
-    return response.json() as Promise<ApiResponse>;
-  };
-
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['customers', pagination, filters, sorting],
-    queryFn: fetchCustomers,
+    queryFn: ({ signal }) =>
+      fetchCustomersApi({
+        pagination,
+        filters,
+        sorting,
+        signal: signal as AbortSignal | undefined,
+      }),
     placeholderData: keepPreviousData,
     initialData: initialCustomers.length > 0 ? { data: initialCustomers, count: initialCount } as any : undefined,
   });

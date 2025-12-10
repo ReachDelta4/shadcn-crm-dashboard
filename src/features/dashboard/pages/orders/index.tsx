@@ -1,17 +1,29 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useOrders } from "./hooks/use-orders";
-import { OrdersTable } from "./components/orders-table";
 import { OrdersFilters } from "./components/orders-filters";
 import { Button } from "@/components/ui/button";
-import { NewOrderDialog } from "./components/new-order-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useViewParam } from "@/hooks/use-view-param";
-import { OrdersKanban } from "./components/orders-kanban";
 import { SavedViews } from "@/components/saved-views";
 import type { Order } from "@/features/dashboard/pages/orders/types/order";
+
+const OrdersTable = dynamic(() => import("./components/orders-table").then(m => m.OrdersTable), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-muted" />,
+});
+
+const OrdersKanban = dynamic(() => import("./components/orders-kanban").then(m => m.OrdersKanban), {
+  ssr: false,
+  loading: () => <div className="h-80 w-full animate-pulse rounded-lg bg-muted" />,
+});
+
+const NewOrderDialog = dynamic(() => import("./components/new-order-dialog").then(m => m.NewOrderDialog), {
+  ssr: false,
+});
 
 export function OrdersPage({ initialOrders = [], initialCount = 0 }: { initialOrders?: Order[]; initialCount?: number }) {
   const {

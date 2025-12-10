@@ -3,7 +3,7 @@ export const runtime = 'nodejs'
 import { cookies, headers } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 import { supabaseAdmin } from '@/server/supabase'
-import { encrypt } from '@/server/crypto'
+import { encrypt, isDeviceAuthEnabled } from '@/server/crypto'
 import crypto from 'crypto'
 
 const TTL_SECONDS = 60
@@ -32,6 +32,14 @@ export async function POST() {
     console.log('- SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'MISSING')
     console.log('- DEVICE_CODE_ENC_KEY:', process.env.DEVICE_CODE_ENC_KEY ? 'SET' : 'MISSING')
     console.log('- supabaseAdmin:', supabaseAdmin ? 'INITIALIZED' : 'NULL')
+
+    if (!isDeviceAuthEnabled()) {
+      console.log('Device auth is disabled (no DEVICE_CODE_ENC_KEY). Returning 501.')
+      return new Response(
+        JSON.stringify({ success: false, error: 'device_auth_disabled' }),
+        { status: 501, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
 
     if (!supabaseAdmin) {
       console.log('ERROR: supabaseAdmin is null - service role not configured')

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { Order, OrderFilters } from "@/features/dashboard/pages/orders/types/order";
+import { Order, OrderFilters, mapOrderRecord } from "@/features/dashboard/pages/orders/types/order";
 import {
   SortingState,
   PaginationState,
@@ -73,19 +73,9 @@ export function useOrders({ initialOrders = [], initialCount = 0 }: UseOrdersPro
       if (!response.ok) throw new Error(`Failed to fetch orders: ${response.statusText}`);
       const result: ApiResponse = await response.json();
 
-      const transformed: Order[] = (result.data || []).map((order: any) => ({
-        id: order.id || '',
-        orderNumber: order.order_number || order.orderNumber || '',
-        customerName: order.customer_name || order.customerName || '',
-        email: order.email || '',
-        phone: order.phone || '',
-        amount: typeof order.amount === 'number' ? order.amount : 0,
-        status: (order.status || 'pending') as any,
-        date: order.date || new Date().toISOString(),
-        items: typeof order.items === 'number' ? order.items : 0,
-        paymentMethod: order.payment_method || 'card',
-        lead_id: order.lead_id || undefined,
-      }));
+      const transformed: Order[] = (result.data || []).map((order: any) =>
+        mapOrderRecord(order),
+      );
 
       setOrders(transformed);
       setTotalCount(result.count || 0);

@@ -1,9 +1,3 @@
-/**
- * Home Page Component
- */
-
-"use client";
-
 // Internal imports from feature components
 import { CTA } from "@/features/landing/cta";
 import { Features } from "@/features/landing/features";

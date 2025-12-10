@@ -13,9 +13,8 @@ export default async function Page() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
-        },
+        // No-op in Server Components to avoid mutation errors; auth is read-only here.
+        setAll() {},
       },
     }
   );

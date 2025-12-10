@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLeadsQueryParams,
+  buildLeadsQueryKey,
   mapLeadRecord,
 } from "@/features/dashboard/pages/leads/hooks/use-leads";
 import type { LeadFilters } from "@/features/dashboard/pages/leads/types/lead";
@@ -31,6 +32,35 @@ describe("useLeads query helpers", () => {
     // Sorting should map frontend field to API field names
     expect(params.get("sort")).toBe("full_name");
     expect(params.get("direction")).toBe("asc");
+  });
+
+  it("buildLeadsQueryKey produces a stable, serializable key shape", () => {
+    const filters: LeadFilters = {
+      status: "qualified",
+      search: "  Acme Corp  ",
+      dateRange: {
+        from: new Date("2024-01-10T00:00:00.000Z"),
+        to: new Date("2024-01-31T00:00:00.000Z"),
+      },
+    };
+
+    const key = buildLeadsQueryKey(
+      { pageIndex: 1, pageSize: 50 },
+      filters,
+      [{ id: "date", desc: true }],
+    );
+
+    expect(key[0]).toBe("leads");
+    expect(key[1]).toEqual({
+      pageIndex: 1,
+      pageSize: 50,
+      status: "qualified",
+      search: "Acme Corp",
+      dateFrom: "2024-01-10T00:00:00.000Z",
+      dateTo: "2024-01-31T00:00:00.000Z",
+      sortId: "date",
+      sortDesc: true,
+    });
   });
 
   it("mapLeadRecord safely normalizes API rows into Lead objects", () => {

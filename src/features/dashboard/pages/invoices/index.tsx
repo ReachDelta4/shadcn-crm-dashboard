@@ -1,17 +1,29 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useInvoices } from "./hooks/use-invoices";
-import { InvoicesTable } from "./components/invoices-table";
 import { InvoicesFilters } from "./components/invoices-filters";
 import { Button } from "@/components/ui/button";
-import { NewInvoiceDialogV2 } from "./components/new-invoice-dialog-v2";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useViewParam } from "@/hooks/use-view-param";
-import { InvoicesKanban } from "./components/invoices-kanban";
 import { SavedViews } from "@/components/saved-views";
 import type { Invoice } from "@/features/dashboard/pages/invoices/types/invoice";
+
+const InvoicesTable = dynamic(() => import("./components/invoices-table").then(m => m.InvoicesTable), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-muted" />,
+});
+
+const InvoicesKanban = dynamic(() => import("./components/invoices-kanban").then(m => m.InvoicesKanban), {
+  ssr: false,
+  loading: () => <div className="h-80 w-full animate-pulse rounded-lg bg-muted" />,
+});
+
+const NewInvoiceDialogV2 = dynamic(() => import("./components/new-invoice-dialog-v2").then(m => m.NewInvoiceDialogV2), {
+  ssr: false,
+});
 
 export function InvoicesPage({ initialInvoices = [], initialCount = 0 }: { initialInvoices?: Invoice[]; initialCount?: number }) {
   const {

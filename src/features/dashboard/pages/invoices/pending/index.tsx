@@ -5,6 +5,7 @@ import { InvoicesFilters } from "../components/invoices-filters";
 import { useInvoices } from "../hooks/use-invoices";
 import { InvoicesTable } from "../components/invoices-table";
 import { Button } from "@/components/ui/button";
+import { debounce } from "@/utils/timing/debounce";
 
 export function PendingInvoicesPage() {
   const { invoices, filters, updateFilters, refetch, loading, pageCount, pagination, handlePaginationChange, sorting, handleSortingChange } = useInvoices({});
@@ -25,7 +26,9 @@ export function PendingInvoicesPage() {
   }, [invoices]);
 
   useEffect(() => {
-    const onChanged = () => refetch();
+    const onChanged = debounce(() => {
+      refetch();
+    }, 150);
     window.addEventListener('invoices:changed', onChanged);
     return () => window.removeEventListener('invoices:changed', onChanged);
   }, [refetch]);

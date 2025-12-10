@@ -10,14 +10,21 @@ export async function createServerSupabase(): Promise<SupabaseClient> {
 
   return createServerClient(url, anon, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value
+      // In server components and layouts we only have read access to cookies.
+      // We expose getAll so Supabase can read the session, and provide a
+      // no-op setAll implementation so that any attempted session writes from
+      // this context are ignored instead of trying to mutate Next.js cookies.
+      // All real session cookie writes are funneled through route handlers
+      // like /auth/callback, where full read/write cookie APIs are allowed.
+      async getAll() {
+        const all = cookieStore.getAll()
+        return all.map((cookie) => ({
+          name: cookie.name,
+          value: cookie.value,
+        }))
       },
-      set(name: string, value: string, options: any) {
-        cookieStore.set(name, value, options)
-      },
-      remove(name: string, options: any) {
-        cookieStore.set(name, '', { ...options, maxAge: 0 })
+      async setAll() {
+        // Intentionally ignore cookie writes in layouts/server components.
       },
     },
   })

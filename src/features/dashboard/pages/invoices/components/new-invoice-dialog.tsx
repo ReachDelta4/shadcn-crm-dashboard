@@ -8,6 +8,8 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { buildLeadCreationIdempotencyKey } from "@/features/leads/status-utils";
+import { debounce } from "@/utils/timing/debounce";
 
 const schema = z.object({
   customer_name: z.string().min(1, "Customer name is required"),
@@ -35,6 +37,7 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [submitting, setSubmitting] = useState(false);
 
   const [leads, setLeads] = useState<Array<{ id: string; full_name: string; email: string; phone?: string }>>([])
   const [leadId, setLeadId] = useState<string | undefined>(undefined)
@@ -46,7 +49,9 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
   useEffect(() => { loadLeads() }, [])
 
   useEffect(() => {
-    const refresh = () => { loadLeads() }
+    const refresh = debounce(() => {
+      loadLeads();
+    }, 150);
     window.addEventListener('leads:changed', refresh)
     window.addEventListener('leads:optimistic', refresh as any)
     return () => {
@@ -91,7 +96,26 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
       email: email.trim(),
       phone: phone.trim() || undefined,
     };
-    const create = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const headerKey =
+      buildLeadCreationIdempotencyKey({
+        fullName: payload.full_name,
+        email: payload.email,
+        phone: payload.phone,
+        company: undefined,
+      }) ?? undefined;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (headerKey) {
+      headers["Idempotency-Key"] = headerKey;
+    }
+
+    const create = await fetch("/api/leads", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
     if (!create.ok) {
       const body = await create.json().catch(() => ({}));
       throw new Error(body?.error || 'Failed to create lead');
@@ -103,6 +127,7 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (submitting || pending) return;
 
     const parsed = schema.safeParse({
       customer_name: customerName.trim(),
@@ -128,6 +153,7 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
       return;
     }
 
+    setSubmitting(true);
     startTransition(async () => {
       try {
         const res = await fetch("/api/invoices", {
@@ -151,6 +177,8 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
         resetForm();
       } catch (err: any) {
         setError(typeof err?.message === "string" ? err.message : "Failed to create invoice");
+      } finally {
+        setSubmitting(false);
       }
     });
   }
@@ -239,20 +267,15 @@ export function NewInvoiceDialog({ onCreated }: NewInvoiceDialogProps) {
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
+              <Button type="button" variant="outline" disabled={pending || submitting}>Cancel</Button>
             </DialogClose>
-            <Button type="submit" disabled={pending}>{pending ? "Creating…" : "Create"}</Button>
+            <Button type="submit" disabled={pending || submitting}>{pending || submitting ? "Creating..." : "Create"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
 }
-
-
-
-
-
 
 
 

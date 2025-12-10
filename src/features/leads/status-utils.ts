@@ -15,6 +15,34 @@ export const MODE_TARGET_STATUS: Record<"invoice_sent" | "won", LeadStatus> = {
   won: "converted",
 };
 
+export function buildLeadCreationIdempotencyKey(input: {
+  fullName: string;
+  email: string;
+  phone?: string;
+  company?: string;
+}): string | null {
+  const full = (input.fullName || "").trim().toLowerCase();
+  const email = (input.email || "").trim().toLowerCase();
+  const phone = (input.phone || "").replace(/\D+/g, "");
+  const company = (input.company || "").trim().toLowerCase();
+
+  const payload = [full, email, phone, company].join("|");
+  if (!payload.replace(/\|/g, "")) {
+    return null;
+  }
+
+  return `lead:create:${payload}`;
+}
+
+export function buildLeadTransitionIdempotencyKey(
+  leadId: string,
+  current: LeadStatus | string | null | undefined,
+  target: LeadStatus,
+): string {
+  const from = (current || "unknown").toString();
+  return `lead:${leadId}:${from}->${target}`;
+}
+
 export function shouldAdvanceToQualified(current?: LeadStatus): boolean {
   if (!current) return true;
   if (current === "disqualified" || current === "converted") return false;
@@ -35,6 +63,10 @@ export function isForwardTransition(
     return false;
   }
   return targetIdx >= currentIdx;
+}
+
+export function getForwardTargetStatuses(current: LeadStatus): LeadStatus[] {
+  return STATUS_SEQUENCE.filter((target) => isForwardTransition(current, target));
 }
 
 const BULK_STATUS_MAP: Record<string, LeadStatus> = {

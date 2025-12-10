@@ -1,17 +1,19 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Lead } from "@/features/dashboard/pages/leads/types/lead";
-import { 
-  MoreHorizontal, 
-  Eye, 
-  Edit, 
-  Trash, 
-  PhoneCall, 
-  Mail, 
+import {
+  MoreHorizontal,
+  Eye,
+  Edit,
+  Trash,
+  PhoneCall,
+  Mail,
   UserCheck,
   UserX,
   UserPlus,
-  UserCog
+  UserCog,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -22,9 +24,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useState } from "react";
+import {
+  buildLeadTransitionIdempotencyKey,
+  isForwardTransition,
+} from "@/features/leads/status-utils";
 import { EditLeadDialog } from "./modals/edit-lead-dialog";
 import { ConvertLeadDialog } from "./convert-lead-dialog";
 
@@ -56,34 +60,82 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
   };
 
   const handleMarkAsQualified = async () => {
+    const current = lead.status as any;
+    const target = "qualified";
+
+    if (!isForwardTransition(current, target as any)) {
+      toast.error("Only forward lifecycle moves are allowed for leads.");
+      return;
+    }
+
     try {
+      const idempotencyKey = buildLeadTransitionIdempotencyKey(
+        lead.id,
+        current,
+        target as any,
+      );
       const res = await fetch(`/api/leads/${lead.id}/transition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target_status: "qualified", idempotency_key: crypto.randomUUID() })
+        body: JSON.stringify({
+          target_status: target,
+          idempotency_key: idempotencyKey,
+        }),
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead marked as qualified");
-      window.dispatchEvent(new Event('leads:changed'));
+      try {
+        window.dispatchEvent(new Event("leads:changed"));
+      } catch {
+        // ignore
+      }
       router.refresh();
-    } catch (e) {
+    } catch {
       toast.error("Failed to mark as qualified");
     }
   };
 
   const handleMarkAsDisqualified = async () => {
+    const current = lead.status as any;
+    const target = "disqualified";
+
+    if (!isForwardTransition(current, target as any)) {
+      toast.error("Only forward lifecycle moves are allowed for leads.");
+      return;
+    }
+
     try {
+      const idempotencyKey = buildLeadTransitionIdempotencyKey(
+        lead.id,
+        current,
+        target as any,
+      );
       const res = await fetch(`/api/leads/${lead.id}/transition`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target_status: "disqualified", idempotency_key: crypto.randomUUID() })
+        body: JSON.stringify({
+          target_status: target,
+          idempotency_key: idempotencyKey,
+        }),
       });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead marked as disqualified");
-      window.dispatchEvent(new CustomEvent('leads:optimistic', { detail: { op: 'update', id: lead.id, patch: { status: 'disqualified' }}}));
-      window.dispatchEvent(new Event('leads:changed'));
+      try {
+        window.dispatchEvent(
+          new CustomEvent("leads:optimistic", {
+            detail: {
+              op: "update",
+              id: lead.id,
+              patch: { status: "disqualified" },
+            },
+          }),
+        );
+        window.dispatchEvent(new Event("leads:changed"));
+      } catch {
+        // ignore
+      }
       router.refresh();
-    } catch (e) {
+    } catch {
       toast.error("Failed to mark as disqualified");
     }
   };
@@ -94,17 +146,21 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
       const res = await fetch(`/api/leads/${lead.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error(await res.text());
       toast.success("Lead deleted");
-      window.dispatchEvent(new Event('leads:changed'));
+      try {
+        window.dispatchEvent(new Event("leads:changed"));
+      } catch {
+        // ignore
+      }
       router.refresh();
-    } catch (e) {
+    } catch {
       toast.error("Failed to delete lead");
     }
   };
 
   // Canonicalized checks for visibility
-  const isQualified = lead.status === 'qualified'
-  const isDisqualified = lead.status === 'disqualified'
-  const isConverted = lead.status === 'converted'
+  const isQualified = lead.status === "qualified";
+  const isDisqualified = lead.status === "disqualified";
+  const isConverted = lead.status === "converted";
 
   return (
     <div className="text-right">
@@ -154,7 +210,7 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem 
+          <DropdownMenuItem
             onClick={handleDeleteLead}
             className="text-red-600"
           >
@@ -170,7 +226,9 @@ export function LeadActionsDropdown({ lead }: LeadActionsProps) {
         leadId={lead.id}
         leadName={lead.fullName}
         leadEmail={lead.email}
-        onCompleted={() => { router.refresh(); }}
+        onCompleted={() => {
+          router.refresh();
+        }}
       />
     </div>
   );

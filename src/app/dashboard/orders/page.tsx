@@ -2,6 +2,7 @@ import { OrdersPage } from "@/features/dashboard/pages/orders";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { OrdersRepository } from "@/server/repositories/orders";
+import { mapOrderRecord } from "@/features/dashboard/pages/orders/types/order";
 
 export default async function Page() {
   const cookieStore = await cookies();
@@ -26,18 +27,17 @@ export default async function Page() {
 
   if (user) {
     const repo = new OrdersRepository(supabase);
-    const result = await repo.list({ userId: user.id, page: 0, pageSize: 10, sort: 'date', direction: 'desc' } as any);
-    initialOrders = (result.data || []).map((order: any) => ({
-      id: order.id || '',
-      orderNumber: order.order_number || '',
-      customerName: order.customer_name || '',
-      email: order.email || '',
-      amount: typeof order.amount === 'number' ? order.amount : 0,
-      status: order.status || 'pending',
-      date: order.date || new Date().toISOString(),
-      items: typeof order.items === 'number' ? order.items : 0,
-      paymentMethod: order.payment_method || 'card',
-    }));
+    const result = await repo.list({
+      userId: user.id,
+      page: 0,
+      pageSize: 10,
+      sort: "date",
+      direction: "desc",
+    } as any);
+
+    initialOrders = (result.data || []).map((order: any) =>
+      mapOrderRecord(order),
+    );
     initialCount = result.count || 0;
   }
 

@@ -1,4 +1,4 @@
-import { ActivityLog } from "./data/activity-logs-data";
+import { ActivityLog } from "./types";
 
 export interface ActivityLogsQueryParams {
   filterType: "all" | ActivityLog["type"];
@@ -29,9 +29,14 @@ export function mapActivityLogEntries(rows: any[]): ActivityLog[] {
   }));
 }
 
-export async function fetchActivityLogs(params: ActivityLogsQueryParams): Promise<ActivityLog[]> {
+export async function fetchActivityLogs(
+  params: ActivityLogsQueryParams,
+  signal?: AbortSignal,
+): Promise<ActivityLog[]> {
   const qs = buildActivityLogsQueryParams(params);
-  const res = await fetch(`/api/activity-logs?${qs.toString()}`);
+  const res = await fetch(`/api/activity-logs?${qs.toString()}`, {
+    signal,
+  });
   if (!res.ok) throw new Error("Failed to load activity logs");
   const result = await res.json();
   return mapActivityLogEntries(result?.data || []);

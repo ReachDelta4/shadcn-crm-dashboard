@@ -2,6 +2,7 @@ import { InvoicesPage } from "@/features/dashboard/pages/invoices";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { InvoicesRepository } from "@/server/repositories/invoices";
+import { mapInvoiceRecord } from "@/features/dashboard/pages/invoices/types/invoice";
 
 export default async function Page() {
   const cookieStore = await cookies();
@@ -26,21 +27,19 @@ export default async function Page() {
 
   if (user) {
     const repo = new InvoicesRepository(supabase);
-    const result = await repo.list({ userId: user.id, page: 0, pageSize: 10, sort: 'date', direction: 'desc' });
-    initialInvoices = (result.data || []).map((invoice: any) => ({
-      id: invoice.id || '',
-      invoiceNumber: invoice.invoice_number || '',
-      customerName: invoice.customer_name || '',
-      email: invoice.email || '',
-      amount: typeof invoice.amount === 'number' ? invoice.amount : 0,
-      status: invoice.status || 'draft',
-      date: invoice.date || new Date().toISOString(),
-      dueDate: invoice.due_date || new Date().toISOString(),
-      items: typeof invoice.items === 'number' ? invoice.items : 0,
-      paymentMethod: invoice.payment_method || 'card',
-    }));
+    const result = await repo.list({
+      userId: user.id,
+      page: 0,
+      pageSize: 10,
+      sort: "date",
+      direction: "desc",
+    });
+
+    initialInvoices = (result.data || []).map((invoice: any) =>
+      mapInvoiceRecord(invoice),
+    );
     initialCount = result.count || 0;
   }
 
   return <InvoicesPage initialInvoices={initialInvoices} initialCount={initialCount} />;
-} 
+}

@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { ProductPicker } from "@/features/dashboard/components/product-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ViewOrderDialog } from "./view-order-dialog";
 
 interface OrderActionsProps {
   order: Order;
@@ -33,11 +34,12 @@ interface OrderActionsProps {
 
 export function OrderActionsDropdown({ order }: OrderActionsProps) {
   const router = useRouter();
+  const [openView, setOpenView] = useState(false);
   const [openInvoice, setOpenInvoice] = useState(false);
   const [lines, setLines] = useState<Array<{ product_id: string; quantity: number }>>([{ product_id: "", quantity: 1 }]);
 
   const handleViewDetails = () => {
-    console.log("View order details", order.orderNumber);
+    setOpenView(true);
   };
 
   const handleEditOrder = () => {
@@ -160,6 +162,8 @@ export function OrderActionsDropdown({ order }: OrderActionsProps) {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <ViewOrderDialog order={order} open={openView} onOpenChange={setOpenView} />
 
       <Dialog open={openInvoice} onOpenChange={setOpenInvoice}>
         <DialogContent className="max-w-xl">

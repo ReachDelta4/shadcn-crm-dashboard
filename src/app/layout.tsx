@@ -1,15 +1,11 @@
 import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
-import dynamic from "next/dynamic";
+
+import { ThemeProvider } from "@/providers/theme-provider";
 
 import "./globals.css";
 
 export const runtime = "nodejs";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "@/providers/theme-provider";
-import { QueryProvider } from "@/providers/query-provider";
-import { CommandPaletteProvider } from "@/components/command-palette";
-const CommandPalette = dynamic(() => import("@/components/command-palette").then(m => m.CommandPalette));
 
 export const metadata: Metadata = {
   title: "Salesy - Customer Relationship Management",
@@ -31,14 +27,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <QueryProvider>
-            <CommandPaletteProvider>
-              <TooltipProvider>
-                {children}
-                <CommandPalette />
-              </TooltipProvider>
-            </CommandPaletteProvider>
-          </QueryProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>

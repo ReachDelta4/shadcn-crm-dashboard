@@ -10,10 +10,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import type { LeadStatus } from "@/features/dashboard/pages/leads/types/lead";
-import {
-  APPOINTMENT_TARGET_STATUS,
-  shouldAdvanceToQualified,
-} from "@/features/leads/status-utils";
+import { buildAppointmentIdempotencyKey } from "@/features/calendar/appointment-idempotency";
+import { buildLeadCreationIdempotencyKey } from "@/features/leads/status-utils";
 
 interface Props { onCreated?: () => void }
 
@@ -36,6 +34,7 @@ export function SpeedDialNewSession({ onCreated }: Props) {
   // Appointment fields
   const [startAt, setStartAt] = useState<string>("");
   const [endAt, setEndAt] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => { loadLeads(); }, []);
 
@@ -89,14 +88,15 @@ export function SpeedDialNewSession({ onCreated }: Props) {
     return { start: startDate, end: endDate };
   }
 
-  async function createAppointmentForLead(leadId: string, startIso: string, endIso: string) {
+  async function scheduleWithLifecycle(leadId: string, startIso: string, endIso: string) {
     const payload = {
       provider: 'none',
       start_at_utc: startIso,
       end_at_utc: endIso,
       timezone,
+      idempotency_key: buildAppointmentIdempotencyKey(leadId, startIso, endIso),
     };
-    const res = await fetch(`/api/leads/${leadId}/appointments`, {
+    const res = await fetch(`/api/leads/${leadId}/appointments/schedule-with-lifecycle`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -106,28 +106,10 @@ export function SpeedDialNewSession({ onCreated }: Props) {
     }
   }
 
-  async function advanceLeadStatus(leadId: string, current?: LeadStatus) {
-    if (!shouldAdvanceToQualified(current)) return;
-    try {
-      const res = await fetch(`/api/leads/${leadId}/transition`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_status: APPOINTMENT_TARGET_STATUS }),
-      });
-      if (!res.ok) {
-        if (res.status === 409) return;
-        const message = await extractErrorMessage(res);
-        toast.warning(`Appointment saved, but lead status update failed: ${message}`);
-      }
-    } catch (error) {
-      console.error('[calendar] Failed to advance lead status', error);
-      toast.warning('Appointment saved, but lead status update failed');
-    }
-  }
-
   async function submitExisting() {
     if (!leadId) { toast.error("Select a lead"); return; }
     if (!startAt || !endAt) { toast.error("Set start and end time"); return; }
+    if (submitting) return;
     let range: { start: Date; end: Date };
     try {
       range = validateDateRange(startAt, endAt);
@@ -137,11 +119,10 @@ export function SpeedDialNewSession({ onCreated }: Props) {
     }
     const startIso = range.start.toISOString();
     const endIso = range.end.toISOString();
-    const selectedLead = leads.find(l => l.id === leadId);
     startTransition(async () => {
+      setSubmitting(true);
       try {
-        await createAppointmentForLead(leadId, startIso, endIso);
-        await advanceLeadStatus(leadId, selectedLead?.status);
+        await scheduleWithLifecycle(leadId, startIso, endIso);
         toast.success('Appointment scheduled');
         window.dispatchEvent(new Event('calendar:changed'));
         window.dispatchEvent(new Event('leads:changed'));
@@ -157,6 +138,8 @@ export function SpeedDialNewSession({ onCreated }: Props) {
         } else {
           toast.error('Failed to schedule appointment');
         }
+      } finally {
+        setSubmitting(false);
       }
     });
   }
@@ -164,6 +147,7 @@ export function SpeedDialNewSession({ onCreated }: Props) {
   async function submitNewLead() {
     if (!fullName || !email) { toast.error("Full name and email are required"); return; }
     if (!startAt || !endAt) { toast.error("Set start and end time"); return; }
+    if (submitting) return;
     let range: { start: Date; end: Date };
     try {
       range = validateDateRange(startAt, endAt);
@@ -174,19 +158,27 @@ export function SpeedDialNewSession({ onCreated }: Props) {
     const startIso = range.start.toISOString();
     const endIso = range.end.toISOString();
     startTransition(async () => {
+      setSubmitting(true);
       try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const idem = buildLeadCreationIdempotencyKey({
+          fullName: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim() || undefined,
+          company: company.trim() || undefined,
+        });
+        if (idem) headers['Idempotency-Key'] = idem;
+
         const create = await fetch('/api/leads', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+          method: 'POST', headers, body: JSON.stringify({
             full_name: fullName.trim(), email: email.trim(), phone: phone.trim() || undefined, company: company.trim() || undefined, value: 0
           })
         });
         if (!create.ok) throw new Error(await create.text());
         const created = await create.json();
         const id = created?.id || created?.lead?.id || created?.data?.id;
-        const initialStatus = (created?.status || created?.lead?.status || created?.data?.status) as LeadStatus | undefined;
         if (!id) throw new Error('Lead creation failed');
-        await createAppointmentForLead(id, startIso, endIso);
-        await advanceLeadStatus(id, initialStatus);
+        await scheduleWithLifecycle(id, startIso, endIso);
         toast.success('Lead created and appointment scheduled');
         window.dispatchEvent(new Event('calendar:changed'));
         window.dispatchEvent(new Event('leads:changed'));
@@ -202,6 +194,8 @@ export function SpeedDialNewSession({ onCreated }: Props) {
         } else {
           toast.error('Failed to create lead or schedule');
         }
+      } finally {
+        setSubmitting(false);
       }
     });
   }
@@ -251,7 +245,7 @@ export function SpeedDialNewSession({ onCreated }: Props) {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button onClick={submitExisting} disabled={pending}>Schedule</Button>
+                <Button onClick={submitExisting} disabled={pending || submitting}>Schedule</Button>
               </DialogFooter>
             </TabsContent>
             <TabsContent value="new" className="space-y-3">
@@ -289,7 +283,7 @@ export function SpeedDialNewSession({ onCreated }: Props) {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-                <Button onClick={submitNewLead} disabled={pending}>Create & Schedule</Button>
+                <Button onClick={submitNewLead} disabled={pending || submitting}>Create & Schedule</Button>
               </DialogFooter>
             </TabsContent>
           </Tabs>

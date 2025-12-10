@@ -29,7 +29,6 @@ export function logLeadTransition(ctx: LeadLogContext): void {
     type: 'lead_transition',
     ...ctx,
   }
-  // eslint-disable-next-line no-console
   console.info('[lead]', safeSerialize(payload))
 }
 
@@ -45,7 +44,5 @@ export function logLeadError(ctx: LeadLogContext & { error: unknown; code?: stri
     ...rest,
     error: normalizedError,
   }
-  // eslint-disable-next-line no-console
   console.error('[lead]', safeSerialize(payload))
 }
-

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import {
   OnChangeFn,
@@ -10,6 +10,8 @@ import {
   LeadFilters,
   LeadStatus,
 } from "@/features/dashboard/pages/leads/types/lead";
+import { useDebouncedValue } from "@/utils/hooks/useDebouncedValue";
+import { debounce } from "@/utils/timing/debounce";
 
 interface UseLeadsProps {
   initialLeads?: Lead[];
@@ -26,6 +28,32 @@ const sortFieldMap: Record<string, string> = {
   fullName: "full_name",
   leadNumber: "lead_number",
 };
+
+export function buildLeadsQueryKey(
+  pagination: PaginationState,
+  filters: LeadFilters,
+  sorting: SortingState
+) {
+  const primarySort = sorting[0] ?? { id: "date", desc: true };
+
+  return [
+    "leads",
+    {
+      pageIndex: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      search: (filters.search || "").trim(),
+      status: filters.status,
+      dateFrom: filters.dateRange.from
+        ? filters.dateRange.from.toISOString()
+        : undefined,
+      dateTo: filters.dateRange.to
+        ? filters.dateRange.to.toISOString()
+        : undefined,
+      sortId: primarySort.id,
+      sortDesc: !!primarySort.desc,
+    },
+  ] as const;
+}
 
 export function buildLeadsQueryParams(
   pagination: PaginationState,
@@ -98,11 +126,23 @@ export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps 
     pageSize: 10,
   });
 
+  const debouncedSearch = useDebouncedValue(filters.search, 250);
+
+  const effectiveFilters: LeadFilters = useMemo(
+    () => ({
+      ...filters,
+      search: debouncedSearch,
+    }),
+    [filters, debouncedSearch],
+  );
+
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["leads", pagination, filters, sorting],
-    queryFn: async () => {
-      const params = buildLeadsQueryParams(pagination, filters, sorting);
-      const response = await fetch(`/api/leads?${params.toString()}`);
+    queryKey: buildLeadsQueryKey(pagination, effectiveFilters, sorting),
+    queryFn: async ({ signal }) => {
+      const params = buildLeadsQueryParams(pagination, effectiveFilters, sorting);
+      const response = await fetch(`/api/leads?${params.toString()}`, {
+        signal: signal as AbortSignal | undefined,
+      });
       if (!response.ok) throw new Error(`Failed to fetch leads: ${response.statusText}`);
       return response.json() as Promise<ApiResponse>;
     },
@@ -112,13 +152,17 @@ export function useLeads({ initialLeads = [], initialCount = 0 }: UseLeadsProps 
     }),
     placeholderData: keepPreviousData,
     initialData: initialLeads.length > 0 ? { data: initialLeads, count: initialCount } : undefined,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const leads: Lead[] = data?.data || initialLeads;
   const totalCount = data?.count ?? initialCount;
 
   useEffect(() => {
-    const onChanged = () => { refetch(); };
+    const onChanged = debounce(() => {
+      refetch();
+    }, 150);
     window.addEventListener("leads:changed", onChanged);
     return () => window.removeEventListener("leads:changed", onChanged);
   }, [refetch]);

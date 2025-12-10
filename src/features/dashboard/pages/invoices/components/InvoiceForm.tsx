@@ -11,6 +11,12 @@ import { Separator } from "@/components/ui/separator";
 import { ProductPicker, type Product } from "@/features/dashboard/components/product-picker";
 import { PaymentPlanPicker, type PaymentPlan } from "@/features/dashboard/components/payment-plan-picker";
 import { formatINRMinor } from "@/utils/currency";
+import { buildLeadCreationIdempotencyKey } from "@/features/leads/status-utils";
+import { debounce } from "@/utils/timing/debounce";
+import { NoteField } from "@/features/dashboard/components/note-field";
+import { createSubjectNoteIfPresent } from "@/features/dashboard/utils/subject-notes";
+import { toast } from "sonner";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 export type InvoiceStatus = "draft" | "pending" | "paid" | "overdue" | "cancelled";
 
@@ -66,6 +72,17 @@ export interface InvoiceFormProps {
 
 interface LeadOption { id: string; full_name: string; email: string; phone?: string }
 
+function normalizeInvoiceLeadOptions(rows: any[]): LeadOption[] {
+  return (rows || [])
+    .filter((l: any) => (l?.status || "new") !== "converted")
+    .map((l: any) => ({
+      id: l.id as string,
+      full_name: l.full_name || "",
+      email: l.email || "",
+      phone: l.phone || undefined,
+    }));
+}
+
 function normalizeDefaults(defaults?: InvoiceFormDefaults) {
   return {
     customer_name: defaults?.customer_name ?? "",
@@ -109,8 +126,11 @@ export function InvoiceForm({
   const [leadId, setLeadId] = useState<string | undefined>(normalizedDefaults.lead_id);
   const [lineItems, setLineItems] = useState<InvoiceLineForm[]>(normalizedDefaults.line_items);
   const [leads, setLeads] = useState<LeadOption[]>([]);
+  const [leadSelectorOpen, setLeadSelectorOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     setCustomerName(normalizedDefaults.customer_name);
@@ -120,6 +140,7 @@ export function InvoiceForm({
     setDueDate(normalizedDefaults.due_date);
     setLeadId(normalizedDefaults.lead_id);
     setLineItems(normalizedDefaults.line_items);
+    setNote("");
   }, [normalizedDefaults]);
 
   useEffect(() => {
@@ -134,14 +155,25 @@ export function InvoiceForm({
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled) return;
-        const list = (data?.data || [])
-          .filter((l: any) => (l.status || 'new') !== 'converted')
-          .map((l: any) => ({ id: l.id, full_name: l.full_name, email: l.email, phone: l.phone }));
+        const list = normalizeInvoiceLeadOptions(data?.data || []);
         setLeads(list);
-      } catch { }
+      } catch {
+        if (!cancelled) {
+          setLeads([]);
+        }
+      }
     };
-    fetchLeads();
-    const refresh = () => fetchLeads();
+
+    if (leadSelectorOpen) {
+      fetchLeads();
+    }
+
+    const refresh = debounce(() => {
+      if (leadSelectorOpen) {
+        fetchLeads();
+      }
+    }, 150);
+
     window.addEventListener('leads:changed', refresh);
     window.addEventListener('leads:optimistic', refresh as any);
     return () => {
@@ -149,7 +181,7 @@ export function InvoiceForm({
       window.removeEventListener('leads:changed', refresh);
       window.removeEventListener('leads:optimistic', refresh as any);
     };
-  }, [showLeadSelector]);
+  }, [showLeadSelector, leadSelectorOpen]);
 
   function resetForm() {
     setCustomerName(normalizedDefaults.customer_name);
@@ -160,6 +192,7 @@ export function InvoiceForm({
     setLeadId(normalizedDefaults.lead_id);
     setLineItems(normalizedDefaults.line_items);
     setError(null);
+    setNote("");
   }
 
   function updateLine(idx: number, patch: Partial<InvoiceLineForm>) {
@@ -202,26 +235,54 @@ export function InvoiceForm({
     };
   }, { subtotal: 0, discount: 0, tax: 0, total: 0 }), [lineItems]);
 
-  async function ensureLeadIdIfNeeded(currentLeadId?: string): Promise<string | undefined> {
+  async function ensureLeadIdIfNeeded(
+    currentLeadId?: string,
+  ): Promise<string | undefined> {
     if (currentLeadId) return currentLeadId;
     if (!allowLeadCreation) return undefined;
+    if (!phone.trim()) throw new Error("Phone number is required to create a lead");
+    if (!email.trim()) throw new Error("Email is required to create a lead");
+    if (!customerName.trim()) throw new Error("Customer name is required to create a lead");
+
     const payload = {
       full_name: customerName.trim(),
       email: email.trim(),
-      phone: phone.trim() || undefined,
+      phone: phone.trim(),
+      company: undefined as string | undefined,
     };
-    const create = await fetch('/api/leads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+    const headerKey =
+      buildLeadCreationIdempotencyKey({
+        fullName: payload.full_name,
+        email: payload.email,
+        phone: payload.phone,
+        company: payload.company,
+      }) ?? undefined;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (headerKey) {
+      headers["Idempotency-Key"] = headerKey;
+    }
+
+    const create = await fetch("/api/leads", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
     if (!create.ok) {
       const body = await create.json().catch(() => ({}));
-      throw new Error(body?.error || 'Failed to create lead');
+      throw new Error(body?.error || "Failed to create lead");
     }
-    const lead = await create.json().catch(() => null) as any;
+    const lead = (await create.json().catch(() => null)) as any;
     return lead?.id as string | undefined;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (submitting || pending) return;
 
     const parsed = schema.safeParse({
       customer_name: customerName.trim(),
@@ -251,6 +312,7 @@ export function InvoiceForm({
       return;
     }
 
+    setSubmitting(true);
     startTransition(async () => {
       try {
         if (beforeSubmit) await beforeSubmit(parsed.data);
@@ -281,11 +343,23 @@ export function InvoiceForm({
           throw new Error(body?.error || 'Failed to create invoice');
         }
         const invoice = await res.json();
+        if (note.trim()) {
+          const noteResult = await createSubjectNoteIfPresent(note, {
+            subjectId: invoice?.subject_id ?? invoice?.subjectId ?? null,
+            customerId: invoice?.customer_id ?? invoice?.customerId ?? null,
+            leadId: invoice?.lead_id ?? invoice?.leadId ?? finalLeadId,
+          });
+          if (!noteResult.posted && noteResult.reason !== "empty") {
+            toast.warning(noteResult.reason === "missing-subject" ? "Invoice saved. Notes need a linked subject to persist." : "Invoice saved, but note could not be saved.");
+          }
+        }
         onCreated?.(invoice);
         window.dispatchEvent(new Event('invoices:changed'));
         resetForm();
       } catch (err: any) {
         setError(typeof err?.message === 'string' ? err.message : 'Failed to create invoice');
+      } finally {
+        setSubmitting(false);
       }
     });
   }
@@ -305,7 +379,13 @@ export function InvoiceForm({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <PhoneInput
+              id="phone"
+              value={phone}
+              defaultCountry="IN"
+              onChange={(v) => setPhone((v as string) || "")}
+              placeholder="Enter phone number"
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="status">Status</Label>
@@ -327,7 +407,11 @@ export function InvoiceForm({
           {showLeadSelector && (
             <div className="grid gap-2">
               <Label htmlFor="lead_id">Link to Lead</Label>
-              <Select value={leadId || "none"} onValueChange={(v) => setLeadId(v === 'none' ? undefined : v)}>
+              <Select
+                value={leadId || "none"}
+                onOpenChange={setLeadSelectorOpen}
+                onValueChange={(v) => setLeadId(v === 'none' ? undefined : v)}
+              >
                 <SelectTrigger><SelectValue placeholder="No lead" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No lead</SelectItem>
@@ -338,6 +422,9 @@ export function InvoiceForm({
               </Select>
             </div>
           )}
+          <div className="sm:col-span-2">
+            <NoteField value={note} onChange={setNote} />
+          </div>
         </CardContent>
       </Card>
 
@@ -432,9 +519,9 @@ export function InvoiceForm({
 
       <div className="flex justify-end gap-2">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>Cancel</Button>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={pending || submitting}>Cancel</Button>
         )}
-        <Button type="submit" disabled={pending}>{pending ? 'Saving…' : submitLabel}</Button>
+        <Button type="submit" disabled={pending || submitting}>{pending || submitting ? 'Saving...' : submitLabel}</Button>
       </div>
     </form>
   );

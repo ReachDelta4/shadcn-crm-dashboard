@@ -60,9 +60,14 @@ export function normalizeRevenueResponse(response: any): RevenueResponseNormaliz
   return { revenue, kpis };
 }
 
-export async function fetchRevenueReport(params: RevenueQueryParams): Promise<RevenueResponseNormalized> {
+export async function fetchRevenueReport(
+  params: RevenueQueryParams,
+  signal?: AbortSignal,
+): Promise<RevenueResponseNormalized> {
   const qs = buildRevenueQueryParams(params);
-  const response = await fetch(`/api/reports/revenue?${qs.toString()}`);
+  const response = await fetch(`/api/reports/revenue?${qs.toString()}`, {
+    signal,
+  });
   if (!response.ok) throw new Error(`Failed to fetch revenue: ${response.statusText}`);
   const json = await response.json();
   return normalizeRevenueResponse(json);
