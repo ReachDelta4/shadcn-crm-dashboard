@@ -62,8 +62,8 @@ export const PERF_ROUTES: PerfRoute[] = [
   },
   {
     id: "dashboard-reports",
-    path: "/dashboard/reports",
-    components: ["route:/dashboard/reports", "component:dashboard/layout"],
+    path: "/dashboard/reports/revenue",
+    components: ["route:/dashboard/reports/revenue", "component:dashboard/layout"],
     networkProfile: "wifi",
     settleAfterMs: 800,
   },

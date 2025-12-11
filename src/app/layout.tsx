@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { GeistMono } from "geist/font/mono";
 
 import { ThemeProvider } from "@/providers/theme-provider";
+import { PerfMarksProvider } from "@/components/perf/perf-marks-provider";
 
 import "./globals.css";
 
@@ -28,6 +29,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <PerfMarksProvider />
         </ThemeProvider>
       </body>
     </html>

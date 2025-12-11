@@ -91,7 +91,7 @@ test.describe("Performance smoke (Playwright + perf marks)", () => {
         title: route.id,
       });
 
-      const response = await page.goto(route.path, { waitUntil: "networkidle" });
+      const response = await page.goto(route.path, { waitUntil: "load" });
       expect(response?.ok()).toBeTruthy();
 
       if (route.waitForText) {
@@ -152,6 +152,31 @@ test.describe("Performance smoke (Playwright + perf marks)", () => {
       await context.tracing.stop({ path: tracePath });
       await context.close();
 
+      await test.info().attach("timings.json", {
+        body: JSON.stringify(
+          {
+            routeId: route.id,
+            path: route.path,
+            networkProfile: route.networkProfile,
+            lcpMs: payload.lcpMs,
+            navigation: payload.navigation,
+            cls: payload.cls,
+            longTaskCount: payload.longTasks.length,
+          },
+          null,
+          2,
+        ),
+        contentType: "application/json",
+      });
+      await test.info().attach("perf-events.json", {
+        body: JSON.stringify(payload.perfEvents, null, 2),
+        contentType: "application/json",
+      });
+      await test.info().attach("resources.json", {
+        body: JSON.stringify(payload.resources, null, 2),
+        contentType: "application/json",
+      });
+
       const budgets = {
         ...DEFAULT_BUDGETS,
         ...route.budgets,
@@ -182,28 +207,6 @@ test.describe("Performance smoke (Playwright + perf marks)", () => {
 
       const longTaskCount = payload.longTasks.length;
       expect(longTaskCount).toBeLessThanOrEqual(budgets.longTaskCount);
-
-      await test.info().attach("perf-events.json", {
-        body: JSON.stringify(payload.perfEvents, null, 2),
-        contentType: "application/json",
-      });
-      await test.info().attach("timings.json", {
-        body: JSON.stringify(
-          {
-            lcpMs: payload.lcpMs,
-            navigation: payload.navigation,
-            cls: payload.cls,
-            longTaskCount,
-          },
-          null,
-          2,
-        ),
-        contentType: "application/json",
-      });
-      await test.info().attach("resources.json", {
-        body: JSON.stringify(payload.resources, null, 2),
-        contentType: "application/json",
-      });
       await test.info().attach("slowest-resources.json", {
         body: JSON.stringify(slowestResources, null, 2),
         contentType: "application/json",

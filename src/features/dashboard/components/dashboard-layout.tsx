@@ -11,6 +11,7 @@ import { AppSidebar } from "./sidebar/app-sidebar";
 import { DashboardHeader } from "./dashboard-header";
 import { Separator } from "@/components/ui/separator";
 import { DashboardSkeleton } from "./dashboard-skeleton";
+import { usePerfTimer } from "@/lib/perf";
 import { Suspense } from "react";
 const QuickActionsDock = dynamic(
   () => import("./quick-actions-dock/QuickActionsDock").then((m) => m.QuickActionsDock),
@@ -36,6 +37,9 @@ type Props = {
  */
 function DashboardLayoutWrapper({ children }: Props) {
   const isClient = useIsClient();
+  const perf = usePerfTimer("component:dashboard/layout", {
+    autoReadyTimeoutMs: 1500,
+  });
 
   // Get sidebar open state from localStorage, with fallback to true
   const isOpen = isClient
@@ -43,6 +47,13 @@ function DashboardLayoutWrapper({ children }: Props) {
       ? localStorage.getItem("sidebar-open") === "true"
       : true
     : true;
+
+  React.useEffect(() => {
+    if (!perf.enabled) return;
+    perf.markReady({
+      sidebarOpen: isOpen,
+    });
+  }, [isOpen, perf]);
 
   return (
     <SidebarProvider defaultOpen={isOpen}>
